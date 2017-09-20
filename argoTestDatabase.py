@@ -102,7 +102,19 @@ class ArgoDatabase(object):
             df[adj].fillna(df[not_adj], inplace=True)
             df.drop([not_adj], axis=1, inplace=True)
             return df
-        
+
+        def compare_with_neighbors():
+            '''sometimes you want to compare with neighbors when debugging'''
+            keys = variables.keys()
+            for key in keys:
+                print(key)
+                first = variables[key][idx]
+                second = variables[key][idx + 1]
+                print('first value')
+                print(first)
+                print('second value')
+                print(second)
+
         profile_df = pd.DataFrame()
         keys = variables.keys()
         #  Profile measurements are gathered in a dataframe
@@ -190,15 +202,24 @@ class ArgoDatabase(object):
                 documents.append(doc)
         return documents
 
-    def add_single_profile(self, doc, file_name):
+    def add_single_profile(self, doc, file_name,attempt=0):
         try:
-            self.float_coll.insert(doc)
+            result = self.float_coll.insert_one(doc)
+        except pymongo.errors.DuplicateKeyError:
+            logging.debug('duplicate key: {0}'.format(doc['_id']))
+            logging.debug('attempting to append DUP marker on: {0}'.format(doc['_id']))
+            try:
+                doc['_id'] += '_DUP'
+                attempt += 1
+                if attempt < 10:
+                    self.add_single_profile(self, doc, file_name,attempt)
+                else:
+                    logging.warning('_DUP prefix appended too many times...moving on')
+            except:
+                logging.debug('')
         except pymongo.errors.WriteError:
             logging.warning('check the following id '
                             'for filename : {0}'.format(doc['_id'], file_name))
-        except pymongo.errors.DuplicateKeyError:
-            logging.debug('duplicate key: {0}'.format(doc['_id']))
-            logging.debug('moving on: {0}'.format(doc['_id']))
         except bson.errors.InvalidDocument:
             logging.warning('bson error')
             logging.warning('check the following document: {0}'.format(doc['_id']))
@@ -207,11 +228,16 @@ class ArgoDatabase(object):
 
     def add_many_profiles(self, documents, file_name):
         try:
-            self.float_coll.insert_many(documents)
-        except pymongo.errors.BulkWriteError:
-            logging.warning('bulk write failed for: {0}'.format(file_name))
-            logging.warning('going to add one at a time')
-            for doc in documents:
+            self.float_coll.insert_many(documents, ordered=False)
+        except pymongo.errors.BulkWriteError as bwe:
+            writeErrors = bwe.details['writeErrors']
+            problem_idx = []
+            for we in writeErrors:
+                problem_idx.append(we['index'])
+            trouble_list = [documents[i] for i in problem_idx]
+            logging.debug('bulk write failed for: {0}'.format(file_name))
+            logging.debug('adding the failed documents one at a time.')
+            for doc in trouble_list:
                 self.add_single_profile(doc, file_name)
         except bson.errors.InvalidDocument:
             logging.warning('bson error')
@@ -227,9 +253,9 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argoBackend', 'FTP-mirror')
+    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'FTP-mirror', 'nmdis')
     # init database
-    DB_NAME = 'argo_test'
+    DB_NAME = 'nmdis'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 

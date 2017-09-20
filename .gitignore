@@ -1,5 +1,4 @@
 FTP-mirror
-FTP-mirror/*
 notes.txt
 *.log
 queuedFiles
@@ -7,3 +6,5 @@ completedQueues
 .idea
 __pycache__
 *.pyc
+troublesomeFiles
+
