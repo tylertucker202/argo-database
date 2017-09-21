@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from netCDF4 import Dataset
 import bson.errors
+import pdb
 
 class ArgoDatabase(object):
     def __init__(self,
@@ -36,13 +37,17 @@ class ArgoDatabase(object):
         except:
             logging.warning('not able to get collections')
 
-    def add_locally(self, local_dir, how_to_add='all', files=[]):
+    def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
 
         if how_to_add=='all':
             logging.debug('adding all files ending in _prof.nc:')
             files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
-        elif how_to_add=='profList':
+        elif how_to_add=='by_dac':
+            files = []
+            for dac in dacs:
+                files = files+glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))
+        elif how_to_add=='prof_list':
             logging.debug('adding _prof.nc in provided list')
         elif how_to_add=='profiles':
             logging.debug('adding profiles individually')
@@ -87,16 +92,28 @@ class ArgoDatabase(object):
             not_adj = meas_str.lower()+'_not_adj'
             adj = meas_str.lower()
 
+            # get unadjusted value. Sometimes adjusted and unadj fields aren't the same type.
             if type(variables[meas_str][idx, :]) == np.ndarray:
                 df[not_adj] = variables[meas_str][idx, :]
-                df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
             else:  # sometimes a masked array is used
                 try:
                     df[not_adj] = variables[meas_str][idx, :].data
+                except ValueError:
+                    logging.debug('check data type')
+            # get adjusted value. 
+            if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
+                df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
+            else:  # sometimes a masked array is used
+                try:
                     df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
                 except ValueError:
                     logging.debug('check data type')
-            df[adj].loc[df[adj] >= 99999] = np.NaN
+
+            try:
+                df[adj].loc[df[adj] >= 99999] = np.NaN
+            except KeyError:
+                pdb.set_trace()
+                logging.warning('key not found...')
             df[not_adj].loc[df[not_adj] >= 99999] = np.NaN
             df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
             df[adj].fillna(df[not_adj], inplace=True)
@@ -130,7 +147,15 @@ class ArgoDatabase(object):
         if 'CNDC' in keys:
             cndc_df = format_measurments('CNDC')
             profile_df = pd.concat([profile_df, cndc_df], axis=1)
-        date = ref_date + timedelta(variables['JULD'][idx])
+
+        if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
+            cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
+            logging.debug('Float: {0} cycle: {1} has unknown date.'
+                          ' Not going to add'.format(platform_number, cycle_number))
+            return
+        else:
+            date = ref_date + timedelta(variables['JULD'][idx])
+            
         profile_df.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
         profile_df.dropna(axis=0, how='all', inplace=True)
         profile_df.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
@@ -202,21 +227,19 @@ class ArgoDatabase(object):
                 documents.append(doc)
         return documents
 
-    def add_single_profile(self, doc, file_name,attempt=0):
+    def add_single_profile(self, doc, file_name, attempt=0):
         try:
-            result = self.float_coll.insert_one(doc)
+            self.float_coll.insert_one(doc)
         except pymongo.errors.DuplicateKeyError:
             logging.debug('duplicate key: {0}'.format(doc['_id']))
             logging.debug('attempting to append DUP marker on: {0}'.format(doc['_id']))
-            try:
-                doc['_id'] += '_DUP'
-                attempt += 1
-                if attempt < 10:
-                    self.add_single_profile(self, doc, file_name,attempt)
-                else:
-                    logging.warning('_DUP prefix appended too many times...moving on')
-            except:
-                logging.debug('')
+            doc['_id'] += '_DUP'
+            attempt += 1
+            if attempt < 10:
+                self.add_single_profile(doc, file_name, attempt)
+            else:
+                logging.warning('_DUP prefix appended too many times...moving on')
+
         except pymongo.errors.WriteError:
             logging.warning('check the following id '
                             'for filename : {0}'.format(doc['_id'], file_name))
@@ -253,11 +276,14 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'FTP-mirror', 'nmdis')
+    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
     # init database
-    DB_NAME = 'nmdis'
+    DB_NAME = 'argo_test'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
     ad = ArgoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='all')
+    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac', dacs=['jma', 'csiro','coriolis'])
+    
+    #added: 'aoml' 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois'

@@ -1,11 +1,12 @@
-import argoTestDatabase
+from argoTestDatabase import ArgoDatabase
 import os
 import glob
 import re
+import logging
 
 queueDir = 'queuedFiles'
 complDir = 'completedQueues'
-addFromProfiles = True
+addFromProfiles = True #  either add from profiles or *_prof.nc files.
 
 
 if __name__ == '__main__':
@@ -23,7 +24,25 @@ if __name__ == '__main__':
         else:
             content = [x for x in content if re.search(r'prof.nc', x)]
         print(content)
-
+        #  move file to competed directory
         new_file_location = os.path.join(complDir,file.split('/')[-1])
         print('moving file to {}'.format(new_file_location))
         os.rename(file, new_file_location)
+    #  process queue
+    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(format=FORMAT,
+                        filename='processQueue.log',
+                        level=logging.DEBUG)
+    logging.debug('Start of log file')
+    HOME_DIR = os.getcwd()
+    FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+
+    DB_NAME = 'argo_test'
+    COLLECTION_NAME = 'profiles'
+    DATA_DIR = os.path.join(HOME_DIR, 'data')
+
+    ad = ArgoDatabase(DB_NAME, COLLECTION_NAME)
+    if addFromProfiles:
+        ad.add_locally(FTP_DIR, how_to_add='profiles', files=content)
+    else:
+        ad.add_locally(FTP_DIR, how_to_add='prof_list', files=content)
