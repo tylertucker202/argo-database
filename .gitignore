@@ -8,4 +8,7 @@ __pycache__
 *.pyc
 troublesomeFiles
 ifremer
+*.csv
+*.ods
+*.ipynb_checkpoints/
 
