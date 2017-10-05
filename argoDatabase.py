@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 import bson.errors
 import pdb
 
-class ArgoDatabase(object):
+class argoDatabase(object):
     def __init__(self,
                  db_name,
                  collection_name):
@@ -39,14 +39,17 @@ class ArgoDatabase(object):
 
     def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
-
         if how_to_add=='all':
             logging.debug('adding all files ending in _prof.nc:')
             files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
-        elif how_to_add=='by_dac':
+        elif how_to_add=='by_dac': #to be phased out eventaully. prof.nc files are formatted differently.
             files = []
             for dac in dacs:
                 files = files+glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))
+        elif how_to_add=='by_dac_profiles':
+            files = []
+            for dac in dacs:
+                files = files+glob.glob(os.path.join(local_dir, dac, '**', 'profiles', '*.nc'))     
         elif how_to_add=='prof_list':
             logging.debug('adding _prof.nc in provided list')
         elif how_to_add=='profiles':
@@ -55,7 +58,7 @@ class ArgoDatabase(object):
             logging.warning('how_to_add not recognized. not going to do anything.')
             return
         for file in files:
-            logging.debug('on file: {0}'.format(file))
+            logging.info('on file: {0}'.format(file))
             dac_name = file.split('/')[-3]
             root_grp = Dataset(file, "r", format="NETCDF4")
             variables = root_grp.variables
@@ -102,7 +105,11 @@ class ArgoDatabase(object):
                     logging.debug('check data type')
             # get adjusted value. 
             if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
-                df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
+                try:
+                    df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
+                except KeyError:
+                    pdb.set_trace()
+                    logging.warning('key error')
             else:  # sometimes a masked array is used
                 try:
                     df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
@@ -181,7 +188,12 @@ class ArgoDatabase(object):
         try:
             profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(int)
         except AttributeError:
-            profile_doc['maximum_pressure'] = str(profile_df['pres'].max(axis=0))
+            try:
+                profile_doc['maximum_pressure'] = str(profile_df['pres'].max(axis=0))
+            except:
+                pdb.set_trace()
+                logging.debug('Max pressure for Float: {0} cycle: {1} is being difficult'
+                          ' Not going to add'.format(platform_number, cycle_number))
         profile_doc['cycle_number'] = cycle_number
         profile_doc['lat'] = phi
         profile_doc['lon'] = lam
@@ -199,7 +211,6 @@ class ArgoDatabase(object):
         return profile_doc
 
     def make_prof_documents(self, variables, dac_name):
-
         def format_param(param):
             if type(param) == np.ndarray:
                 formatted_param = ''.join([(x.astype(str)) for x in param])
@@ -217,7 +228,7 @@ class ArgoDatabase(object):
                 logging.error(' check type: {}'.format(type(param)))
                 pass
             return formatted_param.strip(' ')
-
+        
         platform_number = format_param(variables['PLATFORM_NUMBER'][0])
         station_parameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
         numOfProfiles = variables['JULD'][:].shape[0]
@@ -283,11 +294,12 @@ if __name__ == '__main__':
     OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
     # init database
-    DB_NAME = 'argo'
+    DB_NAME = 'kordi'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
-    ad = ArgoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac', dacs=['jma', 'csiro','coriolis'])
+    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
+    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=['kordi'])
     
-    #added: 'aoml' 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois'
+    #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
+    #have not added: 'aoml'  'coriolis'

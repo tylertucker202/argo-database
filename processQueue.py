@@ -23,10 +23,10 @@ if __name__ == '__main__':
             content = [x for x in content if re.search(r'\d+.nc', x)]
         else:
             content = [x for x in content if re.search(r'prof.nc', x)]
-        print(content)
+        #print(content)
         #  move file to competed directory
         new_file_location = os.path.join(complDir,file.split('/')[-1])
-        print('moving file to {}'.format(new_file_location))
+        #print('moving file to {}'.format(new_file_location))
         #os.rename(file, new_file_location)
     #  process queue
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -35,8 +35,8 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    #FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    FTP_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
+    FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #FTP_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
 
     DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
