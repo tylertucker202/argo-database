@@ -179,7 +179,7 @@ class ArgoDatabase(object):
                           ' Not going to add'.format(platform_number, cycle_number))
             return
         try:
-            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(str)
+            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(int)
         except AttributeError:
             profile_doc['maximum_pressure'] = str(profile_df['pres'].max(axis=0))
         profile_doc['cycle_number'] = cycle_number
