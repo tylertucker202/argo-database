@@ -127,7 +127,7 @@ class argoDatabase(object):
             df.drop([not_adj], axis=1, inplace=True)
             return df
 
-        def compare_with_neighbors():
+        def compare_with_neighbors(idx):
             '''sometimes you want to compare with neighbors when debugging'''
             keys = variables.keys()
             for key in keys:
@@ -172,28 +172,26 @@ class argoDatabase(object):
         phi = variables['LATITUDE'][idx]
         lam = variables['LONGITUDE'][idx]
         try:
-            profile_doc['position_qc'] = variables['POSITION_QC'][idx].astype(str)
+            profile_doc['position_qc'] = int(variables['POSITION_QC'][idx].astype(int))
         except AttributeError:
             if type(variables['POSITION_QC'][idx] == np.ma.core.MaskedConstant):
-                profile_doc['position_qc'] = str(variables['POSITION_QC'][idx].data.astype(str))
+                profile_doc['position_qc'] = str(variables['POSITION_QC'][idx].data.astype(int))
             else:
                 logging.warning('error with position_qc. not going to add.')
                 return
 
-        cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
+        cycle_number = int(variables['CYCLE_NUMBER'][idx].astype(str))
         if type(phi) == np.ma.core.MaskedConstant:
             logging.debug('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
             return
+
         try:
-            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(int)
-        except AttributeError:
-            try:
-                profile_doc['maximum_pressure'] = str(profile_df['pres'].max(axis=0))
-            except:
-                pdb.set_trace()
-                logging.debug('Max pressure for Float: {0} cycle: {1} is being difficult'
-                          ' Not going to add'.format(platform_number, cycle_number))
+            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(float)
+        except:
+            logging.warning('error with maximum pressure. not going to add')
+            return
+
         profile_doc['cycle_number'] = cycle_number
         profile_doc['lat'] = phi
         profile_doc['lon'] = lam
@@ -228,10 +226,33 @@ class argoDatabase(object):
                 logging.error(' check type: {}'.format(type(param)))
                 pass
             return formatted_param.strip(' ')
-        
+
+        def compare_with_neighbors(idx):
+            '''sometimes you want to compare with neighbors when debugging'''
+            keys = variables.keys()
+            for key in keys:
+                print('\nFIELD NAME: '+key)
+                first = variables[key][idx]
+                second = variables[key][idx + 1]
+                print('index {} value:'.format(idx))
+                print(first)
+                print('index {} value'.format(idx + 1))
+                print(second)
+                print()
+
+        cycles = variables['CYCLE_NUMBER'][:][:]
+        list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
+        for array in list_of_dup_inds:
+            if len(array) > 1:
+                logging.warning('duplicate cycle numbers found...')
+                logging.warning('cycle {} has duplicates at the following indexes:'.format(cycles[array[0]]))
+                for idx in array:
+                    logging.warning(cycles[idx])
+
         platform_number = format_param(variables['PLATFORM_NUMBER'][0])
         station_parameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
         numOfProfiles = variables['JULD'][:].shape[0]
+        logging.debug('number of profiles inside file: {}'.format(len(variables['JULD'])))
         documents = []
         ref_date_array = variables['REFERENCE_DATE_TIME'][:]
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
@@ -273,8 +294,8 @@ class argoDatabase(object):
             for we in writeErrors:
                 problem_idx.append(we['index'])
             trouble_list = [documents[i] for i in problem_idx]
-            logging.debug('bulk write failed for: {0}'.format(file_name))
-            logging.debug('adding the failed documents one at a time.')
+            logging.warning('bulk write failed for: {0}'.format(file_name))
+            logging.warning('adding the failed documents one at a time.')
             for doc in trouble_list:
                 self.add_single_profile(doc, file_name)
         except bson.errors.InvalidDocument:
@@ -291,15 +312,18 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
+    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesomeFiles')
+
+    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
-    DB_NAME = 'kordi'
-    COLLECTION_NAME = 'profiles'
+    DB_NAME = 'argo'
+    COLLECTION_NAME = 'trouble'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=['kordi'])
+    ad.add_locally(OUTPUT_DIR, how_to_add='all')
     
     #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
     #have not added: 'aoml'  'coriolis'
