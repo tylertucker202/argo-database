@@ -1,4 +1,4 @@
-from argoDatabase import ArgoDatabase
+from argoDatabase import argoDatabase
 import os
 import glob
 import re
@@ -35,15 +35,14 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    #FTP_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
+    #FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    IFREMER_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
 
     DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
-    DATA_DIR = os.path.join(HOME_DIR, 'data')
 
-    ad = ArgoDatabase(DB_NAME, COLLECTION_NAME)
+    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     if addFromProfiles:
-        ad.add_locally(FTP_DIR, how_to_add='profiles', files=content)
+        ad.add_locally(IFREMER_DIR, how_to_add='profiles', files=content)
     else:
-        ad.add_locally(FTP_DIR, how_to_add='prof_list', files=content)
+        ad.add_locally(IFREMER_DIR, how_to_add='prof_list', files=content)

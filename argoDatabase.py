@@ -33,7 +33,9 @@ class argoDatabase(object):
         try:
             self.float_coll = self.db[collection_name]
             self.float_coll.create_index([("geoLocation", pymongo.GEOSPHERE),
-                                          ('date', pymongo.DESCENDING)])
+                                          ('date', pymongo.DESCENDING)],
+                                          ('platform_number'), pymongo.DESCENDING)
+
         except:
             logging.warning('not able to get collections')
 
@@ -252,7 +254,7 @@ class argoDatabase(object):
         platform_number = format_param(variables['PLATFORM_NUMBER'][0])
         station_parameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
         numOfProfiles = variables['JULD'][:].shape[0]
-        logging.debug('number of profiles inside file: {}'.format(len(variables['JULD'])))
+        logging.info('number of profiles inside file: {}'.format(len(variables['JULD'])))
         documents = []
         ref_date_array = variables['REFERENCE_DATE_TIME'][:]
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
