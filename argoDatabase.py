@@ -169,7 +169,7 @@ class argoDatabase(object):
         profile_df.dropna(axis=0, how='all', inplace=True)
         profile_df.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
         profile_doc = dict()
-        profile_doc['measurements'] = profile_df.to_dict(orient='list')
+        profile_doc['measurements'] = profile_df.to_dict(orient='records' )  # orient='list' will store these as single arrays
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
         lam = variables['LONGITUDE'][idx]
@@ -320,8 +320,8 @@ if __name__ == '__main__':
 
     OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
-    DB_NAME = 'argo'
-    COLLECTION_NAME = 'trouble'
+    DB_NAME = 'argo2'
+    COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
