@@ -32,9 +32,9 @@ class argoDatabase(object):
     def init_float_collection(self, collection_name):
         try:
             self.float_coll = self.db[collection_name]
-            self.float_coll.create_index([("geoLocation", pymongo.GEOSPHERE),
-                                          ('date', pymongo.DESCENDING)],
-                                          ('platform_number'), pymongo.DESCENDING)
+            self.float_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
+                                          ('date', pymongo.DESCENDING),
+                                          ('platform_number', pymongo.DESCENDING)])
 
         except:
             logging.warning('not able to get collections')
@@ -91,7 +91,7 @@ class argoDatabase(object):
                                     ' {0}, idx: {1}'.format(platform_number, idx))
             return data
 
-        def format_measurments(meas_str):
+        def format_measurments(variables, meas_str):
             """ Converts array of measurements and adjusted measurements into arrays"""
             df = pd.DataFrame()
             not_adj = meas_str.lower()+'_not_adj'
@@ -104,27 +104,29 @@ class argoDatabase(object):
                 try:
                     df[not_adj] = variables[meas_str][idx, :].data
                 except ValueError:
-                    logging.debug('check data type')
-            # get adjusted value. 
-            if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
-                try:
+                    logging.warning('check data type')
+            # get adjusted value.
+            try:
+                if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
                     df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
-                except KeyError:
-                    pdb.set_trace()
-                    logging.warning('key error')
+            except KeyError:
+                logging.debug('adjusted value for {} does not exist'.format(meas_str))
+                df[adj] = np.nan
             else:  # sometimes a masked array is used
                 try:
                     df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
                 except ValueError:
                     logging.debug('check data type')
-
             try:
-                df[adj].loc[df[adj] >= 99999] = np.NaN
+                df.ix[df[adj] >= 99999, adj] = np.NaN
             except KeyError:
-                pdb.set_trace()
                 logging.warning('key not found...')
-            df[not_adj].loc[df[not_adj] >= 99999] = np.NaN
-            df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
+            df.ix[df[not_adj] >= 99999, not_adj] = np.NaN
+            try:
+                df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
+            except KeyError:
+                logging.warning('qc not found for {}'.format(meas_str))
+                logging.warning('not going to add') 
             df[adj].fillna(df[not_adj], inplace=True)
             df.drop([not_adj], axis=1, inplace=True)
             return df
@@ -145,16 +147,16 @@ class argoDatabase(object):
         keys = variables.keys()
         #  Profile measurements are gathered in a dataframe
         if 'TEMP' in keys:
-            temp_df = format_measurments('TEMP')
+            temp_df = format_measurments(variables, 'TEMP')
             profile_df = pd.concat([profile_df, temp_df], axis=1)
         if 'PRES' in keys:
-            pres_df = format_measurments('PRES')
+            pres_df = format_measurments(variables, 'PRES')
             profile_df = pd.concat([profile_df, pres_df], axis=1)
         if 'PSAL' in keys:
-            psal_df = format_measurments('PSAL')
+            psal_df = format_measurments(variables, 'PSAL')
             profile_df = pd.concat([profile_df, psal_df], axis=1)
         if 'CNDC' in keys:
-            cndc_df = format_measurments('CNDC')
+            cndc_df = format_measurments(variables, 'CNDC')
             profile_df = pd.concat([profile_df, cndc_df], axis=1)
 
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
@@ -207,7 +209,16 @@ class argoDatabase(object):
               + '/' + platform_number \
               + '/' + platform_number + '_prof.nc'
         profile_doc['nc_url'] = url
-        profile_doc['_id'] = profile_id
+        """Normally, the floats take measurements on the ascent. 
+        In the event that the float takes measurements on the descent, the
+        cycle number doesn't change. So, to have a unique identifer, this 
+        the _id field has a '_DES' appended"""
+        descending = profile_df['pres'].values[0] - profile_df['pres'].values[-1] < 0
+        if descending:
+            logging.debug('descending profile detected. Appending _DEC to _id field')
+            profile_doc['_id'] = profile_id+'_DES'
+        else:
+            profile_doc['_id'] = profile_id
         return profile_doc
 
     def make_prof_documents(self, variables, dac_name):

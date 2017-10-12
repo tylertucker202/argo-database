@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from argoDatabase import ArgoDatabase
+from argoDatabase import argoDatabase
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -18,6 +18,6 @@ if __name__ == '__main__':
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
-    ad = ArgoDatabase(DB_NAME, COLLECTION_NAME)
+    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     aomlDac = ['aoml']
     ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=aomlDac)
