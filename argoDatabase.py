@@ -44,7 +44,7 @@ class argoDatabase(object):
         if how_to_add=='all':
             logging.debug('adding all files ending in _prof.nc:')
             files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
-        elif how_to_add=='by_dac': #to be phased out eventaully. prof.nc files are formatted differently.
+        elif how_to_add=='by_dac_prof': #to be phased out eventaully. prof.nc files are formatted differently.
             files = []
             for dac in dacs:
                 files = files+glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))

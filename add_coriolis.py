@@ -11,8 +11,9 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
+    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
     # init database
     DB_NAME = 'argo_test'
     COLLECTION_NAME = 'profiles'
@@ -20,4 +21,4 @@ if __name__ == '__main__':
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     aomlDac = ['coriolis']
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=aomlDac)
+    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_prof', dacs=aomlDac)
