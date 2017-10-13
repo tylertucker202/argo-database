@@ -6,7 +6,7 @@ import logging
 import pdb
 queueDir = 'queuedFiles'
 complDir = 'completedQueues'
-addFromProfiles = False #  either add from profiles or *_prof.nc files.
+addFromProfiles = True #  either add from profiles or *_prof.nc files.
 
 
 if __name__ == '__main__':
@@ -35,10 +35,10 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    #FTP_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    IFREMER_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
+    IFREMER_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #IFREMER_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
 
-    DB_NAME = 'argo'
+    DB_NAME = 'argo_test'
     COLLECTION_NAME = 'profiles'
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
