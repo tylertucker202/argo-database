@@ -104,6 +104,156 @@ class argoDatabase(object):
                 try:
                     df[not_adj] = variables[meas_str][idx, :].data
                 except ValueError:
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
+            # get adjusted value.
+            try:
+                if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
+                    df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
+            except KeyError:
+                logging.debug('adjusted value for {} does not exist'.format(meas_str))
+                df[adj] = np.nan
+            else:  # sometimes a masked array is used
+                try:
+                    df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
+                except ValueError:
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
+            try:
+                df.ix[df[adj] >= 99999, adj] = np.NaN
+            except KeyError:
+                logging.warning('key not found...')
+            df.ix[df[not_adj] >= 99999, not_adj] = np.NaN
+            try:
+                df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
+            except KeyError:
+                logging.warning('qc not found for {}'.format(meas_str))
+                logging.warning('not going to add') 
+            df[adj].fillna(df[not_adj], inplace=True)
+            df.drop([not_adj], axis=1, inplace=True)
+            return df
+
+        def compare_with_neighbors(idx):
+            '''sometimes you want to compare with neighbors when debugging'''
+            keys = variables.keys()
+            for key in keys:
+                print(key)
+                first = variables[key][idx]
+                second = variables[key][idx + 1]
+                print('first value')
+                print(first)
+                print('second value')
+                print(second)
+
+        profile_df = pd.DataFrame()
+        keys = variables.keys()
+        #  Profile measurements are gathered in a dataframe
+        if 'TEMP' in keys:
+            temp_df = format_measurments(variables, 'TEMP')
+            profile_df = pd.concat([profile_df, temp_df], axis=1)
+        if 'PRES' in keys:
+            pres_df = format_measurments(variables, 'PRES')
+            profile_df = pd.concat([profile_df, pres_df], axis=1)
+        if 'PSAL' in keys:
+            psal_df = format_measurments(variables, 'PSAL')
+            profile_df = pd.concat([profile_df, psal_df], axis=1)
+        if 'CNDC' in keys:
+            cndc_df = format_measurments(variables, 'CNDC')
+            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+
+        if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
+            cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
+            logging.debug('Float: {0} cycle: {1} has unknown date.'
+                          ' Not going to add'.format(platform_number, cycle_number))
+            return
+        else:
+            date = ref_date + timedelta(variables['JULD'][idx])
+            
+        profile_df.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
+        profile_df.dropna(axis=0, how='all', inplace=True)
+        profile_df.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
+        profile_doc = dict()
+        profile_doc['measurements'] = profile_df.to_dict(orient='records' )  # orient='list' will store these as single arrays
+        profile_doc['date'] = date
+        phi = variables['LATITUDE'][idx]
+        lam = variables['LONGITUDE'][idx]
+        try:
+            profile_doc['position_qc'] = int(variables['POSITION_QC'][idx].astype(int))
+        except AttributeError:
+            if type(variables['POSITION_QC'][idx] == np.ma.core.MaskedConstant):
+                profile_doc['position_qc'] = str(variables['POSITION_QC'][idx].data.astype(int))
+            else:
+                logging.warning('error with position_qc. not going to add.')
+                return
+
+        cycle_number = int(variables['CYCLE_NUMBER'][idx].astype(str))
+        if type(phi) == np.ma.core.MaskedConstant:
+            logging.debug('Float: {0} cycle: {1} has unknown lat-lon.'
+                          ' Not going to add'.format(platform_number, cycle_number))
+            return
+
+        try:
+            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(float)
+        except:
+            logging.warning('error with maximum pressure. not going to add')
+            return
+
+        profile_doc['cycle_number'] = cycle_number
+        profile_doc['lat'] = phi
+        profile_doc['lon'] = lam
+        profile_doc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
+        profile_doc['dac'] = dac_name
+        profile_doc['platform_number'] = platform_number
+        profile_doc['station_parameters'] = station_parameters
+        profile_id = platform_number + '_' + str(cycle_number)
+        url = 'ftp://' + self.url + self.path \
+              + dac_name \
+              + '/' + platform_number \
+              + '/' + platform_number + '_prof.nc'
+        profile_doc['nc_url'] = url
+        """Normally, the floats take measurements on the ascent. 
+        In the event that the float takes measurements on the descent, the
+        cycle number doesn't change. So, to have a unique identifer, this 
+        the _id field has a '_DES' appended"""
+        descending = profile_df['pres'].values[0] - profile_df['pres'].values[-1] < 0
+        if descending:
+            logging.debug('descending profile detected. Appending _DEC to _id field')
+            profile_doc['_id'] = profile_id+'_DES'
+        else:
+            profile_doc['_id'] = profile_id
+        return profile_doc
+
+    def make_dict_from_profile(self, variables, idx, platform_number, ref_date, dac_name, station_parameters):
+        """ Takes a profile measurement and formats it into a dictionary object.
+        Currently, only temperature, pressure, salinity, and conductivity are included.
+        There are other methods. """
+
+        def format_qc_array(array):
+            """ Converts array of QC values (temp, psal, pres, etc) into list"""
+
+            # sometimes array comes in as a different type
+            if type(array) == np.ndarray:
+                data = [x.astype(str) for x in array]
+            elif type(array) == np.ma.core.MaskedArray:  # otherwise type is a masked array
+                data = array.data
+                try:
+                    data = np.array([x.astype(str) for x in data])  # Convert to ints
+                except NotImplementedError:
+                    logging.warning('NotImplemented Error for platform:'
+                                    ' {0}, idx: {1}'.format(platform_number, idx))
+            return data
+
+        def format_measurments(variables, meas_str):
+            """ Converts array of measurements and adjusted measurements into arrays"""
+            df = pd.DataFrame()
+            not_adj = meas_str.lower()+'_not_adj'
+            adj = meas_str.lower()
+
+            # get unadjusted value. Sometimes adjusted and unadj fields aren't the same type.
+            if type(variables[meas_str][idx, :]) == np.ndarray:
+                df[not_adj] = variables[meas_str][idx, :]
+            else:  # sometimes a masked array is used
+                try:
+                    df[not_adj] = variables[meas_str][idx, :].data
+                except ValueError:
                     logging.warning('check data type')
             # get adjusted value.
             try:
