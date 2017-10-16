@@ -41,7 +41,7 @@ class argoDatabase(object):
 
     def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
-        if how_to_add=='all':
+        if how_to_add=='all_prof':
             logging.debug('adding all files ending in _prof.nc:')
             files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
         elif how_to_add=='by_dac_prof': #to be phased out eventaully. prof.nc files are formatted differently.
@@ -64,6 +64,8 @@ class argoDatabase(object):
             dac_name = file.split('/')[-3]
             root_grp = Dataset(file, "r", format="NETCDF4")
             variables = root_grp.variables
+            if file.split('/')[-1] == '2901626_prof.nc':
+                pdb.set_trace()
             documents = self.make_prof_documents(variables, dac_name)
             if len(documents) == 1:
                 self.add_single_profile(documents[0], file)
@@ -189,7 +191,6 @@ class argoDatabase(object):
             logging.debug('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
             return
-
         try:
             profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(float)
         except:
@@ -213,15 +214,15 @@ class argoDatabase(object):
         In the event that the float takes measurements on the descent, the
         cycle number doesn't change. So, to have a unique identifer, this 
         the _id field has a '_DES' appended"""
-        descending = profile_df['pres'].values[0] - profile_df['pres'].values[-1] < 0
-        if descending:
-            logging.debug('descending profile detected. Appending _DEC to _id field')
-            profile_doc['_id'] = profile_id+'_DES'
-        else:
-            profile_doc['_id'] = profile_id
+        direction = variables['DIRECTION'][idx].astype(str)
+        if direction == 'D':
+            logging.debug('descending direction...appending D to platform number')
+            profile_id += 'D'
+        profile_doc['_id'] = profile_id
         return profile_doc
 
     def make_prof_documents(self, variables, dac_name):
+
         def format_param(param):
             if type(param) == np.ndarray:
                 formatted_param = ''.join([(x.astype(str)) for x in param])
@@ -229,9 +230,9 @@ class argoDatabase(object):
                 try:
                     formatted_param = ''.join([(x.astype(str)) for x in param.data])
                 except NotImplementedError:
-                    logging.debug('platform number is not expected type')
+                    logging.debug('NotImplementedError param is not expected type')
                 except AttributeError:  # sometimes platform_num is an array...
-                    logging.debug('param is not expected type')
+                    logging.debug('attribute error: param is not expected type')
                     logging.debug('type: {}'.format(type(param)))
                 except:
                     logging.debug('type: {}'.format(type(param)))
@@ -280,8 +281,8 @@ class argoDatabase(object):
         try:
             self.float_coll.insert_one(doc)
         except pymongo.errors.DuplicateKeyError:
-            logging.debug('duplicate key: {0}'.format(doc['_id']))
-            logging.debug('attempting to append DUP marker on: {0}'.format(doc['_id']))
+            logging.error('duplicate key: {0}'.format(doc['_id']))
+            logging.error('attempting to append DUP marker on: {0}'.format(doc['_id']))
             doc['_id'] += '_DUP'
             attempt += 1
             if attempt < 10:
@@ -321,7 +322,7 @@ class argoDatabase(object):
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='argoDatabase.log',
+                        filename='argoDatabase_add_troublesome.log',
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
@@ -331,12 +332,12 @@ if __name__ == '__main__':
 
     OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
-    DB_NAME = 'argo2'
+    DB_NAME = 'argoTrouble'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='all')
+    ad.add_locally(OUTPUT_DIR, how_to_add='all_prof')
     
     #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
     #have not added: 'aoml'  'coriolis'
