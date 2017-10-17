@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pymongo
 import os
+import re
 import glob
 import logging
 import pandas as pd
@@ -56,6 +57,12 @@ class argoDatabase(object):
             logging.debug('adding _prof.nc in provided list')
         elif how_to_add=='profiles':
             logging.debug('adding profiles individually')
+            files = files+glob.glob(os.path.join(local_dir, '**', '**', 'profiles', '*.nc'))
+            #reProf = re.compile(r'(?!.*_prof.nc)') not needed
+            #f2 = list(filter(reProf.search, files)) not needed currently. glob takes care of this
+            reBR = re.compile(r'^(?!.*BR\d{1,})')  # ignore characters starting with BR followed by a digit
+            pdb.set_trace()
+            files = list(filter(reBR.search, files))
         else:
             logging.warning('how_to_add not recognized. not going to do anything.')
             return
@@ -64,8 +71,6 @@ class argoDatabase(object):
             dac_name = file.split('/')[-3]
             root_grp = Dataset(file, "r", format="NETCDF4")
             variables = root_grp.variables
-            if file.split('/')[-1] == '2901626_prof.nc':
-                pdb.set_trace()
             documents = self.make_prof_documents(variables, dac_name)
             if len(documents) == 1:
                 self.add_single_profile(documents[0], file)
@@ -214,13 +219,12 @@ class argoDatabase(object):
         """Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
         cycle number doesn't change. So, to have a unique identifer, this 
-        the _id field has a '_DES' appended"""
-        descending = profile_df['pres'].values[0] - profile_df['pres'].values[-1] < 0
-        if descending:
-            logging.debug('descending profile detected. Appending _DEC to _id field')
-            profile_doc['_id'] = profile_id+'_DES'
-        else:
-            profile_doc['_id'] = profile_id
+        the _id field has a 'D' appended"""
+        direction = variables['DIRECTION'][idx].astype(str)
+        if direction == 'D':
+            profile_id += 'D'
+        profile_doc['_id'] = profile_id
+
         return profile_doc
 
     def make_dict_from_profile(self, variables, idx, platform_number, ref_date, dac_name, station_parameters):
@@ -407,7 +411,7 @@ class argoDatabase(object):
         cycles = variables['CYCLE_NUMBER'][:][:]
         list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
         for array in list_of_dup_inds:
-            if len(array) > 1:
+            if len(array) > 2:
                 logging.warning('duplicate cycle numbers found...')
                 logging.warning('cycle {} has duplicates at the following indexes:'.format(cycles[array[0]]))
                 for idx in array:
@@ -472,22 +476,22 @@ class argoDatabase(object):
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='argoDatabase_add_troublesome.log',
+                        filename='argoTroublesomeProfiles.log',
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesomeFiles')
+    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
 
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
     DB_NAME = 'argoTrouble'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
-
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='all_prof')
+    ad.add_locally(OUTPUT_DIR, how_to_add='profiles')
+    logging.debug('End of log file')
     
     #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
     #have not added: 'aoml'  'coriolis'
