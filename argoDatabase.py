@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pymongo
 import os
+import re
 import glob
 import logging
 import pandas as pd
@@ -41,13 +42,16 @@ class argoDatabase(object):
 
     def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
+        reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
         if how_to_add=='all_prof':
             logging.debug('adding all files ending in _prof.nc:')
             files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
         elif how_to_add=='by_dac_prof': #to be phased out eventaully. prof.nc files are formatted differently.
             files = []
             for dac in dacs:
-                files = files+glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))
+                dac_files = glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))
+                dac_files = list(filter(reBR.search, dac_files))
+                files += dac_files
         elif how_to_add=='by_dac_profiles':
             files = []
             for dac in dacs:
@@ -56,6 +60,8 @@ class argoDatabase(object):
             logging.debug('adding _prof.nc in provided list')
         elif how_to_add=='profiles':
             logging.debug('adding profiles individually')
+            files = files+glob.glob(os.path.join(local_dir, '**', '**', 'profiles', '*.nc'))
+            files = list(filter(reBR.search, files))
         else:
             logging.warning('how_to_add not recognized. not going to do anything.')
             return
@@ -64,8 +70,6 @@ class argoDatabase(object):
             dac_name = file.split('/')[-3]
             root_grp = Dataset(file, "r", format="NETCDF4")
             variables = root_grp.variables
-            if file.split('/')[-1] == '2901626_prof.nc':
-                pdb.set_trace()
             documents = self.make_prof_documents(variables, dac_name)
             if len(documents) == 1:
                 self.add_single_profile(documents[0], file)
@@ -106,7 +110,7 @@ class argoDatabase(object):
                 try:
                     df[not_adj] = variables[meas_str][idx, :].data
                 except ValueError:
-                    logging.warning('check data type')
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
             # get adjusted value.
             try:
                 if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
@@ -118,7 +122,7 @@ class argoDatabase(object):
                 try:
                     df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
                 except ValueError:
-                    logging.debug('check data type')
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
             try:
                 df.ix[df[adj] >= 99999, adj] = np.NaN
             except KeyError:
@@ -191,10 +195,8 @@ class argoDatabase(object):
             logging.debug('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
             return
-        try:
-            profile_doc['maximum_pressure'] = profile_df['pres'].max(axis=0).astype(float)
-        except:
-            logging.warning('error with maximum pressure. not going to add')
+        if profile_df['pres'].shape[0] ==0:
+            logging.warning('Float: {0} cycle: {1} no pressure data. not going to add'.format(platform_number, cycle_number))
             return
 
         profile_doc['cycle_number'] = cycle_number
@@ -213,12 +215,14 @@ class argoDatabase(object):
         """Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
         cycle number doesn't change. So, to have a unique identifer, this 
-        the _id field has a '_DES' appended"""
-        direction = variables['DIRECTION'][idx].astype(str)
-        if direction == 'D':
-            logging.debug('descending direction...appending D to platform number')
-            profile_id += 'D'
-        profile_doc['_id'] = profile_id
+        the _id field has a 'D' appended"""
+        if type(variables['DIRECTION'][idx]) == np.ma.core.MaskedConstant:
+            logging.debug('direction unknown')
+        else:
+            direction = variables['DIRECTION'][idx].astype(str)
+            if direction == 'D':
+                profile_id += 'D'
+            profile_doc['_id'] = profile_id
         return profile_doc
 
     def make_prof_documents(self, variables, dac_name):
@@ -257,7 +261,7 @@ class argoDatabase(object):
         cycles = variables['CYCLE_NUMBER'][:][:]
         list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
         for array in list_of_dup_inds:
-            if len(array) > 1:
+            if len(array) > 2:
                 logging.warning('duplicate cycle numbers found...')
                 logging.warning('cycle {} has duplicates at the following indexes:'.format(cycles[array[0]]))
                 for idx in array:
@@ -297,7 +301,7 @@ class argoDatabase(object):
             logging.warning('bson error')
             logging.warning('check the following document: {0}'.format(doc['_id']))
         except TypeError:
-            logging.warning('Type error')
+            logging.warning('Type error while inserting one document.')
 
     def add_many_profiles(self, documents, file_name):
         try:
@@ -322,22 +326,22 @@ class argoDatabase(object):
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='argoDatabase_add_troublesome.log',
+                        filename='argoTroublesomeProfiles.log',
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesomeFiles')
+    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
 
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
     DB_NAME = 'argoTrouble'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
-
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    ad.add_locally(OUTPUT_DIR, how_to_add='all_prof')
+    ad.add_locally(OUTPUT_DIR, how_to_add='profiles')
+    logging.debug('End of log file')
     
     #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
     #have not added: 'aoml'  'coriolis'
