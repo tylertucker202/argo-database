@@ -20,8 +20,8 @@ class argoDatabase(object):
         self.init_float_collection(collection_name)
         self.local_platform_dir = 'float_files'
         self.home_dir = os.getcwd()
-        self.url = 'usgodae.org'
-        self.path = '/pub/outgoing/argo/dac/'
+        #self.url = 'usgodae.org'
+        self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
 
     def init_database(self, db_name):
         logging.debug('initializing init_database')
@@ -65,19 +65,21 @@ class argoDatabase(object):
         else:
             logging.warning('how_to_add not recognized. not going to do anything.')
             return
-        for file in files:
-            logging.info('on file: {0}'.format(file))
-            dac_name = file.split('/')[-3]
-            root_grp = Dataset(file, "r", format="NETCDF4")
+        for fileName in files:
+            logging.info('on file: {0}'.format(fileName))
+            dac_name = fileName.split('/')[-3]
+            pdb.set_trace()
+            root_grp = Dataset(fileName, "r", format="NETCDF4")
+            remote_path = self.url + os.path.relpath(fileName,local_dir)
             variables = root_grp.variables
-            documents = self.make_prof_documents(variables, dac_name)
+            documents = self.make_prof_documents(variables, dac_name, remote_path)
             if len(documents) == 1:
-                self.add_single_profile(documents[0], file)
+                self.add_single_profile(documents[0], fileName)
             else:
-                self.add_many_profiles(documents, file)
+                self.add_many_profiles(documents, fileName)
 
 
-    def make_prof_dict(self, variables, idx, platform_number, ref_date, dac_name, station_parameters):
+    def make_profile_dict(self, variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path):
         """ Takes a profile measurement and formats it into a dictionary object.
         Currently, only temperature, pressure, salinity, and conductivity are included.
         There are other methods. """
@@ -164,6 +166,19 @@ class argoDatabase(object):
         if 'CNDC' in keys:
             cndc_df = format_measurments(variables, 'CNDC')
             profile_df = pd.concat([profile_df, cndc_df], axis=1)
+        if 'DOXY' in keys:
+            cndc_df = format_measurments(variables, 'DOXY')
+            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+        if 'CHLA' in keys:
+            cndc_df = format_measurments(variables, 'CHLA')
+            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+        if 'CDOM' in keys:
+            cndc_df = format_measurments(variables, 'CDOM')
+            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+        if 'NITRATE' in keys:
+            cndc_df = format_measurments(variables, 'NITRATE')
+            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+            
 
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
             cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
@@ -207,10 +222,7 @@ class argoDatabase(object):
         profile_doc['platform_number'] = platform_number
         profile_doc['station_parameters'] = station_parameters
         profile_id = platform_number + '_' + str(cycle_number)
-        url = 'ftp://' + self.url + self.path \
-              + dac_name \
-              + '/' + platform_number \
-              + '/' + platform_number + '_prof.nc'
+        url = remote_path
         profile_doc['nc_url'] = url
         """Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
@@ -225,7 +237,7 @@ class argoDatabase(object):
             profile_doc['_id'] = profile_id
         return profile_doc
 
-    def make_prof_documents(self, variables, dac_name):
+    def make_prof_documents(self, variables, dac_name, remote_path):
 
         def format_param(param):
             if type(param) == np.ndarray:
@@ -276,7 +288,7 @@ class argoDatabase(object):
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
         ref_date = datetime.strptime(ref_str, '%Y%m%d%H%M%S')
         for idx in range(numOfProfiles):
-            doc = self.make_prof_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters)
+            doc = self.make_profile_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path)
             if doc is not None:
                 documents.append(doc)
         return documents
@@ -330,10 +342,8 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
-    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
-
+    OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
     DB_NAME = 'argoTrouble'
