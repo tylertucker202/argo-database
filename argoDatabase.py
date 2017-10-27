@@ -270,10 +270,7 @@ class argoDatabase(object):
         list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
         for array in list_of_dup_inds:
             if len(array) > 2:
-                logging.warning('duplicate cycle numbers found...')
-                logging.warning('cycle {} has duplicates at the following indexes:'.format(cycles[array[0]]))
-                for idx in array:
-                    logging.warning(cycles[idx])
+                logging.info('duplicate cycle numbers found...')
 
         platform_number = format_param(variables['PLATFORM_NUMBER'][0])
         station_parameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
@@ -292,13 +289,7 @@ class argoDatabase(object):
             self.float_coll.insert_one(doc)
         except pymongo.errors.DuplicateKeyError:
             logging.error('duplicate key: {0}'.format(doc['_id']))
-            logging.error('attempting to append DUP marker on: {0}'.format(doc['_id']))
-            doc['_id'] += '_DUP'
-            attempt += 1
-            if attempt < 10:
-                self.add_single_profile(doc, file_name, attempt)
-            else:
-                logging.warning('_DUP prefix appended too many times...moving on')
+            logging.error('not going to add')
 
         except pymongo.errors.WriteError:
             logging.warning('check the following id '
