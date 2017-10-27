@@ -65,18 +65,26 @@ class argoDatabase(object):
         else:
             logging.warning('how_to_add not recognized. not going to do anything.')
             return
+        
+        documents = []
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
-            dac_name = fileName.split('/')[-3]
-            pdb.set_trace()
+            dac_name = fileName.split('/')[-4]
             root_grp = Dataset(fileName, "r", format="NETCDF4")
             remote_path = self.url + os.path.relpath(fileName,local_dir)
             variables = root_grp.variables
-            documents = self.make_prof_documents(variables, dac_name, remote_path)
-            if len(documents) == 1:
-                self.add_single_profile(documents[0], fileName)
-            else:
+            doc = self.make_profile_doc(variables, dac_name, remote_path)
+            
+            documents.append(doc)
+            if len(documents) > 1000:
+                logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName)
+                documents = []
+        logging.debug('all files have been read. dumping remaining documents to database')
+        if len(documents) == 1:
+            self.add_single_profile(documents[0], fileName)
+        elif len(documents) > 1:
+            self.add_many_profiles(documents, fileName)
 
 
     def make_profile_dict(self, variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path):
@@ -211,7 +219,7 @@ class argoDatabase(object):
                           ' Not going to add'.format(platform_number, cycle_number))
             return
         if profile_df['pres'].shape[0] ==0:
-            logging.warning('Float: {0} cycle: {1} no pressure data. not going to add'.format(platform_number, cycle_number))
+            logging.warning('Float: {0} cycle: {1} has no pressure data. not going to add'.format(platform_number, cycle_number))
             return
 
         profile_doc['cycle_number'] = cycle_number
@@ -237,7 +245,7 @@ class argoDatabase(object):
             profile_doc['_id'] = profile_id
         return profile_doc
 
-    def make_prof_documents(self, variables, dac_name, remote_path):
+    def make_profile_doc(self, variables, dac_name, remote_path):
 
         def format_param(param):
             if type(param) == np.ndarray:
@@ -257,18 +265,6 @@ class argoDatabase(object):
                 pass
             return formatted_param.strip(' ')
 
-        def compare_with_neighbors(idx):
-            '''sometimes you want to compare with neighbors when debugging'''
-            keys = variables.keys()
-            for key in keys:
-                print('\nFIELD NAME: '+key)
-                first = variables[key][idx]
-                second = variables[key][idx + 1]
-                print('index {} value:'.format(idx))
-                print(first)
-                print('index {} value'.format(idx + 1))
-                print(second)
-                print()
 
         cycles = variables['CYCLE_NUMBER'][:][:]
         list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
@@ -282,16 +278,14 @@ class argoDatabase(object):
         platform_number = format_param(variables['PLATFORM_NUMBER'][0])
         station_parameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
         numOfProfiles = variables['JULD'][:].shape[0]
-        logging.info('number of profiles inside file: {}'.format(len(variables['JULD'])))
-        documents = []
+        logging.info('number of profiles inside file: {}'.format(numOfProfiles))
+
         ref_date_array = variables['REFERENCE_DATE_TIME'][:]
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
         ref_date = datetime.strptime(ref_str, '%Y%m%d%H%M%S')
-        for idx in range(numOfProfiles):
-            doc = self.make_profile_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path)
-            if doc is not None:
-                documents.append(doc)
-        return documents
+        idx = 0 #stometimes there are two profiles. The second profile is ignored.
+        doc = self.make_profile_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path)
+        return doc
 
     def add_single_profile(self, doc, file_name, attempt=0):
         try:
@@ -333,7 +327,7 @@ class argoDatabase(object):
             for doc in documents:
                 self.add_single_profile(doc, file_name)
         except TypeError:
-            logging.warning('Type error')
+            logging.warning('Type error when during insert_many method for file_name: '.format(file_name))
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -342,9 +336,9 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
-    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
     # init database
     DB_NAME = 'argoTrouble'
     COLLECTION_NAME = 'profiles'
