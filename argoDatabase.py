@@ -318,7 +318,7 @@ class argoDatabase(object):
             for doc in documents:
                 self.add_single_profile(doc, file_name)
         except TypeError:
-            logging.warning('Type error when during insert_many method for file_name: '.format(file_name))
+            logging.warning('Type error when during insert_many method for file_name: {}'.format(file_name))
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
