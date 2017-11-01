@@ -14,13 +14,14 @@ import pdb
 class argoDatabase(object):
     def __init__(self,
                  db_name,
-                 collection_name):
+                 collection_name, 
+                 replace_profile=False):
         logging.debug('initializing ArgoDatabase')
         self.init_database(db_name)
-        self.init_float_collection(collection_name)
+        self.init_profiles_collection(collection_name)
         self.local_platform_dir = 'float_files'
         self.home_dir = os.getcwd()
-        #self.url = 'usgodae.org'
+        self.replace_profile = replace_profile
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
 
     def init_database(self, db_name):
@@ -30,15 +31,15 @@ class argoDatabase(object):
         # create database
         self.db = client[db_name]
 
-    def init_float_collection(self, collection_name):
+    def init_profiles_collection(self, collection_name):
         try:
-            self.float_coll = self.db[collection_name]
-            self.float_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
+            self.profiles_coll = self.db[collection_name]
+            self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
                                           ('date', pymongo.DESCENDING),
                                           ('platform_number', pymongo.DESCENDING)])
 
         except:
-            logging.warning('not able to get collections')
+            logging.warning('not able to get collections or set indexes')
 
     def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
@@ -56,8 +57,8 @@ class argoDatabase(object):
             files = []
             for dac in dacs:
                 files = files+glob.glob(os.path.join(local_dir, dac, '**', 'profiles', '*.nc'))     
-        elif how_to_add=='prof_list':
-            logging.debug('adding _prof.nc in provided list')
+        elif how_to_add=='profile_list':
+            logging.debug('adding profiles in provided list')
         elif how_to_add=='profiles':
             logging.debug('adding profiles individually')
             files = files+glob.glob(os.path.join(local_dir, '**', '**', 'profiles', '*.nc'))
@@ -74,9 +75,9 @@ class argoDatabase(object):
             remote_path = self.url + os.path.relpath(fileName,local_dir)
             variables = root_grp.variables
             doc = self.make_profile_doc(variables, dac_name, remote_path)
-            
-            documents.append(doc)
-            if len(documents) > 1000:
+            if isinstance(doc, dict):
+                documents.append(doc)
+            if len(documents) >= 10000:
                 logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName)
                 documents = []
@@ -215,7 +216,7 @@ class argoDatabase(object):
 
         cycle_number = int(variables['CYCLE_NUMBER'][idx].astype(str))
         if type(phi) == np.ma.core.MaskedConstant:
-            logging.debug('Float: {0} cycle: {1} has unknown lat-lon.'
+            logging.warning('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
             return
         if profile_df['pres'].shape[0] ==0:
@@ -285,24 +286,36 @@ class argoDatabase(object):
         return doc
 
     def add_single_profile(self, doc, file_name, attempt=0):
-        try:
-            self.float_coll.insert_one(doc)
-        except pymongo.errors.DuplicateKeyError:
-            logging.error('duplicate key: {0}'.format(doc['_id']))
-            logging.error('not going to add')
-
-        except pymongo.errors.WriteError:
-            logging.warning('check the following id '
-                            'for filename : {0}'.format(doc['_id'], file_name))
-        except bson.errors.InvalidDocument:
-            logging.warning('bson error')
-            logging.warning('check the following document: {0}'.format(doc['_id']))
-        except TypeError:
-            logging.warning('Type error while inserting one document.')
+        if self.replace_profile == True:
+            try:
+                self.profiles_coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
+            except pymongo.errors.WriteError:
+                logging.warning('check the following id '
+                                'for filename : {0}'.format(doc['_id'], file_name))
+            except bson.errors.InvalidDocument:
+                logging.warning('bson error')
+                logging.warning('check the following document: {0}'.format(doc['_id']))
+            except TypeError:
+                logging.warning('Type error while inserting one document.')
+        else:
+            try:
+                self.profiles_coll.insert_one(doc)
+            except pymongo.errors.DuplicateKeyError:
+                logging.error('duplicate key: {0}'.format(doc['_id']))
+                logging.error('not going to add')
+    
+            except pymongo.errors.WriteError:
+                logging.warning('check the following id '
+                                'for filename : {0}'.format(doc['_id'], file_name))
+            except bson.errors.InvalidDocument:
+                logging.warning('bson error')
+                logging.warning('check the following document: {0}'.format(doc['_id']))
+            except TypeError:
+                logging.warning('Type error while inserting one document.')
 
     def add_many_profiles(self, documents, file_name):
         try:
-            self.float_coll.insert_many(documents, ordered=False)
+            self.profiles_coll.insert_many(documents, ordered=False)
         except pymongo.errors.BulkWriteError as bwe:
             writeErrors = bwe.details['writeErrors']
             problem_idx = []
@@ -318,7 +331,9 @@ class argoDatabase(object):
             for doc in documents:
                 self.add_single_profile(doc, file_name)
         except TypeError:
-            logging.warning('Type error when during insert_many method for file_name: {}'.format(file_name))
+            nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
+            logging.warning('Type error when during insert_many method. Check documents.')
+            logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
