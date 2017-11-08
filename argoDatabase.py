@@ -281,6 +281,7 @@ class argoDatabase(object):
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
         ref_date = datetime.strptime(ref_str, '%Y%m%d%H%M%S')
         idx = 0 #stometimes there are two profiles. The second profile is ignored.
+        pdb.set_trace()
         doc = self.make_profile_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path)
         return doc
 
@@ -329,9 +330,9 @@ if __name__ == '__main__':
     HOME_DIR = os.getcwd()
     #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles', 'mixedMode')
     # init database
-    DB_NAME = 'argoTrouble'
+    DB_NAME = 'mixedMode'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
