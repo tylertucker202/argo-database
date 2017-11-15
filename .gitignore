@@ -12,4 +12,5 @@ grids
 *.csv
 *.ods
 *.ipynb_checkpoints/
+verdzi-api/out
 
