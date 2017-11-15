@@ -187,7 +187,6 @@ class argoDatabase(object):
         if 'NITRATE' in keys:
             cndc_df = format_measurments(variables, 'NITRATE')
             profile_df = pd.concat([profile_df, cndc_df], axis=1)
-            
 
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
             cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
@@ -197,6 +196,32 @@ class argoDatabase(object):
         else:
             date = ref_date + timedelta(variables['JULD'][idx])
             
+        def add_string_values(profile_doc, valueName, idx):
+            """Used to add POSITIONING_SYSTEM PLATFORM_TYPE DATA_MODE and PI_NAME fields.
+            if missing or 
+            """
+            try:
+                if type(variables[valueName][idx]) == np.ma.core.MaskedConstant:
+                    value = variables[valueName][idx].astype(str)
+                    variables['CYCLE_NUMBER'][idx]
+                    logging.debug('Float: {0} cycle: {1} has unknown {2}.'
+                              ' Not going to add item to document'.format(platform_number, cycle_number, valueName))
+                    return profile_doc
+                else:
+                    value = ''.join([(x.astype(str)) for x in variables[valueName][idx].data])
+                    value = value.strip(' ')
+                    profile_doc[valueName] = value
+                    return profile_doc
+            except KeyError:
+                logging.debug('unknown key {0}.'
+                              ' Not going to add item to document'.format(valueName))
+                return profile_doc
+            except:
+                logging.debug('error when adding {0} to document.'
+                              ' Not going to add item to document'.format(valueName))
+                return profile_doc
+        
+        
         profile_df.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
         profile_df.dropna(axis=0, how='all', inplace=True)
         profile_df.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
@@ -205,6 +230,12 @@ class argoDatabase(object):
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
         lam = variables['LONGITUDE'][idx]
+        
+        profile_doc = add_string_values(profile_doc, 'POSITIONING_SYSTEM', idx)
+        profile_doc = add_string_values(profile_doc, 'PLATFORM_TYPE', idx)
+        profile_doc = add_string_values(profile_doc, 'DATA_MODE', idx)
+        profile_doc = add_string_values(profile_doc, 'PI_NAME', idx)
+        
         try:
             profile_doc['position_qc'] = int(variables['POSITION_QC'][idx].astype(int))
         except AttributeError:
@@ -282,7 +313,6 @@ class argoDatabase(object):
         ref_str = ''.join([x.astype(str) for x in ref_date_array])
         ref_date = datetime.strptime(ref_str, '%Y%m%d%H%M%S')
         idx = 0 #stometimes there are two profiles. The second profile is ignored.
-        pdb.set_trace()
         doc = self.make_profile_dict(variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path)
         return doc
 
@@ -344,10 +374,10 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
-    OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles', 'mixedMode')
+    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles', 'mixedMode')
     # init database
-    DB_NAME = 'mixedMode'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)

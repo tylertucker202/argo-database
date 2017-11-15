@@ -11,8 +11,8 @@ if __name__ == '__main__':
                         level=logging.WARNING)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'troublesome_files')
+    #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
     # init database
     DB_NAME = 'argo'

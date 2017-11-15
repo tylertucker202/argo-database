@@ -6,17 +6,21 @@ echo $DATE
 #FTPDIR='/storage/ifremer/'
 FTPDIR='/home/gstudent4/Desktop/ifremer/'
 #QUEUEDIR='/home/tyler/Desktop/argo/argo-database/queuedFiles/'
-QUEUEDIR='/home/gstudent4/Desktop/argo-database/queuedFiles/'
+
+ARGODIR='/home/gstudent4/Desktop/argo-database/'
+QUEUEDIR=$ARGODIR'queuedFiles/'
 OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 echo 'Starting rsync: writing to '$FTPDIR
-#Sync only *_prof.nc
-#rsync -arvzhim --delete --include='*/' --include='*_prof.nc' --exclude='*' vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME
-#Sync only /profiles
-#rsync -arvzhim --delete --include='**/' --include='**/profiles/**' --exclude='*' --exclude='**/profiles/B*' vdmzrs.ifremer.fr::argo/kordi $FTPDIR > $OUTPUTNAME
 #Sync only /profiles/[RDM]*
 rsync -arvzhim --delete --include='**/' --include='**/profiles/[RDM]*.nc' --exclude='*' --exclude='**/profiles/B*' vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME
-#Sync all .nc
-#rsync -arvzhim --delete --include='*/' --include='*.nc' --exclude='*' vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME
 ENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'End of rsync and List'
 echo $ENDDATE
+
+echo 'Starting to add DB'
+#PYTHONPATH='/home/gstudent4/anaconda2/envs/argo/bin/python'
+cd $ARGODIR
+/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py
+PYENDDATE=`date +%y-%m-%d-%H:%M`
+echo 'Added new files to DB'
+echo $PYENDDATE
