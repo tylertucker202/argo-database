@@ -11,6 +11,7 @@ import pandas as pd
 import pdb
 import numpy as np
 from datetime import datetime
+import sqlite3
 
 def _get_profile(profile_number):
     resp = requests.get('http://www.argovis.com/catalog/profiles/'+profile_number)
@@ -61,11 +62,18 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     return selectionProfiles
 
 def _quality_control_df(df, presTH=2, tempTH=2, psalTH=2):
-    df[['pres_qc','psal_qc', 'temp_qc']] = df[['pres_qc','psal_qc', 'temp_qc']].astype(int)
+    df = df[np.isfinite(df[['pres_qc','psal_qc', 'temp_qc']])]  # sometimes qc is nan
+    try:
+        df[['pres_qc','psal_qc', 'temp_qc']] = df[['pres_qc','psal_qc', 'temp_qc']].astype(int)
+    except ValueError:
+        # cannot convert NaN to integer...drop row with missing qc control.
+        df.dropna(axis=0, how='any', inplace=True)
+        return 
+        
     # quality control
-    df = df[df['pres_qc'] < 2]
-    df = df[df['temp_qc'] < 2]
-    df = df[df['psal_qc'] < 2]            
+    df = df[df['pres_qc'] < presTH]
+    df = df[df['temp_qc'] < tempTH]
+    df = df[df['psal_qc'] < psalTH]            
     return df
 
 def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, endDate, nElem):
@@ -83,9 +91,10 @@ def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, e
         if len(selectionProfiles) == 0:
             continue
         df = _parse_into_df(selectionProfiles)
-        df = _quality_control_df(df)
         if df.shape[0] == 0: #  move on if qc removes everything
             continue
+        df = _quality_control_df(df)
+
         # aggregate into pressure intervals            
         for ldx, pres in presIntervals:
             try:
@@ -110,11 +119,10 @@ def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, e
             oceanDf.set_value(idx, 'aggTemp', aggMean.temp)
             oceanDf.set_value(idx, 'aggPsal', aggMean.psal)
             oceanDf.set_value(idx, 'nProf', nMeas)
-    pdb.set_trace()
     oceanDf.dropna(axis=0, how='any', thresh=2, subset=['aggTemp', 'aggPsal', 'nProf'], inplace=True)
     return oceanDf
 
-def get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres):
+def get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem):
     """queries argovis database over large gridded space and small time scales.
     Ocean file name contains coordinates.
     Output is saves as a csv.
@@ -127,7 +135,7 @@ def get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres):
         presIntervals.append([idx, interval])
 
     queryDf = _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, endDate, nElem)
-    queryDf.to_csv('df_0-1500_2017-10-15to2017-10-15_oneDeg.csv')
+    return queryDf
 
 
 def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 30]'):
@@ -197,7 +205,7 @@ def get_dates_set(period=12):
     return datesSet
 
 if __name__ == '__main__':
-    oceanFileName = 'oceanCoordsAtOneDeg.csv'
+    oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
     presRange = '[0, 1500]'
     startDate='2017-10-15'
@@ -206,14 +214,31 @@ if __name__ == '__main__':
     maxPres = 1500
     dPres = 30
     
+    #make csv of clobe for small date range
+    #oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
+    #oceanDf.to_csv('out/df_0-1500_2017-10-15to2017-10-15_oneDeg.csv')
     #make timeseries with periods of every n days
-    shape = '[[[-18.6,31.7],[-18.6,37.7],[-5.9,37.7],[-5.9,31.7],[-18.6,31.7]]]'
-    tsDf = get_ocean_time_series('2004-01-01', '2017-12-31', shape, presRange='[0, 30]')
+    #shape = '[[[-18.6,31.7],[-18.6,37.7],[-5.9,37.7],[-5.9,31.7],[-18.6,31.7]]]'
+    #tsDf = get_ocean_time_series('2004-01-01', '2017-12-31', shape, presRange='[0, 30]')
+    #tsDf.to_csv('out/gilbralter.csv')
+    #tsDf['tempMean'].plot()
+    #tsDf['psalMean'].plot()
     
-    tsDf['tempMean'].plot()
-    tsDf['psalMean'].plot()
+    #make as set of csvs with time index
+    start = datetime.now()
+    connex = sqlite3.connect("out/oneDeg12DayAvg.db")
     
-    #query the data abse
+    datesSet = get_dates_set(period=12)
+    print('number of dates: {}'.format(len(datesSet)))
+    for tdx, dates in enumerate(datesSet):
+        startDate, endDate = dates
+        oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
+        oceanDf.to_sql(name='data', con=connex, if_exists="append", index=True)
+        print('time index: {}'.format(tdx))
+        timeTick = datetime.now()
+        print(timeTick.strftime(format='%Y-%m-%d %H:%M'))
+        dt = timeTick-start
+        print('running for: {}'.format(dt))
     
     
     #make sparse matrix column
