@@ -21,7 +21,7 @@ if __name__ == '__main__':
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
     # init database
     DB_NAME = 'argo'
-    COLLECTION_NAME = 'profiles'
+    COLLECTION_NAME = 'qcProfiles'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
 
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)

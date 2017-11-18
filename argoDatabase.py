@@ -15,7 +15,8 @@ class argoDatabase(object):
     def __init__(self,
                  db_name,
                  collection_name, 
-                 replace_profile=False):
+                 replace_profile=False,
+                 qcThreshold=1):
         logging.debug('initializing ArgoDatabase')
         self.init_database(db_name)
         self.init_profiles_collection(collection_name)
@@ -23,6 +24,7 @@ class argoDatabase(object):
         self.home_dir = os.getcwd()
         self.replace_profile = replace_profile
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
+        self.qcThreshold = qcThreshold
 
     def init_database(self, db_name):
         logging.debug('initializing init_database')
@@ -77,7 +79,7 @@ class argoDatabase(object):
             doc = self.make_profile_doc(variables, dac_name, remote_path)
             if isinstance(doc, dict):
                 documents.append(doc)
-            if len(documents) >= 10000:
+            if len(documents) >= 1000:
                 logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName)
                 documents = []
@@ -143,50 +145,44 @@ class argoDatabase(object):
                 df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
             except KeyError:
                 logging.warning('qc not found for {}'.format(meas_str))
-                logging.warning('not going to add') 
+                logging.warning('not going to add')
+                return pd.DataFrame()
             df[adj].fillna(df[not_adj], inplace=True)
             df.drop([not_adj], axis=1, inplace=True)
+            """QC procedure drops any row that is NaN and does not meet
+            qcThreshold
+            """
+            try:
+                #df = df[df[adj+'_qc'] != np.NaN]
+                #df = df[df[adj+'_qc'] != ' ']
+                df = df[df[adj+'_qc'].map(np.isreal)]
+                df = df[df[adj+'_qc'].astype(int) <= self.qcThreshold]
+            except KeyError:
+                pdb.set_trace()
+                logging.debug('measurement: {0} has bad pressure no qc.'
+                          ' returning empty dataframe'.format(adj))
+                return pd.DataFrame()
+                df.shape
             return df
 
-        def compare_with_neighbors(idx):
-            '''sometimes you want to compare with neighbors when debugging'''
-            keys = variables.keys()
-            for key in keys:
-                print(key)
-                first = variables[key][idx]
-                second = variables[key][idx + 1]
-                print('first value')
-                print(first)
-                print('second value')
-                print(second)
-
-        profile_df = pd.DataFrame()
+        profileDf = pd.DataFrame()
         keys = variables.keys()
         #  Profile measurements are gathered in a dataframe
-        if 'TEMP' in keys:
-            temp_df = format_measurments(variables, 'TEMP')
-            profile_df = pd.concat([profile_df, temp_df], axis=1)
-        if 'PRES' in keys:
-            pres_df = format_measurments(variables, 'PRES')
-            profile_df = pd.concat([profile_df, pres_df], axis=1)
-        if 'PSAL' in keys:
-            psal_df = format_measurments(variables, 'PSAL')
-            profile_df = pd.concat([profile_df, psal_df], axis=1)
-        if 'CNDC' in keys:
-            cndc_df = format_measurments(variables, 'CNDC')
-            profile_df = pd.concat([profile_df, cndc_df], axis=1)
-        if 'DOXY' in keys:
-            cndc_df = format_measurments(variables, 'DOXY')
-            profile_df = pd.concat([profile_df, cndc_df], axis=1)
-        if 'CHLA' in keys:
-            cndc_df = format_measurments(variables, 'CHLA')
-            profile_df = pd.concat([profile_df, cndc_df], axis=1)
-        if 'CDOM' in keys:
-            cndc_df = format_measurments(variables, 'CDOM')
-            profile_df = pd.concat([profile_df, cndc_df], axis=1)
-        if 'NITRATE' in keys:
-            cndc_df = format_measurments(variables, 'NITRATE')
-            profile_df = pd.concat([profile_df, cndc_df], axis=1)
+        measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        for meas_str in measList:
+            if meas_str in keys:
+                meas_df = format_measurments(variables, meas_str)
+                if meas_df.shape[0] == 0:
+                    continue
+                # append with index conserved
+                profileDf = pd.concat([profileDf, meas_df], axis=1)
+
+        #pressure is the critical feature. If it has a bad qc value, drop the whole row
+        if not 'pres_qc' in profileDf.columns:
+            logging.debug('Float: {0} has bad pressure qc.'
+                          ' Not going to add'.format(platform_number))
+            return
+        profileDf = profileDf[profileDf['pres_qc'] != np.NaN]
 
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
             cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
@@ -195,7 +191,7 @@ class argoDatabase(object):
             return
         else:
             date = ref_date + timedelta(variables['JULD'][idx])
-            
+
         def add_string_values(profile_doc, valueName, idx):
             """Used to add POSITIONING_SYSTEM PLATFORM_TYPE DATA_MODE and PI_NAME fields.
             if missing or 
@@ -222,11 +218,11 @@ class argoDatabase(object):
                 return profile_doc
         
         
-        profile_df.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
-        profile_df.dropna(axis=0, how='all', inplace=True)
-        profile_df.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
+        profileDf.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
+        profileDf.dropna(axis=0, how='all', inplace=True)
+        profileDf.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
         profile_doc = dict()
-        profile_doc['measurements'] = profile_df.to_dict(orient='records' )  # orient='list' will store these as single arrays
+        profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
         lam = variables['LONGITUDE'][idx]
@@ -249,9 +245,6 @@ class argoDatabase(object):
         if type(phi) == np.ma.core.MaskedConstant:
             logging.warning('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
-            return
-        if profile_df['pres'].shape[0] ==0:
-            logging.warning('Float: {0} cycle: {1} has no pressure data. not going to add'.format(platform_number, cycle_number))
             return
 
         profile_doc['cycle_number'] = cycle_number
@@ -378,7 +371,7 @@ if __name__ == '__main__':
     #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles', 'mixedMode')
     # init database
     DB_NAME = 'argo'
-    COLLECTION_NAME = 'profiles'
+    COLLECTION_NAME = 'profilesQCOne'
     DATA_DIR = os.path.join(HOME_DIR, 'data')
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     ad.add_locally(OUTPUT_DIR, how_to_add='profiles')
