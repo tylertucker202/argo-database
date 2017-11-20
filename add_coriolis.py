@@ -2,23 +2,32 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import sys
 from argoDatabase import argoDatabase
+
+def getOutput():
+    mySystem = sys.argv[0]
+    if mySystem == 'carby':
+        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    elif mySystem == 'kedavu':
+        OUTPUT_DIR = os.path.join('/home',' tylertucker', 'ifremer')
+    elif mySystem == 'ciLab':
+        OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    else:
+        print('pc not found. assuming default')
+        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    return OUTPUT_DIR
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='add_coriolis.log',
+                        filename='coriolis.log',
                         level=logging.WARNING)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'ifremer')
-    # init database
-    DB_NAME = 'argo'
-    COLLECTION_NAME = 'qcProfiles'
-    DATA_DIR = os.path.join(HOME_DIR, 'data')
-
+    OUTPUT_DIR = getOutput()
+    DB_NAME = 'argoOne'
+    COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    aomlDac = ['coriolis']
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=aomlDac)
+    coriolisDac = ['coriolis']
+    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=coriolisDac)

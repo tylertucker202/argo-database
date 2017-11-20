@@ -62,7 +62,7 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     return selectionProfiles
 
 def _quality_control_df(df, presTH=2, tempTH=2, psalTH=2):
-    df = df[np.isfinite(df[['pres_qc','psal_qc', 'temp_qc']])]  # sometimes qc is nan
+    df = df[np.isreal(df[['pres_qc','psal_qc', 'temp_qc']])]  # sometimes qc is nan
     try:
         df[['pres_qc','psal_qc', 'temp_qc']] = df[['pres_qc','psal_qc', 'temp_qc']].astype(int)
     except ValueError:
@@ -205,7 +205,7 @@ def get_dates_set(period=12):
     return datesSet
 
 if __name__ == '__main__':
-    oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
+    oceanFileName = 'out/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
     presRange = '[0, 1500]'
     startDate='2017-10-15'
@@ -230,10 +230,17 @@ if __name__ == '__main__':
     
     datesSet = get_dates_set(period=12)
     print('number of dates: {}'.format(len(datesSet)))
+    
+    largeDf = pd.DataFrame()
     for tdx, dates in enumerate(datesSet):
+        pdb.set_trace()
         startDate, endDate = dates
         oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
-        oceanDf.to_sql(name='data', con=connex, if_exists="append", index=True)
+        
+        aggDf = oceanDf[['aggTemp','aggPsal']]
+        aggDf.columns = ['T'+str(tdx), 'S'++str(tdx)]
+        largeDf = pd.concat([largeDf, aggDf], axis = 1)
+        aggDf.to_sql(name='data', con=connex, if_exists="append", index=True)
         print('time index: {}'.format(tdx))
         timeTick = datetime.now()
         print(timeTick.strftime(format='%Y-%m-%d %H:%M'))

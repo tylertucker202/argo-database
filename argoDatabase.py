@@ -16,7 +16,8 @@ class argoDatabase(object):
                  db_name,
                  collection_name, 
                  replace_profile=False,
-                 qcThreshold=1):
+                 qcThreshold='1', 
+                 dbDumpThreshold=10000):
         logging.debug('initializing ArgoDatabase')
         self.init_database(db_name)
         self.init_profiles_collection(collection_name)
@@ -25,6 +26,7 @@ class argoDatabase(object):
         self.replace_profile = replace_profile
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
         self.qcThreshold = qcThreshold
+        self.dbDumpThreshold = dbDumpThreshold
 
     def init_database(self, db_name):
         logging.debug('initializing init_database')
@@ -46,18 +48,11 @@ class argoDatabase(object):
     def add_locally(self, local_dir, how_to_add='all', files=[], dacs=[]):
         os.chdir(local_dir)
         reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
-        if how_to_add=='all_prof':
-            logging.debug('adding all files ending in _prof.nc:')
-            files = glob.glob(os.path.join(local_dir, '**', '*_prof.nc'), recursive=True)
-        elif how_to_add=='by_dac_prof': #to be phased out eventaully. prof.nc files are formatted differently.
+        if how_to_add=='by_dac_profiles':
             files = []
+            logging.debug('adding dac profiles from path: {0}'.format(local_dir))
             for dac in dacs:
-                dac_files = glob.glob(os.path.join(local_dir, dac, '**', '*_prof.nc'))
-                dac_files = list(filter(reBR.search, dac_files))
-                files += dac_files
-        elif how_to_add=='by_dac_profiles':
-            files = []
-            for dac in dacs:
+                logging.debug('On dac: {0}'.format(dac))
                 files = files+glob.glob(os.path.join(local_dir, dac, '**', 'profiles', '*.nc'))     
         elif how_to_add=='profile_list':
             logging.debug('adding profiles in provided list')
@@ -79,7 +74,7 @@ class argoDatabase(object):
             doc = self.make_profile_doc(variables, dac_name, remote_path)
             if isinstance(doc, dict):
                 documents.append(doc)
-            if len(documents) >= 1000:
+            if len(documents) >= self.dbDumpThreshold:
                 logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName)
                 documents = []
@@ -90,76 +85,79 @@ class argoDatabase(object):
             self.add_many_profiles(documents, fileName)
 
 
-    def make_profile_dict(self, variables, idx, platform_number, ref_date, dac_name, station_parameters, remote_path):
+    def make_profile_dict(self,
+                          variables,
+                          idx,
+                          platform_number,
+                          ref_date,
+                          dac_name,
+                          station_parameters,
+                          remote_path):
         """ Takes a profile measurement and formats it into a dictionary object.
         Currently, only temperature, pressure, salinity, and conductivity are included.
         There are other methods. """
 
         def format_qc_array(array):
             """ Converts array of QC values (temp, psal, pres, etc) into list"""
-
-            # sometimes array comes in as a different type
             if type(array) == np.ndarray:
                 data = [x.astype(str) for x in array]
-            elif type(array) == np.ma.core.MaskedArray:  # otherwise type is a masked array
+            elif type(array) == np.ma.core.MaskedArray:
                 data = array.data
                 try:
-                    data = np.array([x.astype(str) for x in data])  # Convert to ints
+                    data = np.array([x.astype(str) for x in data])
                 except NotImplementedError:
                     logging.warning('NotImplemented Error for platform:'
                                     ' {0}, idx: {1}'.format(platform_number, idx))
             return data
 
-        def format_measurments(variables, meas_str):
+        def format_measurments(variables, measStr):
             """ Converts array of measurements and adjusted measurements into arrays"""
             df = pd.DataFrame()
-            not_adj = meas_str.lower()+'_not_adj'
-            adj = meas_str.lower()
-
-            # get unadjusted value. Sometimes adjusted and unadj fields aren't the same type.
-            if type(variables[meas_str][idx, :]) == np.ndarray:
-                df[not_adj] = variables[meas_str][idx, :]
+            not_adj = measStr.lower()+'_not_adj'
+            adj = measStr.lower()
+            # get unadjusted value. Types vary from arrays to masked arrays.
+            if type(variables[measStr][idx, :]) == np.ndarray:
+                df[not_adj] = variables[measStr][idx, :]
             else:  # sometimes a masked array is used
                 try:
-                    df[not_adj] = variables[meas_str][idx, :].data
+                    df[not_adj] = variables[measStr][idx, :].data
                 except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
             # get adjusted value.
             try:
-                if type(variables[meas_str + '_ADJUSTED'][idx, :]) == np.ndarray:
-                    df[adj] = variables[meas_str + '_ADJUSTED'][idx, :]
+                if type(variables[measStr + '_ADJUSTED'][idx, :]) == np.ndarray:
+                    df[adj] = variables[measStr + '_ADJUSTED'][idx, :]
             except KeyError:
-                logging.debug('adjusted value for {} does not exist'.format(meas_str))
+                logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[adj] = np.nan
             else:  # sometimes a masked array is used
                 try:
-                    df[adj] = variables[meas_str + '_ADJUSTED'][idx, :].data
+                    df[adj] = variables[measStr + '_ADJUSTED'][idx, :].data
                 except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(meas_str))
+                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
             try:
                 df.ix[df[adj] >= 99999, adj] = np.NaN
             except KeyError:
                 logging.warning('key not found...')
             df.ix[df[not_adj] >= 99999, not_adj] = np.NaN
             try:
-                df[adj+'_qc'] = format_qc_array(variables[meas_str + '_QC'][idx, :])
+                df[adj+'_qc'] = format_qc_array(variables[measStr + '_QC'][idx, :])
             except KeyError:
-                logging.warning('qc not found for {}'.format(meas_str))
-                logging.warning('not going to add')
+                logging.warning('qc not found for {}'.format(measStr))
+                logging.warning('returning empty dataframe')
                 return pd.DataFrame()
+            
+            """Adjusted column NaN are filled with unadjusted values.
+            unadjusted column is then dropped.
+            """
             df[adj].fillna(df[not_adj], inplace=True)
             df.drop([not_adj], axis=1, inplace=True)
-            """QC procedure drops any row that is NaN and does not meet
-            qcThreshold
+            """QC procedure drops any row whos qc value does not equal '1'
             """
             try:
-                #df = df[df[adj+'_qc'] != np.NaN]
-                #df = df[df[adj+'_qc'] != ' ']
-                df = df[df[adj+'_qc'].map(np.isreal)]
-                df = df[df[adj+'_qc'].astype(int) <= self.qcThreshold]
+                df = df[df[adj+'_qc'] == self.qcThreshold]
             except KeyError:
-                pdb.set_trace()
-                logging.debug('measurement: {0} has bad pressure no qc.'
+                logging.warning('measurement: {0} has no qc.'
                           ' returning empty dataframe'.format(adj))
                 return pd.DataFrame()
                 df.shape
@@ -169,9 +167,9 @@ class argoDatabase(object):
         keys = variables.keys()
         #  Profile measurements are gathered in a dataframe
         measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
-        for meas_str in measList:
-            if meas_str in keys:
-                meas_df = format_measurments(variables, meas_str)
+        for measStr in measList:
+            if measStr in keys:
+                meas_df = format_measurments(variables, measStr)
                 if meas_df.shape[0] == 0:
                     continue
                 # append with index conserved
@@ -179,7 +177,7 @@ class argoDatabase(object):
 
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
         if not 'pres_qc' in profileDf.columns:
-            logging.debug('Float: {0} has bad pressure qc.'
+            logging.warning('Float: {0} has bad pressure qc.'
                           ' Not going to add'.format(platform_number))
             return
         profileDf = profileDf[profileDf['pres_qc'] != np.NaN]
@@ -217,7 +215,6 @@ class argoDatabase(object):
                               ' Not going to add item to document'.format(valueName))
                 return profile_doc
         
-        
         profileDf.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
         profileDf.dropna(axis=0, how='all', inplace=True)
         profileDf.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
@@ -231,7 +228,7 @@ class argoDatabase(object):
         profile_doc = add_string_values(profile_doc, 'PLATFORM_TYPE', idx)
         profile_doc = add_string_values(profile_doc, 'DATA_MODE', idx)
         profile_doc = add_string_values(profile_doc, 'PI_NAME', idx)
-        
+
         try:
             profile_doc['position_qc'] = int(variables['POSITION_QC'][idx].astype(int))
         except AttributeError:
