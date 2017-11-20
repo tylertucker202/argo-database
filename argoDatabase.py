@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from netCDF4 import Dataset
 import bson.errors
 import pdb
+np.seterr(invalid='ignore') #  removes runtime warning when if type(somthing) == np.array is encountered
 
 class argoDatabase(object):
     def __init__(self,
