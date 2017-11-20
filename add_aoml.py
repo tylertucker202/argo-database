@@ -6,11 +6,11 @@ import sys
 from argoDatabase import argoDatabase
 
 def getOutput():
-    mySystem = sys.argv[0]
+    mySystem = sys.argv[1]
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     elif mySystem == 'kadavu':
-        OUTPUT_DIR = os.path.join('/home',' tylertucker', 'ifremer')
+        OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
         OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     else:
