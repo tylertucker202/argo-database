@@ -9,7 +9,7 @@ def getOutput():
     mySystem = sys.argv[0]
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    elif mySystem == 'kedavu':
+    elif mySystem == 'kadavu':
         OUTPUT_DIR = os.path.join('/home',' tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
         OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
