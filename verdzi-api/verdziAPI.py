@@ -83,10 +83,11 @@ def _quality_control_df(df, presTH='1', tempTH='1', psalTH='1'):
         df.columns         
     return df
 
-def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, endDate, nElem):
-    """queries database with shapes found in oceanFileName. Appends an 
-    aggregated temperature and salinity mean, along with a profile count
-    in each shape. Used to generate sparse matricies for SVD.
+def get_ocean_df_from_csv(oceanFileName, startDate, endDate, presRange, presIntervals, nElem):
+    """queries argovis database over large gridded space and small time scales.
+    Ocean file name contains coordinates.
+    Output is saves as a csv.
+    Start date and End date are usually about 10-30 days
     """
     oceanDf = pd.read_csv(oceanFileName)
     oceanDf.set_index('idx', inplace=True)
@@ -129,21 +130,6 @@ def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, e
             oceanDf.set_value(idx, 'nProf', nMeas)
     oceanDf.dropna(axis=0, how='any', thresh=2, subset=['aggTemp', 'aggPsal', 'nProf'], inplace=True)
     return oceanDf
-
-def get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem):
-    """queries argovis database over large gridded space and small time scales.
-    Ocean file name contains coordinates.
-    Output is saves as a csv.
-    Start date and End date are usually about 10-30 days
-    """
-    presBin = np.arange(minPres, maxPres+dPres, dPres)
-    presIntervals = []
-    for idx, pres in enumerate(presBin[0:-1]):
-        interval = presBin[idx:idx+2]
-        presIntervals.append([idx, interval])
-
-    queryDf = _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, endDate, nElem)
-    return queryDf
 
 
 def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 30]'):
@@ -199,9 +185,15 @@ def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 
     
 
     return tsDf
-            
 
-        
+def get_pres_intervals(minPres, maxPres, dPres):
+    presBin = np.arange(minPres, maxPres+dPres, dPres)
+    presIntervals = []
+    for idx, pres in enumerate(presBin[0:-1]):
+        interval = presBin[idx:idx+2]
+        presIntervals.append([idx, interval])
+    return presIntervals
+
 def get_dates_set(period=12):
     n_rows = int(np.floor(365/period))
     datesSet = []
@@ -215,11 +207,11 @@ def get_dates_set(period=12):
 if __name__ == '__main__':
     oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
-    presRange = '[0, 1500]'
+    presRange = '[0, 120]'
     startDate='2017-10-15'
     endDate='2017-10-30'
     minPres = 0
-    maxPres = 1500
+    maxPres = 120
     dPres = 30
     
     #make csv of clobe for small date range
@@ -236,14 +228,17 @@ if __name__ == '__main__':
     start = datetime.now()
     #connex = sqlite3.connect("out/oneDeg12DayAvg.db")
     
-    datesSet = get_dates_set(period=12)
+    datesSet = get_dates_set(period=30)
     print('number of dates: {}'.format(len(datesSet)))
     
+    presIntervals = get_pres_intervals(minPres, maxPres, dPres)
+    
     largeDf = pd.DataFrame()
-    for tdx, dates in enumerate(datesSet[14:]):
-        #pdb.set_trace()
+    for tdx, dates in enumerate(datesSet):
+        #if tdx <= 14: 
+        #    continue
         startDate, endDate = dates
-        oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
+        oceanDf = get_ocean_df_from_csv(oceanFileName, startDate, endDate, presRange, presIntervals, nElem)
         aggDf = oceanDf[['aggTemp','aggPsal']]
         aggDf.columns = ['T'+str(tdx), 'S'+str(tdx)]
         largeDf = pd.concat([largeDf, aggDf], axis = 1)
