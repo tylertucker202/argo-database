@@ -41,6 +41,18 @@ def _parse_into_df(profiles):
         profileDf['lon'] = profile['lon']
         profileDf['date'] = profile['date']
         df = pd.concat([df, profileDf])
+    
+    #  there has to be pressure and temperature columns.
+    try:
+        if not 'psal' in df.columns:
+            df['psal'] = np.NaN
+            df['psal_qc'] = np.NaN
+        if not 'temp' in df.columns:
+            df['temp'] = np.NaN
+            df['temp_qc'] = np.NaN
+    except:
+        pdb.set_trace()
+        df.columns
     return df
 
 def _get_selection_profiles(startDate, endDate, shape, presRange=None):
@@ -61,19 +73,14 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     selectionProfiles = resp.json()
     return selectionProfiles
 
-def _quality_control_df(df, presTH=2, tempTH=2, psalTH=2):
-    df = df[np.isreal(df[['pres_qc','psal_qc', 'temp_qc']])]  # sometimes qc is nan
+def _quality_control_df(df, presTH='1', tempTH='1', psalTH='1'):
     try:
-        df[['pres_qc','psal_qc', 'temp_qc']] = df[['pres_qc','psal_qc', 'temp_qc']].astype(int)
-    except ValueError:
-        # cannot convert NaN to integer...drop row with missing qc control.
-        df.dropna(axis=0, how='any', inplace=True)
-        return 
-        
-    # quality control
-    df = df[df['pres_qc'] < presTH]
-    df = df[df['temp_qc'] < tempTH]
-    df = df[df['psal_qc'] < psalTH]            
+        df = df[df['pres_qc'] == presTH ]
+        df = df[df['temp_qc'] == tempTH ]
+        df = df[df['psal_qc'] == psalTH ]   
+    except KeyError:
+        pdb.set_trace()
+        df.columns         
     return df
 
 def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, endDate, nElem):
@@ -91,9 +98,10 @@ def _get_ocean_df_from_csv(oceanFileName, presRange, presIntervals, startDate, e
         if len(selectionProfiles) == 0:
             continue
         df = _parse_into_df(selectionProfiles)
-        if df.shape[0] == 0: #  move on if qc removes everything
+        if df.shape[0] == 0: #  move on if selection profiles don't turn up anything.
             continue
-        df = _quality_control_df(df)
+
+        #df = _quality_control_df(df)  #currently only qc values of 1 are included
 
         # aggregate into pressure intervals            
         for ldx, pres in presIntervals:
@@ -205,7 +213,7 @@ def get_dates_set(period=12):
     return datesSet
 
 if __name__ == '__main__':
-    oceanFileName = 'out/oceanCoordsAtOneDeg.csv'
+    oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
     presRange = '[0, 1500]'
     startDate='2017-10-15'
@@ -226,21 +234,23 @@ if __name__ == '__main__':
     
     #make as set of csvs with time index
     start = datetime.now()
-    connex = sqlite3.connect("out/oneDeg12DayAvg.db")
+    #connex = sqlite3.connect("out/oneDeg12DayAvg.db")
     
     datesSet = get_dates_set(period=12)
     print('number of dates: {}'.format(len(datesSet)))
     
     largeDf = pd.DataFrame()
-    for tdx, dates in enumerate(datesSet):
-        pdb.set_trace()
+    for tdx, dates in enumerate(datesSet[14:]):
+        #pdb.set_trace()
         startDate, endDate = dates
         oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
-        
         aggDf = oceanDf[['aggTemp','aggPsal']]
-        aggDf.columns = ['T'+str(tdx), 'S'++str(tdx)]
+        aggDf.columns = ['T'+str(tdx), 'S'+str(tdx)]
         largeDf = pd.concat([largeDf, aggDf], axis = 1)
-        aggDf.to_sql(name='data', con=connex, if_exists="append", index=True)
+        
+        #make new database will merge tables later...
+        connex = sqlite3.connect("out/column_tdx_" + str(tdx) + ".db")
+        aggDf.to_sql(name='data', con=connex, if_exists="replace", index=True)
         print('time index: {}'.format(tdx))
         timeTick = datetime.now()
         print(timeTick.strftime(format='%Y-%m-%d %H:%M'))
