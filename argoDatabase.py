@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from netCDF4 import Dataset
 import bson.errors
+import sys
 import pdb
 
 class argoDatabase(object):
@@ -39,8 +40,8 @@ class argoDatabase(object):
         try:
             self.profiles_coll = self.db[collection_name]
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
-                                          ('date', pymongo.DESCENDING),
-                                          ('platform_number', pymongo.DESCENDING)])
+                                             ('date', pymongo.DESCENDING)]) # queries geolocation and date faster
+            self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)]) # finds platforn number faster
 
         except:
             logging.warning('not able to get collections or set indexes')
@@ -170,8 +171,6 @@ class argoDatabase(object):
         for measStr in measList:
             if measStr in keys:
                 meas_df = format_measurments(variables, measStr)
-                if meas_df.shape[0] == 0:
-                    continue
                 # append with index conserved
                 profileDf = pd.concat([profileDf, meas_df], axis=1)
 
@@ -215,9 +214,16 @@ class argoDatabase(object):
                               ' Not going to add item to document'.format(valueName))
                 return profile_doc
         
-        profileDf.replace([99999.0, 99999.99999], value=np.NaN, inplace=True)
+        #profileDf.replace([99999.0, 99999.99999], value=np.NaN, inplace=True) not sure this is needed anymore
         profileDf.dropna(axis=0, how='all', inplace=True)
         profileDf.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
+        remove = [np.NaN]
+        try:
+            profileDf = profileDf[~profileDf['temp'].isin(remove) & ~profileDf['psal'].isin(remove)] # Drops the values where both temp and psal aren't reported
+        except:
+            pdb.set_trace()
+            profileDf.columns
+        profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
         profile_doc = dict()
         profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
         profile_doc['date'] = date
@@ -356,6 +362,25 @@ class argoDatabase(object):
             logging.warning('Type error when during insert_many method. Check documents.')
             logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
 
+def getOutput():
+    try:
+        mySystem = sys.argv[1]
+    except:
+        mySystem = 'carbyTrouble'
+
+    if mySystem == 'carby':
+        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    if mySystem == 'carbyTrouble':
+        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+    elif mySystem == 'kadavu':
+        OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
+    elif mySystem == 'ciLab':
+        OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    else:
+        print('pc not found. assuming default')
+        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    return OUTPUT_DIR
+
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
@@ -363,16 +388,10 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    #OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    #OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles', 'mixedMode')
+    OUTPUT_DIR = getOutput()
     # init database
-    DB_NAME = 'argo'
-    COLLECTION_NAME = 'profilesQCOne'
-    DATA_DIR = os.path.join(HOME_DIR, 'data')
+    DB_NAME = 'argoTrouble'
+    COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     ad.add_locally(OUTPUT_DIR, how_to_add='profiles')
     logging.debug('End of log file')
-    
-    #have added 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois' 'jma', 'csiro'
-    #have not added: 'aoml'  'coriolis'
