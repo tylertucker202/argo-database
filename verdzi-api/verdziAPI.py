@@ -12,6 +12,9 @@ import pdb
 import numpy as np
 from datetime import datetime
 import sqlite3
+import glob
+import os
+import re
 
 def _get_profile(profile_number):
     resp = requests.get('http://www.argovis.com/catalog/profiles/'+profile_number)
@@ -83,14 +86,24 @@ def _quality_control_df(df, presTH='1', tempTH='1', psalTH='1'):
         df.columns         
     return df
 
-def get_ocean_df_from_csv(oceanFileName, startDate, endDate, presRange, presIntervals, nElem):
+def get_ocean_df(oceanFileName, subGrid=None):
+    oceanDf = pd.read_csv(oceanFileName)
+    oceanDf.set_index('idx', inplace=True)
+    if type(subGrid) != None:
+        oceanDf = oceanDf[(oceanDf.lat >= subGrid['latMin']) &
+                          (oceanDf.lat <= subGrid['latMax']) &
+                          (oceanDf.lon >= subGrid['lonMin']) &
+                          (oceanDf.lon <= subGrid['lonMax'])]
+        print('oceanDF searching for {} areas'.format(oceanDf.shape[0]))
+    return oceanDf
+
+def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals, nElem):
     """queries argovis database over large gridded space and small time scales.
     Ocean file name contains coordinates.
     Output is saves as a csv.
     Start date and End date are usually about 10-30 days
     """
-    oceanDf = pd.read_csv(oceanFileName)
-    oceanDf.set_index('idx', inplace=True)
+
 
     for row in oceanDf.itertuples():
         shapeStr = '['+row.shape+']'
@@ -114,6 +127,8 @@ def get_ocean_df_from_csv(oceanFileName, startDate, endDate, presRange, presInte
             except ValueError:
                 pdb.set_trace()
                 df[ (df['pres'] < pres[1]) & (df['pres'] > pres[0])].shape[0]
+        if not 'ldx' in df.columns:  # sometimes there are no measurements in the given pressure intervals
+            continue
         try:
             grouped = df.groupby('ldx')
         except KeyError:
@@ -204,6 +219,17 @@ def get_dates_set(period=12):
     datesSet = list(map(keepEnds, datesSet))
     return datesSet
 
+def merge_csvs():
+    df = pd.DataFrame()
+    pdb.set_trace()
+    columnFiles = glob.glob(os.path.join(os.getcwd(), 'out', '*.csv'))
+    columnFiles = [x for x in columnFiles if re.search(r'column', x)]
+    for file in columnFiles:
+        colDf = pd.read_csv(oceanFileName)
+        df = pd.concat([df, colDf], axis = 1)
+    return df
+        
+        
 if __name__ == '__main__':
     oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
@@ -211,9 +237,11 @@ if __name__ == '__main__':
     startDate='2017-10-15'
     endDate='2017-10-30'
     minPres = 0
-    maxPres = 120
+    maxPres = 30
     dPres = 30
-    
+
+    df = merge_csvs()
+    df.to_csv('combined.csv')
     #make csv of clobe for small date range
     #oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
     #oceanDf.to_csv('out/df_0-1500_2017-10-15to2017-10-15_oneDeg.csv')
@@ -232,25 +260,31 @@ if __name__ == '__main__':
     print('number of dates: {}'.format(len(datesSet)))
     
     presIntervals = get_pres_intervals(minPres, maxPres, dPres)
+    subGrid = {'latMin': -40, 'latMax': 15, 'lonMin': -178, 'lonMax': -95}
+    oceanDfCoords = get_ocean_df(oceanFileName, subGrid)
     
     largeDf = pd.DataFrame()
     for tdx, dates in enumerate(datesSet):
-        #if tdx <= 14: 
+        #if tdx >= 59: 
         #    continue
         startDate, endDate = dates
-        oceanDf = get_ocean_df_from_csv(oceanFileName, startDate, endDate, presRange, presIntervals, nElem)
-        aggDf = oceanDf[['aggTemp','aggPsal']]
-        aggDf.columns = ['T'+str(tdx), 'S'+str(tdx)]
+        oceanDf = get_ocean_df_from_csv(oceanDfCoords, startDate, endDate, presRange, presIntervals, nElem)
+        aggDf = oceanDf[['aggTemp','aggPsal', 'nProf']]
+        aggDf.columns = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
         largeDf = pd.concat([largeDf, aggDf], axis = 1)
         
         #make new database will merge tables later...
-        connex = sqlite3.connect("out/column_tdx_" + str(tdx) + ".db")
-        aggDf.to_sql(name='data', con=connex, if_exists="replace", index=True)
+        #connex = sqlite3.connect("out/column_tdx_" + str(tdx) + ".db")
+        #aggDf.to_sql(name='data', con=connex, if_exists="replace", index=True)
+        
+        #make a csv
+        aggDf.to_csv("out/column_tdx_" + str(tdx) + ".csv")
         print('time index: {}'.format(tdx))
         timeTick = datetime.now()
         print(timeTick.strftime(format='%Y-%m-%d %H:%M'))
         dt = timeTick-start
         print('running for: {}'.format(dt))
+    largeDf.to_csv("southPacData.csv")
     
     
     #make sparse matrix column
