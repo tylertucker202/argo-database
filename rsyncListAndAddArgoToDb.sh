@@ -20,7 +20,7 @@ echo $ENDDATE
 echo 'Starting to add DB'
 #PYTHONPATH='/home/gstudent4/anaconda2/envs/argo/bin/python'
 cd $ARGODIR
-/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py
+/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py ciLab
 PYENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'Added new files to DB'
 echo $PYENDDATE

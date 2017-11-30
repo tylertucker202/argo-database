@@ -11,6 +11,7 @@ from netCDF4 import Dataset
 import bson.errors
 import sys
 import pdb
+np.seterr(invalid='ignore') #  removes runtime warning when if type(somthing) == np.array is encountered
 
 class argoDatabase(object):
     def __init__(self,
