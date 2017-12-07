@@ -4,10 +4,10 @@ echo 'Start of rsync and List'
 DATE=`date +%y-%m-%d-%H:%M`
 echo $DATE
 #FTPDIR='/storage/ifremer/'
-FTPDIR='/home/gstudent4/Desktop/ifremer/'
-#QUEUEDIR='/home/tyler/Desktop/argo/argo-database/queuedFiles/'
-
-ARGODIR='/home/gstudent4/Desktop/argo-database/'
+#FTPDIR='/home/gstudent4/Desktop/ifremer/'
+FTPDIR='/home/tylertucker/ifremer/'
+#ARGODIR='/home/gstudent4/Desktop/argo-database/'
+ARGODIR='/home/tylertucker/argo-database/'
 QUEUEDIR=$ARGODIR'queuedFiles/'
 OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 echo 'Starting rsync: writing to '$FTPDIR
@@ -20,7 +20,8 @@ echo $ENDDATE
 echo 'Starting to add DB'
 #PYTHONPATH='/home/gstudent4/anaconda2/envs/argo/bin/python'
 cd $ARGODIR
-/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py ciLab
+#/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py ciLab
+python3.6 processQueue.py kadavu
 PYENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'Added new files to DB'
 echo $PYENDDATE

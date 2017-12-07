@@ -6,7 +6,8 @@ import logging
 import pdb
 import sys
 
-argoBaseDir = os.path.join('/home', 'gstudent4', 'Desktop', 'argo-database')
+#argoBaseDir = os.path.join('/home', 'gstudent4', 'Desktop', 'argo-database')
+argoBaseDir = os.getcwd()
 queueDir = os.path.join(argoBaseDir, 'queuedFiles')
 complDir =  os.path.join(argoBaseDir, 'completedQueues')
 
@@ -34,7 +35,7 @@ if __name__ == '__main__':
                         filename=os.path.join(argoBaseDir,'processQueue.log'),
                         level=logging.DEBUG)
     logging.debug('Start of log file')
-    DB_NAME = 'argoOne'
+    DB_NAME = 'argoQCOne'
     COLLECTION_NAME = 'profiles'    
     IFREMER_DIR = getOutput()
 

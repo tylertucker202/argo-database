@@ -26,7 +26,7 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
-    DB_NAME = 'argoOne'
+    DB_NAME = 'argoQCOne'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     coriolisDac = ['coriolis']
