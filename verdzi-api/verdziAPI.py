@@ -89,7 +89,7 @@ def _quality_control_df(df, presTH='1', tempTH='1', psalTH='1'):
 def get_ocean_df(oceanFileName, subGrid=None):
     oceanDf = pd.read_csv(oceanFileName)
     oceanDf.set_index('idx', inplace=True)
-    if type(subGrid) != None:
+    if type(subGrid) != type(None):
         oceanDf = oceanDf[(oceanDf.lat >= subGrid['latMin']) &
                           (oceanDf.lat <= subGrid['latMax']) &
                           (oceanDf.lon >= subGrid['lonMin']) &
@@ -103,8 +103,6 @@ def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals,
     Output is saves as a csv.
     Start date and End date are usually about 10-30 days
     """
-
-
     for row in oceanDf.itertuples():
         shapeStr = '['+row.shape+']'
 
@@ -202,6 +200,10 @@ def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 
     return tsDf
 
 def get_pres_intervals(minPres, maxPres, dPres):
+    """
+    create a set of pressure intervals with an even distance
+    
+    """
     presBin = np.arange(minPres, maxPres+dPres, dPres)
     presIntervals = []
     for idx, pres in enumerate(presBin[0:-1]):
@@ -210,6 +212,9 @@ def get_pres_intervals(minPres, maxPres, dPres):
     return presIntervals
 
 def get_dates_set(period=12):
+    """
+    create a set of dates split into n periods
+    """
     n_rows = int(np.floor(365/period))
     datesSet = []
     for year in range(2004, 2018):
@@ -220,15 +225,34 @@ def get_dates_set(period=12):
     return datesSet
 
 def merge_csvs():
+    """
+    merges completed csvs into one. This should be used for 'small' data sets.
+    """
     df = pd.DataFrame()
-    pdb.set_trace()
     columnFiles = glob.glob(os.path.join(os.getcwd(), 'out', '*.csv'))
     columnFiles = [x for x in columnFiles if re.search(r'column', x)]
     for file in columnFiles:
-        colDf = pd.read_csv(oceanFileName)
+        colDf = pd.read_csv(file)
+        colDf.set_index('idx', inplace=True)
         df = pd.concat([df, colDf], axis = 1)
     return df
-        
+
+def get_space_time_dates():
+    """
+    Breaks year up into 37 segments. 
+    The first 36 segments are ten day chunks, 
+    followed by a 5 day chunk for 12-27 to 12-31.
+    Leap years have an additional day at the fifth index, the
+    02-21 to 03-01 segment.
+    """
+    datesSet = []
+    for year in range(2004, 2018):
+        yearSet = np.array_split(pd.date_range(str(year)+'-01-01', str(year)+'-12-26'), 36)
+        yearSet.append(pd.date_range(str(year)+'-12-27', str(year)+'-12-31'))
+        datesSet = datesSet + yearSet
+    keepEnds = lambda x: [x[0].strftime(format='%Y-%m-%d'), x[-1].strftime(format='%Y-%m-%d')]
+    datesSet = list(map(keepEnds, datesSet))
+    return datesSet 
         
 if __name__ == '__main__':
     oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
@@ -240,9 +264,9 @@ if __name__ == '__main__':
     maxPres = 30
     dPres = 30
 
-    df = merge_csvs()
-    df.to_csv('combined.csv')
-    #make csv of clobe for small date range
+    #df = merge_csvs()
+    #df.to_csv('southPac.csv')
+    #make csv of globe for small date range
     #oceanDf = get_ocean_csv(oceanFileName, startDate, endDate, minPres, maxPres, dPres, nElem)
     #oceanDf.to_csv('out/df_0-1500_2017-10-15to2017-10-15_oneDeg.csv')
     #make timeseries with periods of every n days
@@ -251,7 +275,7 @@ if __name__ == '__main__':
     #tsDf.to_csv('out/gilbralter.csv')
     #tsDf['tempMean'].plot()
     #tsDf['psalMean'].plot()
-    
+"""    
     #make as set of csvs with time index
     start = datetime.now()
     #connex = sqlite3.connect("out/oneDeg12DayAvg.db")
@@ -288,5 +312,5 @@ if __name__ == '__main__':
     
     
     #make sparse matrix column
-    
+"""    
         
