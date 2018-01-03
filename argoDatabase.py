@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from netCDF4 import Dataset
 import bson.errors
 import sys
+from bson.decimal128 import Decimal128
 import pdb
-np.seterr(invalid='ignore') #  removes runtime warning when if type(somthing) == np.array is encountered
 
 class argoDatabase(object):
     def __init__(self,
@@ -43,6 +43,7 @@ class argoDatabase(object):
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
                                              ('date', pymongo.DESCENDING)]) # queries geolocation and date faster
             self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)]) # finds platforn number faster
+            self.profiles_coll.create_index([('dac', pymongo.DESCENDING)]) # finds platforn number faster
 
         except:
             logging.warning('not able to get collections or set indexes')
@@ -174,6 +175,7 @@ class argoDatabase(object):
                 meas_df = format_measurments(variables, measStr)
                 # append with index conserved
                 profileDf = pd.concat([profileDf, meas_df], axis=1)
+                
 
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
         if not 'pres_qc' in profileDf.columns:
@@ -190,20 +192,67 @@ class argoDatabase(object):
         else:
             date = ref_date + timedelta(variables['JULD'][idx])
 
+        profileDf.dropna(axis=0, how='all', inplace=True)
+        # Drops the values where pressure isn't reported
+        profileDf.dropna(axis=0, subset=['pres'], inplace=True)
+        # Drops the values where both temp and psal aren't reported
+        profileDf.dropna(subset=['temp', 'psal'], how='all', inplace=True)
+
+
+        def make_meas_docs(xName, yName, df, profile_doc):
+            """
+            create a list of dict objects x, y from profile. Optional to add in order to make
+            plotting simplar.
+            """
+            dfOut = df[[yName, xName]].copy()
+            
+            #dfOut Decimal128(row[key])
+            dfOut.dropna(axis=0, how='any', inplace=True)
+            # pymongo will give a BSON error sometimes when trying to save this as a float
+            dfOut[[yName, xName]] = dfOut[[yName, xName]].astype(str)
+            # dictOut = dfOut.to_dict(orient='list')
+            dictOut = dfOut.to_dict(orient='records')
+    
+            if not len(dictOut) == 0:
+                measName = yName+'_vs_'+xName
+                profile_doc[measName] = dictOut
+            return profile_doc
+
+
+        profile_doc = dict()
+        # Not being used at the moment. Sorting and filtering is done on the front end.
+        """
+        profile_doc = make_meas_docs('pres','temp', profileDf, profile_doc)
+        profile_doc = make_meas_docs('pres','psal', profileDf, profile_doc)
+        profile_doc = make_meas_docs('psal','temp', profileDf, profile_doc)
+        """
+        profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
+        profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
+        profile_doc['date'] = date
+        phi = variables['LATITUDE'][idx]
+        lam = variables['LONGITUDE'][idx]
+
         def add_string_values(profile_doc, valueName, idx):
             """Used to add POSITIONING_SYSTEM PLATFORM_TYPE DATA_MODE and PI_NAME fields.
             if missing or 
             """
             try:
+                #if type(variables[valueName][idx] == np.bytes_):
+                #    value = variables[valueName][idx]
+                #    profile_doc[valueName] = value
+                #    return profile_doc
                 if type(variables[valueName][idx]) == np.ma.core.MaskedConstant:
                     value = variables[valueName][idx].astype(str)
-                    variables['CYCLE_NUMBER'][idx]
+                    cycle_number = variables['CYCLE_NUMBER'][idx]
                     logging.debug('Float: {0} cycle: {1} has unknown {2}.'
                               ' Not going to add item to document'.format(platform_number, cycle_number, valueName))
                     return profile_doc
                 else:
-                    value = ''.join([(x.astype(str)) for x in variables[valueName][idx].data])
-                    value = value.strip(' ')
+                    if valueName == 'DATA_MODE':
+                        value = variables[valueName][idx].astype(str)
+                    else:
+                        value = ''.join([(x.astype(str)) for x in variables[valueName][idx].data])
+                        value = value.strip(' ')
                     profile_doc[valueName] = value
                     return profile_doc
             except KeyError:
@@ -214,26 +263,11 @@ class argoDatabase(object):
                 logging.debug('error when adding {0} to document.'
                               ' Not going to add item to document'.format(valueName))
                 return profile_doc
-        
-        #profileDf.replace([99999.0, 99999.99999], value=np.NaN, inplace=True) not sure this is needed anymore
-        profileDf.dropna(axis=0, how='all', inplace=True)
-        profileDf.dropna(axis=0, subset=['pres'], inplace=True)  # Drops the values where pressure isn't reported
-        remove = [np.NaN]
-        try:
-            profileDf = profileDf[~profileDf['temp'].isin(remove) & ~profileDf['psal'].isin(remove)] # Drops the values where both temp and psal aren't reported
-        except:
-            pdb.set_trace()
-            profileDf.columns
-        profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
-        profile_doc = dict()
-        profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
-        profile_doc['date'] = date
-        phi = variables['LATITUDE'][idx]
-        lam = variables['LONGITUDE'][idx]
-        
+
         profile_doc = add_string_values(profile_doc, 'POSITIONING_SYSTEM', idx)
         profile_doc = add_string_values(profile_doc, 'PLATFORM_TYPE', idx)
-        profile_doc = add_string_values(profile_doc, 'DATA_MODE', idx)
+        #pdb.set_trace()
+        profile_doc = add_string_values(profile_doc, 'DATA_MODE', idx) # oftentimes fails...
         profile_doc = add_string_values(profile_doc, 'PI_NAME', idx)
 
         try:
@@ -250,7 +284,7 @@ class argoDatabase(object):
             logging.warning('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(platform_number, cycle_number))
             return
-
+            
         profile_doc['cycle_number'] = cycle_number
         profile_doc['lat'] = phi
         profile_doc['lon'] = lam
@@ -321,6 +355,7 @@ class argoDatabase(object):
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
             except bson.errors.InvalidDocument:
+                pdb.set_trace()
                 logging.warning('bson error')
                 logging.warning('check the following document: {0}'.format(doc['_id']))
             except TypeError:
@@ -393,6 +428,6 @@ if __name__ == '__main__':
     # init database
     DB_NAME = 'argoTrouble'
     COLLECTION_NAME = 'profiles'
-    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
+    ad = argoDatabase(DB_NAME, COLLECTION_NAME, True)
     ad.add_locally(OUTPUT_DIR, how_to_add='profiles')
     logging.debug('End of log file')
