@@ -189,7 +189,7 @@ class argoDatabase(object):
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
             cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
             logging.debug('Float: {0} cycle: {1} has unknown date.'
-                          ' Not going to add'.format(platform_number, cycle_number))
+                          ' Not going to add'.format(platform_number, idx))
             return
         else:
             date = ref_date + timedelta(variables['JULD'][idx])
@@ -229,8 +229,14 @@ class argoDatabase(object):
         profile_doc = make_meas_docs('psal','temp', profileDf, profile_doc)
         """
         profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
+        if profileDf.shape[0] == 0:
+            logging.warning('Float: {0} cycle: {1} has no valid measurements.'
+                          ' Not going to add'.format(platform_number, idx))
+            return
         maxPres = profileDf.pres.max()
+
         profile_doc['max_pres'] = int(maxPres)
+
         profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
