@@ -41,12 +41,18 @@ class argoDatabase(object):
         try:
             self.profiles_coll = self.db[collection_name]
             #compound index is used when order matters
+            '''
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
                                              ('date', pymongo.DESCENDING),
                                              ('measurements.pres', pymongo.DESCENDING)])
+            '''
             #Indexes can be combined using multiple index intersections, but this does not replace compound indexes.
+            self.profiles_coll.create_index([('date', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)])
+            self.profiles_coll.create_index([('cycle_number', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('dac', pymongo.DESCENDING)])
+            self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
+            #self.profiles_coll.create_index([('measurements.pres', pymongo.DESCENDING)]) #doesn't speed up selection
 
         except:
             logging.warning('not able to get collections or set indexes')
