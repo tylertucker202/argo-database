@@ -40,10 +40,13 @@ class argoDatabase(object):
     def init_profiles_collection(self, collection_name):
         try:
             self.profiles_coll = self.db[collection_name]
+            #compound index is used when order matters
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE),
-                                             ('date', pymongo.DESCENDING)]) # queries geolocation and date faster
-            self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)]) # finds platforn number faster
-            self.profiles_coll.create_index([('dac', pymongo.DESCENDING)]) # finds platforn number faster
+                                             ('date', pymongo.DESCENDING),
+                                             ('measurements.pres', pymongo.DESCENDING)])
+            #Indexes can be combined using multiple index intersections, but this does not replace compound indexes.
+            self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)])
+            self.profiles_coll.create_index([('dac', pymongo.DESCENDING)])
 
         except:
             logging.warning('not able to get collections or set indexes')
@@ -86,7 +89,6 @@ class argoDatabase(object):
             self.add_single_profile(documents[0], fileName)
         elif len(documents) > 1:
             self.add_many_profiles(documents, fileName)
-
 
     def make_profile_dict(self,
                           variables,
@@ -139,7 +141,7 @@ class argoDatabase(object):
                 except ValueError:
                     logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
             try:
-                df.ix[df[adj] >= 99999, adj] = np.NaN
+                df.loc[df[adj] >= 99999, adj] = np.NaN
             except KeyError:
                 logging.warning('key not found...')
             df.ix[df[not_adj] >= 99999, not_adj] = np.NaN
@@ -227,6 +229,8 @@ class argoDatabase(object):
         profile_doc = make_meas_docs('psal','temp', profileDf, profile_doc)
         """
         profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
+        maxPres = profileDf.pres.max()
+        profile_doc['max_pres'] = int(maxPres)
         profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
