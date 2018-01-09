@@ -198,7 +198,11 @@ class argoDatabase(object):
         # Drops the values where pressure isn't reported
         profileDf.dropna(axis=0, subset=['pres'], inplace=True)
         # Drops the values where both temp and psal aren't reported
-        profileDf.dropna(subset=['temp', 'psal'], how='all', inplace=True)
+        try:
+            profileDf.dropna(subset=['temp', 'psal'], how='all', inplace=True)
+        except KeyError:
+            pdb.set_trace()
+            asdf = 12345
 
 
         def make_meas_docs(xName, yName, df, profile_doc):

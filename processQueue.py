@@ -35,7 +35,7 @@ if __name__ == '__main__':
                         filename=os.path.join(argoBaseDir,'processQueue.log'),
                         level=logging.DEBUG)
     logging.debug('Start of log file')
-    DB_NAME = 'argoQCOne'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'    
     IFREMER_DIR = getOutput()
 

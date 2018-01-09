@@ -6,7 +6,10 @@ import sys
 from argoDatabase import argoDatabase
 
 def getOutput():
-    mySystem = sys.argv[1]
+    try:
+        mySystem = sys.argv[1]
+    except IndexError:
+        mySystem = 'carby'
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     elif mySystem == 'kadavu':
@@ -26,7 +29,7 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
-    DB_NAME = 'argoQCOne'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     coriolisDac = ['coriolis']

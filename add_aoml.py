@@ -29,7 +29,7 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
-    DB_NAME = 'argoTest'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     aomlDac = ['aoml']
