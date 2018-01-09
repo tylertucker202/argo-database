@@ -189,7 +189,7 @@ class argoDatabase(object):
         if type(variables['JULD'][idx]) == np.ma.core.MaskedConstant:
             cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
             logging.debug('Float: {0} cycle: {1} has unknown date.'
-                          ' Not going to add'.format(platform_number, idx))
+                          ' Not going to add'.format(platform_number, cycle_number))
             return
         else:
             date = ref_date + timedelta(variables['JULD'][idx])
@@ -198,11 +198,17 @@ class argoDatabase(object):
         # Drops the values where pressure isn't reported
         profileDf.dropna(axis=0, subset=['pres'], inplace=True)
         # Drops the values where both temp and psal aren't reported
-        try:
+        if 'temp' in profileDf.columns and 'psal' in profileDf.columns:
             profileDf.dropna(subset=['temp', 'psal'], how='all', inplace=True)
-        except KeyError:
-            pdb.set_trace()
-            asdf = 12345
+        elif 'temp' in profileDf.columns: 
+            profileDf.dropna(subset=['temp'], how='all', inplace=True)
+        elif 'psal' in profileDf.columns:
+            profileDf.dropna(subset=['psal'], how='all', inplace=True)
+        else:
+            cycle_number = variables['CYCLE_NUMBER'][idx].astype(str)
+            logging.debug('Float: {0} cycle: {1} has neither temp nor psal.'
+                          ' Not going to add'.format(platform_number, cycle_number))
+            return
 
 
         def make_meas_docs(xName, yName, df, profile_doc):
