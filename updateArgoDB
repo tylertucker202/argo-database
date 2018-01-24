@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+
+56 9 * * * tylertucker cd /home/tylertucker/argo-database; ./rsyncListAndAddArgoToDb.sh > /home/tylertucker/CronJobAddToArgoDB.txt
