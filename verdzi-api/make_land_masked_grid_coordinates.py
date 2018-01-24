@@ -25,12 +25,12 @@ def make_ocean_coord_Json(latM, lonM, maskM, percThresh=50.0):
             continue
         else:
             #defines polygon from single point. mongoDB queries in lon,lat
-            shape = [[lonM[it.multi_index] + reso/2., latM[it.multi_index] - reso/2.],
-                     [lonM[it.multi_index] + reso/2., latM[it.multi_index] + reso/2.],
-                     [lonM[it.multi_index] - reso/2., latM[it.multi_index] + reso/2.],
-                     [lonM[it.multi_index] - reso/2., latM[it.multi_index] - reso/2.],
-                     [lonM[it.multi_index] + reso/2., latM[it.multi_index] - reso/2.]]
-            gridDict['shape'] = shape
+            polyShape = [[lonM[it.multi_index] + reso/2., latM[it.multi_index] - reso/2.],
+                        [lonM[it.multi_index] + reso/2., latM[it.multi_index] + reso/2.],
+                        [lonM[it.multi_index] - reso/2., latM[it.multi_index] + reso/2.],
+                        [lonM[it.multi_index] - reso/2., latM[it.multi_index] - reso/2.],
+                        [lonM[it.multi_index] + reso/2., latM[it.multi_index] - reso/2.]]
+            gridDict['polyShape'] = polyShape
             oceanCoords.append(gridDict)
             it.iternext()
             gridIndex += 1

@@ -9,7 +9,7 @@ def getOutput():
     try:
         mySystem = sys.argv[1]
     except IndexError:
-        mySystem = 'carby'
+        mySystem = 'ciLab'
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     elif mySystem == 'kadavu':

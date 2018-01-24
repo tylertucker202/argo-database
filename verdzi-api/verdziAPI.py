@@ -15,12 +15,15 @@ import sqlite3
 import glob
 import os
 import re
+import logging
 
 def _get_profile(profile_number):
     resp = requests.get('http://www.argovis.com/catalog/profiles/'+profile_number)
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
-        return "Error: Unexpected response {}".format(resp)
+        errResp = "Error: Unexpected response {}".format(resp)
+        logging.warning(errResp)
+        return errResp
     profile = resp.json()
     return profile
 
@@ -28,13 +31,22 @@ def _get_platform_profiles(platform_number):
     resp = requests.get('http://www.argovis.com/catalog/platforms/'+platform_number)
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
-        return "Error: Unexpected response {}".format(resp)
+        errResp = "Error: Unexpected response {}".format(resp)
+        logging.warning(errResp)
+        return errResp
     platformProfiles = resp.json()
     return platformProfiles
 
 def _parse_into_df(profiles):
     #initialize dict
-    meas_keys = profiles[0]['measurements'][0].keys()
+    try:
+        meas_keys = profiles[0]['measurements'][0].keys()
+    except TypeError:
+        if isinstance(profiles, str):
+            logging.warning('profiles are strings. Not going to add df')
+        return
+
+        profiles[0]['measurements'][0]
     df = pd.DataFrame(columns=meas_keys)
     for profile in profiles:
         profileDf = pd.DataFrame(profile['measurements'])
@@ -59,11 +71,13 @@ def _parse_into_df(profiles):
     return df
 
 def _get_selection_profiles(startDate, endDate, shape, presRange=None):
-    baseURL = 'http://www.argovis.com/selection/profiles'
+    
+    #baseURL = 'http://www.argovis.com/selection/profiles'
+    baseURL = 'http://localhost:3000/selection/profiles' #use if running locally
     
     startDateQuery = '?startDate=' + startDate
     endDateQuery = '&endDate=' + endDate
-    shapeQuery = '&shape='+shape
+    shapeQuery = '&shape='+shape.replace(' ','')
     if not presRange == None:
         pressRangeQuery = '&presRange=' + presRange
         url = baseURL + startDateQuery + endDateQuery + pressRangeQuery + shapeQuery
@@ -73,6 +87,9 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
         return "Error: Unexpected response {}".format(resp)
+    if resp.status_code == 500:
+        pdb.set_trace()
+        return "Error: 500 status {}".format(resp)
     selectionProfiles = resp.json()
     return selectionProfiles
 
@@ -103,13 +120,18 @@ def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals,
     Output is saves as a csv.
     Start date and End date are usually about 10-30 days
     """
+    
     for row in oceanDf.itertuples():
-        shapeStr = '['+row.shape+']'
-
+        shapeStr = row.polyShape
         selectionProfiles = _get_selection_profiles(startDate, endDate, shapeStr, presRange)
         if len(selectionProfiles) == 0:
             continue
-        df = _parse_into_df(selectionProfiles)
+        try:
+            df = _parse_into_df(selectionProfiles)
+        except TypeError:
+            pdb.set_trace()
+            logging.warning('Type Error encountered. Shape is: {}. Not going to add'.format(shapeStr))
+            continue
         if df.shape[0] == 0: #  move on if selection profiles don't turn up anything.
             continue
 
@@ -124,6 +146,7 @@ def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals,
                     df.loc[ (df['pres'] <= pres[1]) & (df['pres'] > pres[0]), 'presMax'] = pres[1]
             except ValueError:
                 pdb.set_trace()
+                logging.warning('Value Error encountered.')
                 df[ (df['pres'] < pres[1]) & (df['pres'] > pres[0])].shape[0]
         if not 'ldx' in df.columns:  # sometimes there are no measurements in the given pressure intervals
             continue
@@ -131,7 +154,7 @@ def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals,
             grouped = df.groupby('ldx')
         except KeyError:
             pdb.set_trace()
-            df.shape
+            logging.warning('Key Error encountered. Df shape is: {}'.format(df.shape()))
         for ldx, group in grouped:
             nMeas = group.shape[0]
             if nMeas == 0:
@@ -255,6 +278,10 @@ def get_space_time_dates():
     return datesSet 
         
 if __name__ == '__main__':
+    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(format=FORMAT,
+                        filename='verdziAPI.log',
+                        level=logging.WARNING)
     oceanFileName = 'out/grid-coords/oceanCoordsAtOneDeg.csv'
     nElem = 180*360
     presRange = '[0, 120]'
