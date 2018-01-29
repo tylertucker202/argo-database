@@ -21,9 +21,9 @@ def _get_profile(profile_number):
     resp = requests.get('http://www.argovis.com/catalog/profiles/'+profile_number)
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
-        errResp = "Error: Unexpected response {}".format(resp)
-        logging.warning(errResp)
-        return errResp
+        return "Error: Unexpected response {}".format(resp)
+    if resp.status_code == 500:
+        return "Error: 500 status {}".format(resp)
     profile = resp.json()
     return profile
 
@@ -31,9 +31,9 @@ def _get_platform_profiles(platform_number):
     resp = requests.get('http://www.argovis.com/catalog/platforms/'+platform_number)
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
-        errResp = "Error: Unexpected response {}".format(resp)
-        logging.warning(errResp)
-        return errResp
+        return "Error: Unexpected response {}".format(resp)
+    if resp.status_code == 500:
+        return "Error: 500 status {}".format(resp)
     platformProfiles = resp.json()
     return platformProfiles
 
@@ -77,6 +77,8 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     
     startDateQuery = '?startDate=' + startDate
     endDateQuery = '&endDate=' + endDate
+    if not isinstance(shape, str):
+        logging.warning('shape is not a string...{}'.format(shape))
     shapeQuery = '&shape='+shape.replace(' ','')
     if not presRange == None:
         pressRangeQuery = '&presRange=' + presRange
@@ -88,7 +90,6 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     if not resp.status_code // 100 == 2:
         return "Error: Unexpected response {}".format(resp)
     if resp.status_code == 500:
-        pdb.set_trace()
         return "Error: 500 status {}".format(resp)
     selectionProfiles = resp.json()
     return selectionProfiles
@@ -114,15 +115,18 @@ def get_ocean_df(oceanFileName, subGrid=None):
         print('oceanDF searching for {} areas'.format(oceanDf.shape[0]))
     return oceanDf
 
-def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals, nElem):
+def get_ocean_df_from_csv(oceanCoords, startDate, endDate, presRange, presIntervals, nElem):
     """queries argovis database over large gridded space and small time scales.
     Ocean file name contains coordinates.
     Output is saves as a csv.
     Start date and End date are usually about 10-30 days
     """
-    
+    oceanDf = oceanCoords.copy()
     for row in oceanDf.itertuples():
         shapeStr = row.polyShape
+        if not isinstance(shapeStr, str):
+            pdb.set_trace()
+            logging.warning('shape is not a string...{}'.format(shapeStr))
         selectionProfiles = _get_selection_profiles(startDate, endDate, shapeStr, presRange)
         if len(selectionProfiles) == 0:
             continue
@@ -159,10 +163,12 @@ def get_ocean_df_from_csv(oceanDf, startDate, endDate, presRange, presIntervals,
             nMeas = group.shape[0]
             if nMeas == 0:
                 continue
-            aggMean = group[['temp', 'psal']].mean()
+            group.replace(-999, np.nan, inplace=True)
+            temp = group['temp'][group['temp'] != -999].values
+            psal = group['psal'][group['psal'] != -999].values
             idx = row.Index + ldx * nElem
-            oceanDf.set_value(idx, 'aggTemp', aggMean.temp)
-            oceanDf.set_value(idx, 'aggPsal', aggMean.psal)
+            oceanDf.set_value(idx, 'aggTemp', np.mean(temp))
+            oceanDf.set_value(idx, 'aggPsal', np.mean(psal))
             oceanDf.set_value(idx, 'nProf', nMeas)
     oceanDf.dropna(axis=0, how='any', thresh=2, subset=['aggTemp', 'aggPsal', 'nProf'], inplace=True)
     return oceanDf

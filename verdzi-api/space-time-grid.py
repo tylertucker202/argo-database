@@ -21,7 +21,7 @@ if __name__ == '__main__':
     start = datetime.now()
     oceanFileName = 'out/grid-coords/oceanCoordsAtQuarterDeg.csv'
     nElem = 720*1440
-    presRange = '[0, 5500]' #used to query database
+    presRange = '[0,5500]' #used to query database
     intervals = [[0,7.5], 
                     [7.5,12],
                     [12,20], 
@@ -67,26 +67,25 @@ if __name__ == '__main__':
 
     for tdx, dates in enumerate(datesSet):
         #if job breaks at a certain point, use continueAtIdx to skip what has already been created. 
-        continueAtIdx = 4
+        continueAtIdx = 7
         if tdx < continueAtIdx:
            continue
         print('time index: {}'.format(tdx))
         startDate, endDate = dates
-        try:
-            oceanDf = ver.get_ocean_df_from_csv(oceanDfCoords,
-                                                startDate,
-                                                endDate,
-                                                presRange,
-                                                presIntervals,
-                                                nElem)
-            aggDf = oceanDf[['aggTemp','aggPsal', 'nProf']]
-            aggDf.columns = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
-            #make a csv
-            aggDf.to_csv("out/space-time-grid/column_tdx_" + str(tdx) + ".csv")
-        except:
+        oceanDf = ver.get_ocean_df_from_csv(oceanDfCoords,
+                                            startDate,
+                                            endDate,
+                                            presRange,
+                                            presIntervals,
+                                            nElem)
+        aggDf = oceanDf[['aggTemp','aggPsal', 'nProf']]
+        aggDf.columns = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
+        #make a csv
+        aggDf.to_csv("out/space-time-grid/column_tdx_" + str(tdx) + ".csv")
+        '''except:
             pdb.set_trace()
             logging.warning('Somthing broke for tdx:{}. File not created'.format(tdx))
-            pass
+            pass'''
         print('time index: {}'.format(tdx))
         timeTick = datetime.now()
         print(timeTick.strftime(format='%Y-%m-%d %H:%M'))
