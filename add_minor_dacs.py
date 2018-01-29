@@ -29,7 +29,7 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     OUTPUT_DIR = getOutput()
     HOME_DIR = os.getcwd()
-    DB_NAME = 'argo'
+    DB_NAME = 'argo2'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     minorDacs = ['nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']

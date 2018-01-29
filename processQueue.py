@@ -47,7 +47,6 @@ if __name__ == '__main__':
         content = []
         with open(file, 'r') as f:
             content = f.readlines()
-        pdb.set_trace()
         content = [x.strip() for x in content]
         content = [x for x in content if x.startswith('>')]  # New files start with '>'
         content = [x for x in content if x.endswith('.nc' )]

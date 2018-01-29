@@ -3,11 +3,12 @@
 echo 'Start of rsync and List'
 DATE=`date +%y-%m-%d-%H:%M`
 echo $DATE
-#FTPDIR='/storage/ifremer/'
+FTPDIR='/storage/ifremer/'
 #FTPDIR='/home/gstudent4/Desktop/ifremer/'
-FTPDIR='/home/tylertucker/ifremer/'
+#FTPDIR='/home/tylertucker/ifremer/'
 #ARGODIR='/home/gstudent4/Desktop/argo-database/'
-ARGODIR='/home/tylertucker/argo-database/'
+#ARGODIR='/home/tylertucker/argo-database/'
+ARGODIR='/home/tyler/Desktop/argo-database/'
 QUEUEDIR=$ARGODIR'queuedFiles/'
 OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 echo 'Starting rsync: writing to '$FTPDIR

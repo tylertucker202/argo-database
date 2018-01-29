@@ -252,8 +252,10 @@ class argoDatabase(object):
         maxPres = profileDf.pres.max()
 
         profile_doc['max_pres'] = int(maxPres)
+        qcColNames = [k for k in profileDf.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
+        profileDf.drop(qcColNames, axis = 1, inplace = True)
 
-        profile_doc['measurements'] = profileDf.to_dict(orient='records' )  # orient='list' will store these as single arrays
+        profile_doc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')  # orient='list' will store these as single arrays
         profile_doc['date'] = date
         phi = variables['LATITUDE'][idx]
         lam = variables['LONGITUDE'][idx]
@@ -433,7 +435,7 @@ def getOutput():
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     if mySystem == 'carbyTrouble':
-        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo', 'argo-database', 'troublesomeFiles')
+        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesomeFiles')
     elif mySystem == 'kadavu':
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
@@ -447,7 +449,7 @@ if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename='argoTroublesomeProfiles.log',
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
