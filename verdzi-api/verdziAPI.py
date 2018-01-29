@@ -212,14 +212,16 @@ def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 
         nMeas = group.shape[0]
         if nMeas == 0:
             continue
-        aggMean = group[['temp', 'psal']].mean()
-        aggStd = group[['temp', 'psal']].std()
+        tempMean = group['temp'][group['temp'] != -999].mean()
+        psalMean = group['psal'][group['psal'] != -999].mean()
+        tempStd = group['temp'][group['temp'] != -999].std()
+        psalStd = group['psal'][group['psal'] != -999].std()
         startDate = group['startDate'].values[0]
         endDate = group['endDate'].values[0]
-        tsDf.set_value(tdx, 'tempMean', aggMean.temp)
-        tsDf.set_value(tdx, 'psalMean', aggMean.psal)
-        tsDf.set_value(tdx, 'tempStd', aggStd.temp)
-        tsDf.set_value(tdx, 'psalStd', aggStd.psal)
+        tsDf.set_value(tdx, 'tempMean', tempMean)
+        tsDf.set_value(tdx, 'psalMean', psalMean)
+        tsDf.set_value(tdx, 'tempStd', tempStd)
+        tsDf.set_value(tdx, 'psalStd', psalStd)
         tsDf.set_value(tdx, 'startDate', startDate)
         tsDf.set_value(tdx, 'endDate', endDate)
         tsDf.set_value(tdx, 'nProf', nMeas)
