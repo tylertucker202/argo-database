@@ -37,37 +37,38 @@ def _get_platform_profiles(platform_number):
     platformProfiles = resp.json()
     return platformProfiles
 
-def _parse_into_df(profiles):
-    #initialize dict
-    try:
-        meas_keys = profiles[0]['measurements'][0].keys()
-    except TypeError:
-        if isinstance(profiles, str):
-            logging.warning('profiles are strings. Not going to add df')
-        return
+def get_platform_measurements(profiles):
+    '''
+    Retrieves all measurements included in a list of platforms.
+    '''
+    stationParam = []
+    for profile in profiles:
+        stationParam.append(profile['station_parameters'])
+    flatList = [item for sublist in stationParam for item in sublist]
+    if isinstance(flatList[0], list):
+        flatList = [item for sublist in flatList for item in sublist]
+    uniqueList = list(set(flatList))
+    uniqueList = [s for s in uniqueList if s != ''] # ignore blank station params.
+                
+    measurement_keys = [x.lower() for x in uniqueList]   
+    return measurement_keys
 
-        profiles[0]['measurements'][0]
+def parse_into_df(profiles):
+    #initialize dict
+    meas_keys = profiles[0]['measurements'][0].keys()
+    
+    #get measurement numbers
+    dfKeys = get_platform_measurements(profiles)
+
     df = pd.DataFrame(columns=meas_keys)
     for profile in profiles:
-        profileDf = pd.DataFrame(profile['measurements'])
+        profileDf = pd.DataFrame(profile['measurements'])  # may inlude qc values
         profileDf['cycle_number'] = profile['cycle_number']
         profileDf['profile_id'] = profile['_id']
         profileDf['lat'] = profile['lat']
         profileDf['lon'] = profile['lon']
         profileDf['date'] = profile['date']
         df = pd.concat([df, profileDf])
-    
-    #  there has to be pressure and temperature columns.
-    try:
-        if not 'psal' in df.columns:
-            df['psal'] = np.NaN
-            df['psal_qc'] = np.NaN
-        if not 'temp' in df.columns:
-            df['temp'] = np.NaN
-            df['temp_qc'] = np.NaN
-    except:
-        pdb.set_trace()
-        df.columns
     return df
 
 def _get_selection_profiles(startDate, endDate, shape, presRange=None):
