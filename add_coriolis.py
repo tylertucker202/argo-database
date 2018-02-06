@@ -29,8 +29,8 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
-    DB_NAME = 'argo2'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     coriolisDac = ['coriolis']
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=coriolisDac)
+    ad.add_locally(OUTPUT_DIR, howToAdd='by_dac_profiles', dacs=coriolisDac)

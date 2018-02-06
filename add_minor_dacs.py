@@ -29,8 +29,8 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     OUTPUT_DIR = getOutput()
     HOME_DIR = os.getcwd()
-    DB_NAME = 'argo2'
+    DB_NAME = 'argo'
     COLLECTION_NAME = 'profiles'
     ad = argoDatabase(DB_NAME, COLLECTION_NAME)
     minorDacs = ['nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
-    ad.add_locally(OUTPUT_DIR, how_to_add='by_dac_profiles', dacs=minorDacs)
+    ad.add_locally(OUTPUT_DIR, howToAdd='by_dac_profiles', dacs=minorDacs)
