@@ -11,7 +11,6 @@ import pandas as pd
 import pdb
 import numpy as np
 from datetime import datetime
-import sqlite3
 import glob
 import os
 import re
@@ -22,8 +21,6 @@ def _get_profile(profile_number):
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
         return "Error: Unexpected response {}".format(resp)
-    if resp.status_code == 500:
-        return "Error: 500 status {}".format(resp)
     profile = resp.json()
     return profile
 
@@ -32,8 +29,6 @@ def _get_platform_profiles(platform_number):
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
         return "Error: Unexpected response {}".format(resp)
-    if resp.status_code == 500:
-        return "Error: 500 status {}".format(resp)
     platformProfiles = resp.json()
     return platformProfiles
 
@@ -56,13 +51,9 @@ def get_platform_measurements(profiles):
 def parse_into_df(profiles):
     #initialize dict
     meas_keys = profiles[0]['measurements'][0].keys()
-    
-    #get measurement numbers
-    dfKeys = get_platform_measurements(profiles)
-
     df = pd.DataFrame(columns=meas_keys)
     for profile in profiles:
-        profileDf = pd.DataFrame(profile['measurements'])  # may inlude qc values
+        profileDf = pd.DataFrame(profile['measurements'])
         profileDf['cycle_number'] = profile['cycle_number']
         profileDf['profile_id'] = profile['_id']
         profileDf['lat'] = profile['lat']
@@ -72,15 +63,10 @@ def parse_into_df(profiles):
     return df
 
 def _get_selection_profiles(startDate, endDate, shape, presRange=None):
-    
-    #baseURL = 'http://www.argovis.com/selection/profiles'
-    baseURL = 'http://localhost:3000/selection/profiles' #use if running locally
-    
+    baseURL = 'http://www.argovis.com/selection/profiles'
     startDateQuery = '?startDate=' + startDate
     endDateQuery = '&endDate=' + endDate
-    if not isinstance(shape, str):
-        logging.warning('shape is not a string...{}'.format(shape))
-    shapeQuery = '&shape='+shape.replace(' ','')
+    shapeQuery = '&shape='+shape
     if not presRange == None:
         pressRangeQuery = '&presRange=' + presRange
         url = baseURL + startDateQuery + endDateQuery + pressRangeQuery + shapeQuery
@@ -90,8 +76,6 @@ def _get_selection_profiles(startDate, endDate, shape, presRange=None):
     # Consider any status other than 2xx an error
     if not resp.status_code // 100 == 2:
         return "Error: Unexpected response {}".format(resp)
-    if resp.status_code == 500:
-        return "Error: 500 status {}".format(resp)
     selectionProfiles = resp.json()
     return selectionProfiles
 
@@ -132,16 +116,13 @@ def get_ocean_df_from_csv(oceanCoords, startDate, endDate, presRange, presInterv
         if len(selectionProfiles) == 0:
             continue
         try:
-            df = _parse_into_df(selectionProfiles)
+            df = parse_into_df(selectionProfiles)
         except TypeError:
             pdb.set_trace()
             logging.warning('Type Error encountered. Shape is: {}. Not going to add'.format(shapeStr))
             continue
         if df.shape[0] == 0: #  move on if selection profiles don't turn up anything.
             continue
-
-        #df = _quality_control_df(df)  #currently only qc values of 1 are included
-
         # aggregate into pressure intervals            
         for ldx, pres in presIntervals:
             try:
@@ -180,11 +161,10 @@ def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 
     shape should have a radius of no more than a few degrees.
     Pressure range should about 10-50 dbar.
     """
-    
     selectionProfiles = _get_selection_profiles(seriesStartDate, seriesEndDate, shape, presRange)
     if len(selectionProfiles) == 0:
         return
-    df = _parse_into_df(selectionProfiles)
+    df = parse_into_df(selectionProfiles)
     df = _quality_control_df(df)
     
     #provide a time index for date ranges
@@ -226,9 +206,6 @@ def get_ocean_time_series(seriesStartDate, seriesEndDate, shape, presRange='[0, 
         tsDf.set_value(tdx, 'startDate', startDate)
         tsDf.set_value(tdx, 'endDate', endDate)
         tsDf.set_value(tdx, 'nProf', nMeas)
-    
-    
-
     return tsDf
 
 def get_pres_intervals(minPres, maxPres, dPres):

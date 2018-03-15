@@ -7,6 +7,7 @@ Created on Wed Jan  3 09:56:36 2018
 """
 
 import verdziAPI as ver
+import presSlicerGrid as ps
 import pandas as pd
 from datetime import datetime
 import logging
@@ -22,6 +23,7 @@ if __name__ == '__main__':
     oceanFileName = 'out/grid-coords/oceanCoordsAtQuarterDeg.csv'
     nElem = 720*1440
     presRange = '[0,5500]' #used to query database
+    delta = 1/4 #delta lat-lon
     intervals = [[0,7.5], 
                     [7.5,12],
                     [12,20], 
@@ -47,45 +49,41 @@ if __name__ == '__main__':
                     [1300,1400], 
                     [1400,1500], 
                     [1500,1750], 
-                    [1750,2000], 
-                    [2000,2500], 
-                    [2500,3000], 
-                    [3000,3500], 
-                    [3500,4000], 
-                    [4000,4500], 
-                    [4500,5000], 
-                    [5000,5500]]
+                    [1750,2000]]
+
     presIntervals = []
     for idx, interval in enumerate(intervals):
-        presIntervals.append([idx, interval])
+        presIntervals.append([idx+1, interval])
     datesSet = ver.get_space_time_dates()
     print('should be 37: {}'.format(len(datesSet[0:37])))
     print('should be 37: {}'.format(len(datesSet[-37:])))
-    oceanDfCoords = ver.get_ocean_df(oceanFileName)
-    oceanDfCoords['polyShape'] = oceanDfCoords['polyShape'].apply(lambda x: x.replace(' ',''))
-    oceanDfCoords['polyShape'] = oceanDfCoords['polyShape'].apply(lambda x: '['+x+']')
+
 
     for tdx, dates in enumerate(datesSet):
         #if job breaks at a certain point, use continueAtIdx to skip what has already been created. 
-        continueAtIdx = 7
+        continueAtIdx = 0
         if tdx < continueAtIdx:
            continue
         print('time index: {}'.format(tdx))
         startDate, endDate = dates
-        oceanDf = ver.get_ocean_df_from_csv(oceanDfCoords,
-                                            startDate,
-                                            endDate,
-                                            presRange,
-                                            presIntervals,
-                                            nElem)
-        aggDf = oceanDf[['aggTemp','aggPsal', 'nProf']]
-        aggDf.columns = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
-        #make a csv
-        aggDf.to_csv("out/space-time-grid/column_tdx_" + str(tdx) + ".csv")
-        '''except:
-            pdb.set_trace()
-            logging.warning('Somthing broke for tdx:{}. File not created'.format(tdx))
-            pass'''
+        
+        colNames = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
+        df = pd.DataFrame(columns=colNames)
+        for layer, presRange in presIntervals:
+            presRangeStr = str(presRange).replace(' ','')
+            sliceProfiles = ps.get_ocean_slice(startDate, endDate, presRangeStr)
+            if len(sliceProfiles) == 0:
+                continue
+            measKeys = ver.get_platform_measurements(sliceProfiles)
+            measKeys = [s for s in measKeys if s != ''] # ignore profiles that dont report anything
+            sliceDf = ver.parse_into_df(sliceProfiles)
+            sliceDf = ps.bin_layer_df(sliceDf, delta, layer)
+            sliceDf = ps.agg_gridded(sliceDf, measKeys)
+            aggDf = sliceDf[['tempMean', 'psalMean', 'nProf']]
+            aggDf.columns = colNames
+            df = pd.concat([df, aggDf], axis = 0)
+            #make a csv
+        df.to_csv("out/space-time-grid/column_tdx_" + str(tdx) + ".csv")
         print('time index: {}'.format(tdx))
         timeTick = datetime.now()
         print(timeTick.strftime(format='%Y-%m-%d %H:%M'))

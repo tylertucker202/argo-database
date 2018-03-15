@@ -22,6 +22,7 @@ echo 'Starting to add DB'
 #PYTHONPATH='/home/gstudent4/anaconda2/envs/argo/bin/python'
 cd $ARGODIR
 #/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py ciLab
+/home/tyler/anaconda3/envs/argo/bin/python processQueue.py carby
 python3.6 processQueue.py kadavu
 PYENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'Added new files to DB'

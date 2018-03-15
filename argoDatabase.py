@@ -85,33 +85,35 @@ class argoDatabase(object):
         elif len(documents) > 1:
             self.add_many_profiles(documents, fileName)
 
+    @staticmethod
+    def format_param(param):
+        """
+        Param is an fixed array of characters. format_param attempts to convert this array to
+        a string.
+        """
+        if type(param) == np.ndarray:
+            formatted_param = ''.join([(x.astype(str)) for x in param])
+        elif type(param) == np.ma.core.MaskedArray:
+            try:
+                formatted_param = ''.join([(x.astype(str)) for x in param.data])
+            except NotImplementedError:
+                logging.debug('NotImplementedError param is not expected type')
+            except AttributeError:  # sometimes platform_num is an array...
+                logging.debug('attribute error: param is not expected type')
+                logging.debug('type: {}'.format(type(param)))
+            except:
+                logging.debug('type: {}'.format(type(param)))
+        else:
+            logging.error(' check type: {}'.format(type(param)))
+            pass
+        return formatted_param.strip(' ')
+
     def make_profile_doc(self, variables, dacName, remotePath, fileName):
         """
         Retrieves some meta information and counts number of profile measurements.
         Sometimes a profile will contain more than one measurement in variables field.
         Only the first is added.
         """
-        def format_param(param):
-            """
-            Param is an fixed array of characters. format_param attempts to convert this array to
-            a string.
-            """
-            if type(param) == np.ndarray:
-                formatted_param = ''.join([(x.astype(str)) for x in param])
-            elif type(param) == np.ma.core.MaskedArray:
-                try:
-                    formatted_param = ''.join([(x.astype(str)) for x in param.data])
-                except NotImplementedError:
-                    logging.debug('NotImplementedError param is not expected type')
-                except AttributeError:  # sometimes platform_num is an array...
-                    logging.debug('attribute error: param is not expected type')
-                    logging.debug('type: {}'.format(type(param)))
-                except:
-                    logging.debug('type: {}'.format(type(param)))
-            else:
-                logging.error(' check type: {}'.format(type(param)))
-                pass
-            return formatted_param.strip(' ')
 
         cycles = variables['CYCLE_NUMBER'][:][:]
         list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
@@ -119,8 +121,8 @@ class argoDatabase(object):
             if len(array) > 2:
                 logging.info('duplicate cycle numbers found...')
 
-        platformNumber = format_param(variables['PLATFORM_NUMBER'][0])
-        stationParameters = list(map(lambda param: format_param(param), variables['STATION_PARAMETERS'][0]))
+        platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
+        stationParameters = list(map(lambda param: self.format_param(param), variables['STATION_PARAMETERS'][0]))
         numOfProfiles = variables['JULD'][:].shape[0]
         logging.info('number of profiles inside file: {}'.format(numOfProfiles))
 

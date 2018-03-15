@@ -12,7 +12,7 @@ queueDir = os.path.join(argoBaseDir, 'queuedFiles')
 complDir =  os.path.join(argoBaseDir, 'completedQueues')
 
 def getOutput():
-    defaultSys = 'ciLab'
+    defaultSys = 'carby'
     try:
         mySystem = sys.argv[1]
     except IndexError:
@@ -59,8 +59,9 @@ if __name__ == '__main__':
             os.rename(file, new_file_location)	    
             continue
         try:
+            pdb.set_trace()
             logging.getLogger().setLevel(logging.WARNING)
-            ad.add_locally(IFREMER_DIR, how_to_add='profile_list', files=content)
+            ad.add_locally(IFREMER_DIR, howToAdd='profile_list', files=content)
             logging.getLogger().setLevel(logging.DEBUG)
             #  move qued file to competed directory upon sucessfull completion
             new_file_location = os.path.join(complDir,file.split('/')[-1])
