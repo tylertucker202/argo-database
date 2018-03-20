@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     for tdx, dates in enumerate(datesSet):
         #if job breaks at a certain point, use continueAtIdx to skip what has already been created. 
-        continueAtIdx = 165
+        continueAtIdx = 390
         if tdx < continueAtIdx:
            continue
         print('time index: {}'.format(tdx))
