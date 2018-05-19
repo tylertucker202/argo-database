@@ -32,11 +32,16 @@ def agg_gridded(df, measKeys):
         except KeyError:
             pdb.set_trace()
             grouped.columns
+        
         for key in measKeys:
             if not key in group.columns:
                 continue
-            aggDf.at[gridIdx, key+'Mean'] = aggMean[key]
-            aggDf.at[gridIdx, key+'Std'] = aggStd[key]
+            try:
+                aggDf.at[gridIdx, key+'Mean'] = aggMean[key]
+                aggDf.at[gridIdx, key+'Std'] = aggStd[key]
+            except KeyError:  # Sometimes you get all NAN
+                continue
+                
         aggDf.at[gridIdx, 'nProf'] = nMeas
         aggDf.at[gridIdx, 'latbin'] = latbin
         aggDf.at[gridIdx, 'lonbin'] = lonbin
@@ -51,7 +56,8 @@ def bin_layer_df(df, delta, layer):
     return df
 
 def get_ocean_slice(startDate, endDate, presRange='[0,30]'):
-    baseURL = 'http://www.argovis.com/gridding/presSlice/'
+    #baseURL = 'http://www.argovis.com/gridding/presSlice/'
+    baseURL = 'http://localhost:3000/gridding/presSlice/'
     startDateQuery = '?startDate=' + startDate
     endDateQuery = '&endDate=' + endDate
     presRangeQuery = '&presRange=' + presRange
