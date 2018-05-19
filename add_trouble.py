@@ -9,9 +9,11 @@ def getOutput():
     try:
         mySystem = sys.argv[1]
     except IndexError:
-        mySystem = 'carby'
+        mySystem = 'carbyTrouble'
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+    if mySystem == 'carbyTrouble':
+        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     elif mySystem == 'kadavu':
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
@@ -24,13 +26,14 @@ def getOutput():
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='aoml.log',
-                        level=logging.WARNING)
+                        filename='argoTroublesomeProfiles.log',
+                        level=logging.INFO)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
-    DB_NAME = 'argo'
-    COLLECTION_NAME = 'profiles'
-    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    aomlDac = ['aoml']
-    ad.add_locally(OUTPUT_DIR, howToAdd='by_dac_profiles', dacs=aomlDac)
+    # init database
+    dbName = 'argoTrouble'
+    collectionName = 'profiles'
+    ad = argoDatabase(dbName, collectionName, True)
+    ad.add_locally(OUTPUT_DIR, howToAdd='profiles')
+    logging.debug('End of log file')

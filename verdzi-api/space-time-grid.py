@@ -25,31 +25,31 @@ if __name__ == '__main__':
     presRange = '[0,5500]' #used to query database
     delta = 1/4 #delta lat-lon
     intervals = [[0,7.5], 
-                    [7.5,12],
-                    [12,20], 
-                    [20,30], 
-                    [30,50], 
-                    [50,75], 
-                    [75,100],
-                    [100,125], 
-                    [125,150], 
-                    [150,200], 
-                    [200,250], 
-                    [250,300], 
-                    [300,400], 
-                    [400,500], 
-                    [500,600], 
-                    [600,700], 
-                    [700,800], 
-                    [800,900], 
-                    [900,1000], 
-                    [1000,1100], 
-                    [1100,1200], 
-                    [1200,1300], 
-                    [1300,1400], 
-                    [1400,1500], 
-                    [1500,1750], 
-                    [1750,2000]]
+                [7.5,12],
+                [12,20], 
+                [20,30], 
+                [30,50], 
+                [50,75], 
+                [75,100],
+                [100,125], 
+                [125,150], 
+                [150,200], 
+                [200,250], 
+                [250,300], 
+                [300,400], 
+                [400,500], 
+                [500,600], 
+                [600,700], 
+                [700,800], 
+                [800,900], 
+                [900,1000], 
+                [1000,1100], 
+                [1100,1200], 
+                [1200,1300], 
+                [1300,1400], 
+                [1400,1500], 
+                [1500,1750], 
+                [1750,2000]]
 
     presIntervals = []
     for idx, interval in enumerate(intervals):
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         print('time index: {}'.format(tdx))
         startDate, endDate = dates
         
-        colNames = ['T'+str(tdx), 'S'+str(tdx), 'n'+str(tdx)]
+        colNames = ['T'+str(tdx), 'TSd', 'S'+str(tdx), 'Ssd', 'lat', 'lon', 'n'+str(tdx)]
         df = pd.DataFrame(columns=colNames)
         for layer, presRange in presIntervals:
             presRangeStr = str(presRange).replace(' ','')
@@ -79,7 +79,7 @@ if __name__ == '__main__':
             sliceDf = ver.parse_into_df(sliceProfiles)
             sliceDf = ps.bin_layer_df(sliceDf, delta, layer)
             sliceDf = ps.agg_gridded(sliceDf, measKeys)
-            aggDf = sliceDf[['tempMean', 'psalMean', 'nProf']]
+            aggDf = sliceDf[['tempMean', 'tempStd', 'psalMean', 'psalStd', 'latbin', 'lonbin', 'nProf']]
             aggDf.columns = colNames
             df = pd.concat([df, aggDf], axis = 0)
             #make a csv

@@ -221,7 +221,7 @@ if __name__ == '__main__':
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()
     # init database
-    dbName = 'argo2Test'
+    dbName = 'argoTrouble'
     collectionName = 'profiles'
     ad = argoDatabase(dbName, collectionName, True)
     ad.add_locally(OUTPUT_DIR, howToAdd='profiles')

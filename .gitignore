@@ -6,6 +6,7 @@ completedQueues
 .idea
 __pycache__
 *.pyc
+troublesome-files
 troublesomeFiles
 ifremer
 grids

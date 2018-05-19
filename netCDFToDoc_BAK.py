@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun Feb  4 15:46:14 2018
+
 @author: tyler
 """
 import logging
@@ -51,64 +52,57 @@ class netCDFToDoc(object):
                     data = np.array([x.astype(str) for x in data])
                 except NotImplementedError:
                     logging.warning('NotImplemented Error for idx: {1}'.format(self.idx))
-            return data
+            return data   
 
         df = pd.DataFrame()
-        
-        
         not_adj = measStr.lower()+'_not_adj'
         adj = measStr.lower()
+        # get unadjusted value. Types vary from arrays to masked arrays.
+        if type(self.variables[measStr][self.idx, :]) == np.ndarray:
+            df[not_adj] = self.variables[measStr][self.idx, :]
+        else:  # sometimes a masked array is used
+            try:
+                df[not_adj] = self.variables[measStr][self.idx, :].data
+            except ValueError:
+                logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
+        # get adjusted value.
+        try:
+            if type(self.variables[measStr + '_ADJUSTED'][self.idx, :]) == np.ndarray:
+                df[adj] = self.variables[measStr + '_ADJUSTED'][self.idx, :]
+        except KeyError:
+            logging.debug('adjusted value for {} does not exist'.format(measStr))
+            df[adj] = np.nan
+        else:  # sometimes a masked array is used
+            try:
+                df[adj] = self.variables[measStr + '_ADJUSTED'][self.idx, :].data
+            except ValueError:
+                logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
+        try:
+            df.loc[df[adj] >= 99999, adj] = np.NaN
+        except KeyError:
+            logging.warning('key not found...')
+        df.ix[df[not_adj] >= 99999, not_adj] = np.NaN
+        try:
+            df[adj+'_qc'] = format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
+        except KeyError:
+            logging.warning('qc not found for {}'.format(measStr))
+            logging.warning('returning empty dataframe')
+            return pd.DataFrame()
         
-        doc_key = measStr.lower()
-
-        if self.profileDoc['DATA_MODE'] == 'D':
-            #use adjusted data
-            try:
-                if type(self.variables[measStr + '_ADJUSTED'][self.idx, :]) == np.ndarray:
-                    df[doc_key] = self.variables[measStr + '_ADJUSTED'][self.idx, :]
-            except KeyError:
-                logging.debug('adjusted value for {} does not exist'.format(measStr))
-                df[doc_key] = np.nan
-            else:  # sometimes a masked array is used
-                try:
-                    df[doc_key] = self.variables[measStr + '_ADJUSTED'][self.idx, :].data
-                except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
-            try:
-                df.loc[df[doc_key] >= 99999, adj] = np.NaN
-            except KeyError:
-                logging.warning('key not found...')
-            try:
-                df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][self.idx, :])
-            except KeyError:
-                logging.warning('qc not found for {}'.format(measStr))
-                logging.warning('returning empty dataframe')
-                return pd.DataFrame()
-        else:
-            # get unadjusted value. Types vary from arrays to masked arrays.
-            if type(self.variables[measStr][self.idx, :]) == np.ndarray:
-                df[doc_key] = self.variables[measStr][self.idx, :]
-            else:  # sometimes a masked array is used
-                try:
-                    df[doc_key] = self.variables[measStr][self.idx, :].data
-                except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
-            df.ix[df[doc_key] >= 99999, not_adj] = np.NaN
-            try:
-                df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
-            except KeyError:
-                logging.warning('qc not found for {}'.format(measStr))
-                logging.warning('returning empty dataframe')
-                return pd.DataFrame()
-            
+        """
+        Adjusted column NaN are filled with unadjusted values.
+        unadjusted column is then dropped.
+        """
+        df[adj].fillna(df[not_adj], inplace=True)
+        df.drop([not_adj], axis=1, inplace=True)
         """
         QC procedure drops any row whos qc value does not equal '1'
         """
         try:
-            df = df[df[doc_key+'_qc'] == self.qcThreshold]
+            df = df[df[adj+'_qc'] == self.qcThreshold]
         except KeyError:
             logging.warning('measurement: {0} has no qc.'
-                      ' returning empty dataframe'.format(doc_key))
+                      ' returning empty dataframe'.format(adj))
             return pd.DataFrame()
             df.shape
         return df
@@ -176,10 +170,6 @@ class netCDFToDoc(object):
         """
         Takes a profile measurement and formats it into a dictionary object.
         """
-        self.add_string_values('POSITIONING_SYSTEM')
-        self.add_string_values('PLATFORM_TYPE')
-        self.add_string_values('DATA_MODE')
-        self.add_string_values('PI_NAME')
         try:
             profileDf = self.makeProfileDf()
         except ValueError as err:
@@ -203,6 +193,10 @@ class netCDFToDoc(object):
         if type(phi) == np.ma.core.MaskedConstant:
             raise AttributeError('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+        self.add_string_values('POSITIONING_SYSTEM')
+        self.add_string_values('PLATFORM_TYPE')
+        self.add_string_values('DATA_MODE')
+        self.add_string_values('PI_NAME')
 
         try:
             positionQC = str(self.variables['POSITION_QC'][self.idx].astype(int))
