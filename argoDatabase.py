@@ -19,7 +19,8 @@ class argoDatabase(object):
                  collectionName, 
                  replaceProfile=False,
                  qcThreshold='1', 
-                 dbDumpThreshold=10000):
+                 dbDumpThreshold=10000,
+                 deleteDelayed=True):
         logging.debug('initializing ArgoDatabase')
         self.init_database(dbName)
         self.init_profiles_collection(collectionName)
@@ -28,6 +29,7 @@ class argoDatabase(object):
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
+        self.deleteDelayed = deleteDelayed
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -43,6 +45,7 @@ class argoDatabase(object):
             self.profiles_coll.create_index([('cycle_number', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('dac', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
+            self.profiles_coll.create_index([('geo2DLocation', pymongo.GEO2D)])
         except:
             logging.warning('not able to get collections or set indexes')
 
@@ -65,6 +68,12 @@ class argoDatabase(object):
             logging.warning('howToAdd not recognized. not going to do anything.')
             return
 
+        if self.deleteDelayed == True:
+            reDelay = re.compile(r'.*D\d{1,}')
+            delayModeFiles = list(filter(reDelay.match,files))
+            self.remove_profiles(delayModeFiles)
+    
+
         documents = []
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
@@ -84,6 +93,26 @@ class argoDatabase(object):
             self.add_single_profile(documents[0], fileName)
         elif len(documents) > 1:
             self.add_many_profiles(documents, fileName)
+
+    def remove_profiles(self, files):
+        #get profile ids
+        idList = []
+        for fileName in files:
+            profileName = fileName.split('/')[-1]
+            profileName = profileName[1:-3]
+            idList.append(profileName)
+            #self.profiles_coll.remove({'_id':profileName})
+        #remove all profiles at once
+        logging.debug('removing delayed profiles before reintroducing')
+        logging.debug('number of profiles deleted: {}'.format(len(idList)))
+        countBefore = self.profiles_coll.find({}).count()
+        self.profiles_coll.delete_many({'_id': {'$in': idList}})
+        countAfter = b4 = self.profiles_coll.find({}).count()
+        delta = countBefore - countAfter
+        self.profiles_coll.find({}).count()
+        logging.debug('number of delayed profiles: {}'.format(delta))
+        
+        
 
     @staticmethod
     def format_param(param):
@@ -192,7 +221,8 @@ class argoDatabase(object):
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
             logging.warning('Type error when during insert_many method. Check documents.')
             logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
-
+        
+        
 def getOutput():
     try:
         mySystem = sys.argv[1]
@@ -202,7 +232,7 @@ def getOutput():
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     if mySystem == 'carbyTrouble':
-        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesomeFiles')
+        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     elif mySystem == 'kadavu':
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
@@ -216,7 +246,7 @@ if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename='argoTroublesomeProfiles.log',
-                        level=logging.INFO)
+                        level=logging.DEBUG)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     OUTPUT_DIR = getOutput()

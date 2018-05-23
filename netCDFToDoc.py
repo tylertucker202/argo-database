@@ -61,7 +61,7 @@ class netCDFToDoc(object):
         
         doc_key = measStr.lower()
 
-        if self.profileDoc['DATA_MODE'] == 'D':
+        if (self.profileDoc['DATA_MODE'] == 'D') or (self.profileDoc['DATA_MODE'] == 'A'):
             #use adjusted data
             try:
                 if type(self.variables[measStr + '_ADJUSTED'][self.idx, :]) == np.ndarray:
@@ -222,6 +222,7 @@ class netCDFToDoc(object):
         self.profileDoc['lat'] = phi
         self.profileDoc['lon'] = lam
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
+        self.profileDoc['geo2DLocation'] = [lam, phi]
         self.profileDoc['dac'] = dacName
         self.profileDoc['platform_number'] = self.platformNumber
         self.profileDoc['station_parameters'] = stationParameters
