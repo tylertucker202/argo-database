@@ -59,7 +59,7 @@ if __name__ == '__main__':
             os.rename(file, new_file_location)	    
             continue
         try:
-            pdb.set_trace()
+            #pdb.set_trace()
             logging.getLogger().setLevel(logging.WARNING)
             ad.add_locally(IFREMER_DIR, howToAdd='profile_list', files=content)
             logging.getLogger().setLevel(logging.DEBUG)
