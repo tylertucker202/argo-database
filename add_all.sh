@@ -26,7 +26,6 @@ case $HOSTNAME in
 		echo "adding aoml"
 		python3.6 add_aoml.py
 		;;
-		;;
   (*) 
         	echo "this lab 416"
 		echo "adding minor dacs"
@@ -36,6 +35,4 @@ case $HOSTNAME in
 		echo "adding aoml"
 		/home/gstudent4/anaconda2/envs/argo/bin/python add_aoml.py
 		;;
-		;;
 esac
-
