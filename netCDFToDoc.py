@@ -200,7 +200,7 @@ class netCDFToDoc(object):
         self.profileDoc['date'] = date
         phi = self.variables['LATITUDE'][self.idx]
         lam = self.variables['LONGITUDE'][self.idx]
-        if type(phi) == np.ma.core.MaskedConstant:
+        if type(phi) == np.ma.core.MaskedConstant or type(lam) == np.ma.core.MaskedConstant:
             raise AttributeError('Float: {0} cycle: {1} has unknown lat-lon.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
 
