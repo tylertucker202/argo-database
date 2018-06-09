@@ -8,7 +8,6 @@ import numpy as np
 from datetime import datetime
 from netCDF4 import Dataset
 import bson.errors
-import sys
 from bson.decimal128 import Decimal128
 import pdb
 from netCDFToDoc import netCDFToDoc
@@ -225,14 +224,11 @@ class argoDatabase(object):
         
 def getOutput():
     try:
-        mySystem = sys.argv[1]
-    except:
+        mySystem = os.uname().nodename
+    except IndexError:
         mySystem = 'carbyTrouble'
-
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    if mySystem == 'carbyTrouble':
-        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     elif mySystem == 'kadavu':
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':

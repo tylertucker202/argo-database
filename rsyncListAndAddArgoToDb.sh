@@ -42,13 +42,13 @@ cd $ARGODIR
 
 case $HOSTNAME in
   (carby) 
-                #/home/tyler/anaconda3/envs/argo/bin/python processQueue.py carby
+                /home/tyler/anaconda3/envs/argo/bin/python processQueue.py
 		;;
   (kadavu.ucsd.edu) 
-		#python3.6 processQueue.py kadavu
+		python3.6 processQueue.py
 		;;
-		(*)
-		#/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py ciLab
+  (*)
+		/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py
 		;;
 esac
 

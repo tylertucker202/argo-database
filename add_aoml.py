@@ -2,35 +2,25 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-import sys
-from argoDatabase import argoDatabase
-
-def getOutput():
-    try:
-        mySystem = sys.argv[1]
-    except IndexError:
-        mySystem = 'carby'
-    if mySystem == 'carby':
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    elif mySystem == 'kadavu':
-        OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
-    elif mySystem == 'ciLab':
-        OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    else:
-        print('pc not found. assuming default')
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    return OUTPUT_DIR
+from argoDatabase import argoDatabase, getOutput
 
 if __name__ == '__main__':
+
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    LOGFILENAME = 'aoml.log'
+    OUTPUTDIR = getOutput()
+    HOMEDIR = os.getcwd()
+    dbName = 'argo'
+    collectionName = 'profiles'
+    dacs = ['aoml']    
+    if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
+        os.remove(LOGFILENAME)
     logging.basicConfig(format=FORMAT,
-                        filename='aoml.log',
+                        filename=LOGFILENAME,
                         level=logging.WARNING)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = getOutput()
-    DB_NAME = 'argo'
-    COLLECTION_NAME = 'profiles'
-    ad = argoDatabase(DB_NAME, COLLECTION_NAME)
-    aomlDac = ['aoml']
-    ad.add_locally(OUTPUT_DIR, howToAdd='by_dac_profiles', dacs=aomlDac)
+    hostname = os.uname().nodename
+    ad = argoDatabase(dbName, collectionName, True)
+    ad.add_locally(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
+    logging.debug('End of log file')

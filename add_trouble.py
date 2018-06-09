@@ -2,38 +2,24 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-import sys
 from argoDatabase import argoDatabase
 
-def getOutput():
-    try:
-        mySystem = sys.argv[1]
-    except IndexError:
-        mySystem = 'carbyTrouble'
-    if mySystem == 'carby':
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    if mySystem == 'carbyTrouble':
-        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
-    elif mySystem == 'kadavu':
-        OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
-    elif mySystem == 'ciLab':
-        OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    else:
-        print('pc not found. assuming default')
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    return OUTPUT_DIR
-
 if __name__ == '__main__':
+
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    LOGFILENAME = 'argoTroublesomeProfiles.log'
+    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
+    HOMEDIR = os.getcwd()
+    dbName = 'argoTrouble'
+    collectionName = 'profiles'
+    if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
+        os.remove(LOGFILENAME)
     logging.basicConfig(format=FORMAT,
-                        filename='argoTroublesomeProfiles.log',
+                        filename=LOGFILENAME,
                         level=logging.INFO)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
-    OUTPUT_DIR = getOutput()
-    # init database
-    dbName = 'argoTrouble'
-    collectionName = 'profiles'
+    hostname = os.uname().nodename
     ad = argoDatabase(dbName, collectionName, True)
-    ad.add_locally(OUTPUT_DIR, howToAdd='profiles')
+    ad.add_locally(OUTPUTDIR, howToAdd='profiles')
     logging.debug('End of log file')
