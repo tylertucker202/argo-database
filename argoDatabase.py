@@ -223,13 +223,10 @@ class argoDatabase(object):
         
         
 def getOutput():
-    try:
-        mySystem = os.uname().nodename
-    except IndexError:
-        mySystem = 'carbyTrouble'
+    mySystem = os.uname().nodename
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    elif mySystem == 'kadavu':
+    elif mySystem == 'kadavu.ucsd.edu':
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
         OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
