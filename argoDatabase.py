@@ -168,6 +168,13 @@ class argoDatabase(object):
         except ValueError as err:
             logging.warning('Value Error encountered for profile: {}'.format(fileName))
             logging.warning('Reason: {}'.format(err.args))
+        except UnboundLocalError as err:
+            logging.warning('Float: {0} cycle: {1} profileDf not created.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Reason: {}'.format(err.args))
+        except: 
+            logging.warning('Error encountered for profile: {}'.format(fileName))
+            logging.warning('Reason: unknown')
         doc = p2D.get_profile_doc()
         return doc
 
