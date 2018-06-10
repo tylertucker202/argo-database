@@ -207,6 +207,11 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: {}'.format(err.args))
             raise UnboundLocalError('Reason: {}'.format(err.args))
+        except:
+            logging.warning('Float: {0} cycle: {1} profileDf not created.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Reason: unknown')
+            raise UnboundLocalError('Reason: unknown')            
 
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = int(maxPres)
