@@ -9,6 +9,9 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 import pdb
+import warnings
+
+warnings.simplefilter('error', RuntimeWarning)
 
 
 class netCDFToDoc(object):
@@ -69,6 +72,10 @@ class netCDFToDoc(object):
             except KeyError:
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[doc_key] = np.nan
+            except RuntimeWarning as err:
+                pdb.set_trace()
+                logging.warning('runtime warning when getting adjusted value. Reason: {}'.format(err.args))
+                
             else:  # sometimes a masked array is used
                 try:
                     df[doc_key] = self.variables[measStr + '_ADJUSTED'][self.idx, :].data
@@ -182,13 +189,21 @@ class netCDFToDoc(object):
         self.add_string_values('PI_NAME')
         try:
             profileDf = self.makeProfileDf()
+            if profileDf.shape[0] == 0:
+                raise AttributeError('Float: {0} cycle: {1} has no valid measurements.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
         except ValueError as err:
             logging.warning('Float: {0} cycle: {1} profileDf not created.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: {}'.format(err.args))
-        if profileDf.shape[0] == 0:
-            raise AttributeError('Float: {0} cycle: {1} has no valid measurements.'
-                          ' Not going to add'.format(self.platformNumber, self.idx))
+            pdb.set_trace()
+            raise ValueError('Reason: {}'.format(err.args))
+        except UnboundLocalError as err:
+            logging.warning('Float: {0} cycle: {1} profileDf not created.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Reason: {}'.format(err.args))
+            raise UnboundLocalError('Reason: {}'.format(err.args))
+
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = int(maxPres)
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
@@ -212,8 +227,9 @@ class netCDFToDoc(object):
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
         except:
-            pdb.set_trace()
-            asdf= 1
+            logging.warning('Float: {0} cycle: {1} profileDf not created.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('check position qc')
         #  currently does not add do qc on position
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')

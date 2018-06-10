@@ -165,8 +165,11 @@ class argoDatabase(object):
             logging.warning(err.args)
             return
         except TypeError as err:
-            pdb.set_trace()
-            logging('unknown error encountered for profile: {}'.format(fileName))
+            logging('Type error encountered for profile: {}'.format(fileName))
+            logging.warning('Reason: {}'.format(err.args))
+        except ValueError as err:
+            logging('Value Error encountered for profile: {}'.format(fileName))
+            logging.warning('Reason: {}'.format(err.args))
         doc = p2D.get_profile_doc()
         return doc
 
