@@ -106,12 +106,10 @@ class argoDatabase(object):
         logging.debug('number of profiles deleted: {}'.format(len(idList)))
         countBefore = self.profiles_coll.find({}).count()
         self.profiles_coll.delete_many({'_id': {'$in': idList}})
-        countAfter = b4 = self.profiles_coll.find({}).count()
+        countAfter = self.profiles_coll.find({}).count()
         delta = countBefore - countAfter
         self.profiles_coll.find({}).count()
         logging.debug('number of delayed profiles: {}'.format(delta))
-        
-        
 
     @staticmethod
     def format_param(param):
@@ -162,13 +160,13 @@ class argoDatabase(object):
         try:
             p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
         except AttributeError as err:
-            logging.warning(err.args)
+            logging.debug(err.args)
             return
         except TypeError as err:
-            logging('Type error encountered for profile: {}'.format(fileName))
+            logging.warning('Type error encountered for profile: {}'.format(fileName))
             logging.warning('Reason: {}'.format(err.args))
         except ValueError as err:
-            logging('Value Error encountered for profile: {}'.format(fileName))
+            logging.warning('Value Error encountered for profile: {}'.format(fileName))
             logging.warning('Reason: {}'.format(err.args))
         doc = p2D.get_profile_doc()
         return doc

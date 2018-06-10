@@ -197,8 +197,11 @@ class netCDFToDoc(object):
             logging.warning('Float: {0} cycle: {1} profileDf not created.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: {}'.format(err.args))
-            pdb.set_trace()
             raise ValueError('Reason: {}'.format(err.args))
+        except KeyError as err:
+            logging.warning('Key error. Float: {0} cycle: {1} profileDf not created.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Reason: {}'.format(err.args))            
         except UnboundLocalError as err:
             logging.warning('Float: {0} cycle: {1} profileDf not created.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
