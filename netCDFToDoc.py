@@ -73,8 +73,9 @@ class netCDFToDoc(object):
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[doc_key] = np.nan
             except RuntimeWarning as err:
-                pdb.set_trace()
                 logging.warning('runtime warning when getting adjusted value. Reason: {}'.format(err.args))
+                logging.warning(('Float: {0} cycle: {1} may be missing an adjusted value.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber)))
                 
             else:  # sometimes a masked array is used
                 try:
