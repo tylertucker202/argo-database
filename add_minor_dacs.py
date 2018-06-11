@@ -21,7 +21,11 @@ if __name__ == '__main__':
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     hostname = os.uname().nodename
-    ad = argoDatabase(dbName, collectionName, True)
+    ad = argoDatabase(dbName, collectionName,
+                 replaceProfile=True,
+                 qcThreshold='1', 
+                 dbDumpThreshold=10000,
+                 deleteDelayed=False)
     ad.add_locally(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
     logging.debug('End of log file')
 
