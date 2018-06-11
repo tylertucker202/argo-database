@@ -175,6 +175,7 @@ class argoDatabase(object):
                           ' Not going to add'.format(fileName))
             logging.warning('Reason: {}'.format(err.args))
         except: 
+            pdb.set_trace()
             logging.warning('Error encountered for profile: {}'.format(fileName))
             logging.warning('Reason: unknown')
 

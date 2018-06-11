@@ -207,10 +207,16 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: {}'.format(err.args))
             raise UnboundLocalError('Reason: {}'.format(err.args))
+        except AttributeError as err:
+            logging.debug('Float: {0} cycle: {1} has no valid measurements.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            raise AttributeError('Float: {0} cycle: {1} has no valid measurements.'
+                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
         except:
             logging.warning('Float: {0} cycle: {1} profileDf not created.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: unknown')
+            pdb.set_trace()
             raise UnboundLocalError('Reason: unknown')            
 
         maxPres = profileDf.pres.max()
