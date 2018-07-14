@@ -19,7 +19,7 @@ class argoDatabase(object):
                  replaceProfile=False,
                  qcThreshold='1', 
                  dbDumpThreshold=10000,
-                 deleteDelayed=True):
+                 removeExisting=True):
         logging.debug('initializing ArgoDatabase')
         self.init_database(dbName)
         self.init_profiles_collection(collectionName)
@@ -28,7 +28,7 @@ class argoDatabase(object):
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
-        self.deleteDelayed = deleteDelayed
+        self.removeExisting = removeExisting
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -67,10 +67,10 @@ class argoDatabase(object):
             logging.warning('howToAdd not recognized. not going to do anything.')
             return
 
-        if self.deleteDelayed == True:
-            reDelay = re.compile(r'.*D\d{1,}')
-            delayModeFiles = list(filter(reDelay.match,files))
-            self.remove_profiles(delayModeFiles)
+        if self.removeExisting == True: # Removes profiles on list before adding list (redundant...but requested)
+            #reExist = re.compile(r'.*D\d{1,}')
+            #delayModeFiles = list(filter(reDelay.match,files))
+            self.remove_profiles(files)
     
 
         documents = []

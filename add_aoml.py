@@ -25,6 +25,6 @@ if __name__ == '__main__':
                  replaceProfile=True,
                  qcThreshold='1', 
                  dbDumpThreshold=10000,
-                 deleteDelayed=False)
+                 removeExisting=False)
     ad.add_locally(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
-    logging.debug('End of log file')
+    logging.warning('End of log file')

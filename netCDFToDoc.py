@@ -101,7 +101,8 @@ class netCDFToDoc(object):
                     df[doc_key] = self.variables[measStr][self.idx, :].data
                 except ValueError:
                     logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
-            df.ix[df[doc_key] >= 99999, not_adj] = np.NaN
+	    # Sometimes non-adjusted value is invalid.
+            # df.ix[df[doc_key] >= 99999, not_adj] = np.NaN # not sure this is needed anymore
             try:
                 df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
             except KeyError:
@@ -174,6 +175,11 @@ class netCDFToDoc(object):
                 self.profileDoc[valueName] = value
 
         except KeyError:
+            if valueName == 'PLATFORM_TYPE':
+                instRefExists = 'INST_REFERENCE' in self.variables.keys()
+                logging.debug('PLATFORM_TYPE not found.'
+                              'INST_REFERENCE exists? {}'.format(instRefExists))
+                raise KeyError    
             logging.debug('unknown key {0}.'
                           ' Not going to add item to document'.format(valueName))
         except:
@@ -185,7 +191,11 @@ class netCDFToDoc(object):
         Takes a profile measurement and formats it into a dictionary object.
         """
         self.add_string_values('POSITIONING_SYSTEM')
-        self.add_string_values('PLATFORM_TYPE')
+        # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
+        try:
+            self.add_string_values('PLATFORM_TYPE')
+        except KeyError:
+            self.add_string_values('INST_REFERENCE')
         self.add_string_values('DATA_MODE')
         self.add_string_values('PI_NAME')
         try:
