@@ -172,7 +172,10 @@ class netCDFToDoc(object):
                 else:
                     value = ''.join([(x.astype(str)) for x in self.variables[valueName][self.idx].data])
                     value = value.strip(' ')
-                self.profileDoc[valueName] = value
+		if valueName == 'INST_REFERENCE': # renames 'INST_REFERENCE' to 'PLATFORM_TYPE'
+		    self.profileDoc['PLATFORM_TYPE'] = value:
+                else:
+                    self.profileDoc[valueName] = value
 
         except KeyError:
             if valueName == 'PLATFORM_TYPE':
