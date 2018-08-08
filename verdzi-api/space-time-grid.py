@@ -16,7 +16,7 @@ if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename='space-time-grid.log',
-                        level=logging.WARNING)
+                        level=logging.DEBUG)
     logging.debug('Start of log file')
 
     start = datetime.now()
@@ -57,12 +57,19 @@ if __name__ == '__main__':
     print('should be 37: {}'.format(len(datesSet[0:37])))
     print('should be 37: {}'.format(len(datesSet[-37:])))
 
+    continueAtIdx = 3
+    endAtIdx = 100
+    logging.debug('number of dates:'.format(len(datesSet))
+
 
     for tdx, dates in enumerate(datesSet):
-        #if job breaks at a certain point, use continueAtIdx to skip what has already been created. 
-        continueAtIdx = 165
+        #if job breaks at a certain point, use continueAtIdx to skip what has already been created.
         if tdx < continueAtIdx:
            continue
+        if tdx >= endAtIdx:
+           continue
+
+        logging.debug('time index: {}'.format(tdx))
         print('time index: {}'.format(tdx))
         startDate, endDate = dates
 
@@ -83,8 +90,8 @@ if __name__ == '__main__':
             df = pd.concat([df, aggDf], axis = 0)
             #make a csv
         df.to_csv("out/space-time-grid/column_tdx_" + str(tdx) + ".csv")
-        print('time index: {}'.format(tdx))
+        logging.debug('time index: {}'.format(tdx))
         timeTick = datetime.now()
-        print(timeTick.strftime(format='%Y-%m-%d %H:%M'))
+        logging.debug(timeTick.strftime(format='%Y-%m-%d %H:%M'))
         dt = timeTick-start
-        print('running for: {}'.format(dt))
+        logging.debug('running for: {}'.format(dt))

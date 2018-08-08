@@ -56,8 +56,8 @@ def bin_layer_df(df, delta, layer):
     return df
 
 def get_ocean_slice(startDate, endDate, presRange='[0,30]'):
-    #baseURL = 'http://www.argovis.com/gridding/presSlice/'
-    baseURL = 'http://localhost:3000/gridding/presSlice/'
+    baseURL = 'http://www.argovis.com/gridding/presSlice/'
+    #baseURL = 'http://localhost:3000/gridding/presSlice/'
     startDateQuery = '?startDate=' + startDate
     endDateQuery = '&endDate=' + endDate
     presRangeQuery = '&presRange=' + presRange
