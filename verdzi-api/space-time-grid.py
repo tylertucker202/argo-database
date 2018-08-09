@@ -57,8 +57,8 @@ if __name__ == '__main__':
     print('should be 37: {}'.format(len(datesSet[0:37])))
     print('should be 37: {}'.format(len(datesSet[-37:])))
 
-    continueAtIdx = 200
-    endAtIdx = 300
+    continueAtIdx = 300
+    endAtIdx = 400
     logging.debug('number of dates:{}'.format(len(datesSet)))
 
     for tdx, dates in enumerate(datesSet):
