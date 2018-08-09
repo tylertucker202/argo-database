@@ -60,6 +60,7 @@ def parse_into_df(profiles):
         profileDf['lon'] = profile['lon']
         profileDf['date'] = profile['date']
         df = pd.concat([df, profileDf])
+        #df = pd.concat([df, profileDf]) #used for python3.6
     return df
 
 def _get_selection_profiles(startDate, endDate, shape, presRange=None):
