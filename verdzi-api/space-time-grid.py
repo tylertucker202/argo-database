@@ -12,6 +12,7 @@ import pandas as pd
 from datetime import datetime
 import logging
 import pdb
+import sys
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
@@ -54,15 +55,14 @@ if __name__ == '__main__':
     for idx, interval in enumerate(intervals):
         presIntervals.append([idx+1, interval])
     datesSet = ver.get_space_time_dates()
-    print('should be 37: {}'.format(len(datesSet[0:37])))
-    print('should be 37: {}'.format(len(datesSet[-37:])))
 
-    continueAtIdx = 300
-    endAtIdx = 400
+    continueAtIdx = int(sys.argv[1])
+    endAtIdx = int(sys.argv[2])
+    logging.debug('start at idx:{}'.format(continueAtIdx))
+    logging.debug('end at idxs:{}'.format(endAtIdx))
     logging.debug('number of dates:{}'.format(len(datesSet)))
 
     for tdx, dates in enumerate(datesSet):
-        #if job breaks at a certain point, use continueAtIdx to skip what has already been created.
         if tdx < continueAtIdx:
            continue
         if tdx >= endAtIdx:
