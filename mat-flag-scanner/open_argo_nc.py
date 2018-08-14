@@ -244,7 +244,7 @@ def open_Argo_ncfile(filename, path_files):
         #         print(data[v])
         #         ciao
 
-        savemat(os.path.join(path_files,data['x_id']+'.mat'), data, oned_as='row')
+        #savemat(os.path.join(path_files,data['x_id']+'.mat'), data, oned_as='row')
 
     else:
         data['flag_no_file']      = 1

@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     for idx, file in enumerate(fileNames):
         logging.debug(file)
-        ncFile = open_Argo_ncfile( os.path.join(argoMirrorPath, file), filePaths)
+        ncFile = open_Argo_ncfile(os.path.join(argoMirrorPath, file), filePaths)
         for flagVar in flagVariables:
            flags[flagVar].append(ncFile[flagVar])
            if (ncFile[flagVar] !=0 ):
