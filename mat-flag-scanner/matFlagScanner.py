@@ -11,27 +11,23 @@ import pdb
 import logging
 from numpy import ma as ma
 from scipy.io import savemat
-from open_argo_nc import open_Argo_ncfile
+from openArgoNC import openArgoNcFile
 
-def get_file_names(mirrorPath):
-    # alternative way to get list of profiles using regex
-    '''
-    dacs = glob.glob(os.path.join(mirrorPath, '*'))
-    file_names = []
-    for dac in dacs:
-        file_names = file_names+glob.glob(os.path.join(mirrorPath, dac, '**', 'profiles', '*.nc'))
-    '''
-    # get list of profiles from text file.
-    path_files = os.path.join(os.getcwd(), 'argovis-mat-python')
-    path_flags = os.path.join(os.getcwd(), 'argovis-data')
-    # filelist in input
-    filename_list = os.path.join(path_flags, 'prof_fname_mirror.txt')
-    with open(filename_list) as f:
-        file_names = f.readlines()
-    file_names = [mirrorPath + os.sep + x.strip('\n') for x in file_names]
-    pdb.set_trace()
-    path_argo_mirror = mirrorPath
-    return file_names, path_files, path_argo_mirror, path_flags, filename_list
+def get_file_names(mirrorPath, regexFlag=True):
+
+    pathFiles = os.path.join(os.getcwd(), 'argovis-mat-python')
+    pathFlags = os.path.join(os.getcwd(), 'argovis-data')
+    filenameList = os.path.join(pathFlags, 'prof_fname_mirror.txt')
+    if regexFlag:
+        dacs = glob.glob(os.path.join(mirrorPath, '*'))
+        file_names = []
+        for dac in dacs:
+            fileNames = file_names+glob.glob(os.path.join(mirrorPath, dac, '**', 'profiles', '*.nc'))
+    else:
+        with open(filenameList) as f:
+            fileNames = f.readlines()
+        fileNames = [mirrorPath + os.sep + x.strip('\n') for x in fileNames]
+    return fileNames, pathFiles, mirrorPath, pathFlags, filenameList
 
 
 if __name__ == '__main__':
@@ -53,19 +49,28 @@ if __name__ == '__main__':
         mirrorPath = os.path.join(os.sep, 'home', 'tylertucker', 'ifremer')
 
     logging.debug('starting argoNCSandbox')
-    fileNames, filePaths, argoMirrorPath, flagPaths, filenameList = get_file_names(mirrorPath)
+    fileNames, filePaths, argoMirrorPath, flagPaths, filenameList = get_file_names(mirrorPath, True)
     flagVariables = ['flag_bad_pos_time','flag_bad_data','flag_bad_TEMP','flag_bad_PSAL','flag_no_file',]
     flags = {}
     for flagVar in flagVariables:
         flags[flagVar] = []
+    
+    myArgoNCHelper = openArgoNcFile()
 
     for idx, file in enumerate(fileNames):
+        fileName = os.path.join(argoMirrorPath, file)
         logging.debug(file)
-        ncFile = open_Argo_ncfile(os.path.join(argoMirrorPath, file), filePaths)
+        try:
+            myArgoNCHelper.create_profile_data_if_exists(fileName)
+            ncFile = myArgoNCHelper.get_profile_data()
+        except Exception as err:
+            logging.warning('File: {0} not included. Reason: {1}'.format(file, err))
+        pdb.set_trace()
+        
         for flagVar in flagVariables:
-           flags[flagVar].append(ncFile[flagVar])
-           if (ncFile[flagVar] !=0 ):
-               logging.debug(flagVar+' = '+str(ncFile[flagVar]))
+            flags[flagVar].append(ncFile[flagVar])
+            if (ncFile[flagVar] !=0 ):
+                logging.debug(flagVar+' = '+str(ncFile[flagVar]))
 
         if (ma.remainder(idx+1,100000)==0):
             logging.debug(str(idx/len(fileNames)*100) + '% done')

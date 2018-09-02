@@ -11,6 +11,7 @@ import bson.errors
 from bson.decimal128 import Decimal128
 import pdb
 from netCDFToDoc import netCDFToDoc
+from openArgoNC import openArgoNcFile
 
 class argoDatabase(object):
     def __init__(self,
@@ -29,6 +30,7 @@ class argoDatabase(object):
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
+        self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -82,6 +84,7 @@ class argoDatabase(object):
             variables = root_grp.variables
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName)
             if isinstance(doc, dict):
+                doc = self.add_flags(doc, fileName)
                 documents.append(doc)
             if len(documents) >= self.dbDumpThreshold:
                 logging.debug('dumping data to database')
@@ -92,6 +95,26 @@ class argoDatabase(object):
             self.add_single_profile(documents[0], fileName)
         elif len(documents) > 1:
             self.add_many_profiles(documents, fileName)
+            
+    def add_flags(self, doc, filename):
+        try:
+            self.argoFlagsWriter.create_profile_data_if_exists(filename)
+            flagDoc = self.argoFlagsWriter.get_profile_data()
+        except TypeError as err:
+            logging.warning('Type error: {}'.format(err))
+            logging.warning('could not retrieve flags for: {}'.format(filename))
+            return doc            
+        except:
+            logging.warning('unknown error for: {}. could not retrieve flags'.format(filename))
+            return doc
+        doc['VERTICAL_SAMPLING_SCHEME'] = flagDoc['VERTICAL_SAMPLING_SCHEME']
+        doc['STATION_PARAMETERS_inMongoDB'] = flagDoc['STATION_PARAMETERS_inMongoDB']
+        doc['BASIN'] = flagDoc['BASIN']
+        
+        return doc
+        
+        
+        
 
     def remove_profiles(self, files):
         #get profile ids
@@ -175,7 +198,6 @@ class argoDatabase(object):
                           ' Not going to add'.format(fileName))
             logging.warning('Reason: {}'.format(err.args))
         except: 
-            pdb.set_trace()
             logging.warning('Error encountered for profile: {}'.format(fileName))
             logging.warning('Reason: unknown')
 
@@ -186,10 +208,8 @@ class argoDatabase(object):
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
-            except bson.errors.InvalidDocument:
-                pdb.set_trace()
-                logging.warning('bson error')
-                logging.warning('check the following document: {0}'.format(doc['_id']))
+            except bson.errors.InvalidDocument as err:
+                logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
             except TypeError:
                 logging.warning('Type error while inserting one document.')
         else:
@@ -202,9 +222,8 @@ class argoDatabase(object):
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
-            except bson.errors.InvalidDocument:
-                logging.warning('bson error')
-                logging.warning('check the following document: {0}'.format(doc['_id']))
+            except bson.errors.InvalidDocument as err:
+                logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
             except TypeError:
                 logging.warning('Type error while inserting one document.')
 
@@ -227,7 +246,7 @@ class argoDatabase(object):
                 self.add_single_profile(doc, file_name)
         except TypeError:
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
-            logging.warning('Type error when during insert_many method. Check documents.')
+            logging.warning('Type error during insert_many method. Check documents.')
             logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
         
         
@@ -243,18 +262,3 @@ def getOutput():
         print('pc not found. assuming default')
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
     return OUTPUT_DIR
-
-if __name__ == '__main__':
-    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(format=FORMAT,
-                        filename='argoTroublesomeProfiles.log',
-                        level=logging.DEBUG)
-    logging.debug('Start of log file')
-    HOME_DIR = os.getcwd()
-    OUTPUT_DIR = getOutput()
-    # init database
-    dbName = 'argoTrouble'
-    collectionName = 'profiles'
-    ad = argoDatabase(dbName, collectionName, True)
-    ad.add_locally(OUTPUT_DIR, howToAdd='profiles')
-    logging.debug('End of log file')

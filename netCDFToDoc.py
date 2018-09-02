@@ -153,7 +153,7 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
         profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
         qcColNames = [k for k in profileDf.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
-        profileDf.drop(qcColNames, axis = 1, inplace = True)
+        profileDf.drop(qcColNames, axis = 1, inplace = True)    
         return profileDf
 
     def add_string_values(self, valueName):
@@ -231,7 +231,21 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
             logging.warning('Reason: unknown')
             pdb.set_trace()
-            raise UnboundLocalError('Reason: unknown')            
+            raise UnboundLocalError('Reason: unknown')
+        
+        try:
+            presMaxForTemp = profileDf[ profileDf['temp'] == profileDf['temp'].max()]['pres'].max()
+            presminForTemp = profileDf[ profileDf['temp'] == profileDf['temp'].min()]['pres'].min()
+            presMaxForPsal = profileDf[ profileDf['temp'] == profileDf['temp'].max()]['pres'].max()
+            presminForPsal = profileDf[ profileDf['temp'] == profileDf['temp'].min()]['pres'].min()
+            self.profileDoc['pres_max_for_TEMP'] = presMaxForTemp.astype(np.float64)
+            self.profileDoc['PRES_min_for_TEMP'] = presminForTemp.astype(np.float64)
+            self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
+            self.profileDoc['PRES_min_for_PSAL'] = presminForPsal.astype(np.float64)
+        except:
+            pdb.set_trace()
+            logging.warning('unable to get presmax/min')
+            
 
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = int(maxPres)
@@ -239,9 +253,18 @@ class netCDFToDoc(object):
         if type(self.variables['JULD'][self.idx]) == np.ma.core.MaskedConstant:
             raise AttributeError('Float: {0} cycle: {1} has unknown date.'
                           ' Not going to add'.format(self.platformNumber, self.cycleNumber))
-
         date = refDate + timedelta(self.variables['JULD'][self.idx])
         self.profileDoc['date'] = date
+        
+        try:
+            dateQC = str(self.variables['JULD_QC'][self.idx].astype(int))
+        except AttributeError:
+            if type(self.variables['JULD_QC'][self.idx] == np.ma.core.MaskedConstant):
+                dateQC = str(self.variables['JULD_QC'][self.idx].data.astype(int))
+                self.profileDoc['date_qc'] = dateQC
+            else:
+                raise AttributeError('error with date_qc. Not going to add.')
+        
         phi = self.variables['LATITUDE'][self.idx]
         lam = self.variables['LONGITUDE'][self.idx]
         if type(phi) == np.ma.core.MaskedConstant or type(lam) == np.ma.core.MaskedConstant:

@@ -16,7 +16,7 @@ if __name__ == '__main__':
         os.remove(LOGFILENAME)
     logging.basicConfig(format=FORMAT,
                         filename=LOGFILENAME,
-                        level=logging.INFO)
+                        level=logging.WARNING)
     logging.debug('Start of log file')
     HOME_DIR = os.getcwd()
     hostname = os.uname().nodename
