@@ -1,11 +1,13 @@
 import netCDF4
 from numpy import ma as ma
+from numpy import stack, nonzero
+from scipy.interpolate import griddata
 import os.path
 import logging
 import pdb
 
 class openArgoNcFile(object):
-    def __init__(self):
+    def __init__(self, basinFilename='basinmask_01.nc'):
         self.N_PROF_select = 0
         self.inside_function = ''
         # initialize the dictionary in output
@@ -17,6 +19,7 @@ class openArgoNcFile(object):
         self.baseProfileData['flag_bad_PSAL']     = 0
         self.baseProfileData['flag_no_file']      = 0
         self._init_profileData()
+        self._init_basin(basinFilename)
         self.variablesInProfile = ['PLATFORM_NUMBER',
                                    'PI_NAME',
                                    'STATION_PARAMETERS',
@@ -58,9 +61,19 @@ class openArgoNcFile(object):
         self.varsToNumber = ['LONGITUDE', 'LATITUDE','JULD','CYCLE_NUMBER']
         self.varsToFix = ['POSITION_QC','JULD_QC','DATA_MODE','DIRECTION','STATION_PARAMETERS']
         self.varsToRemove = ['PRES', 'PRES_QC', 'PSAL', 'PSAL_QC', 'TEMP', 'TEMP_QC']
+
+
         
     def _init_profileData(self):
         return self.baseProfileData
+    
+    def _init_basin(self, basinFilename):
+        basinNc = netCDF4.Dataset(basinFilename)
+        idx = nonzero(~basinNc.variables['BASIN_TAG'][:].mask)
+    	    #assert self.basinNc.variables['LONGITUDE'].mask == True
+    	    #assert self.basinNc.variables['LATITUDE'].mask == True
+        self.basin = basinNc.variables['BASIN_TAG'][:][idx].astype('i')
+        self.coords = stack([basinNc.variables['LATITUDE'][idx[0]], basinNc.variables['LONGITUDE'][idx[1]]]).T
         
     def create_profile_data_if_exists(self, filename):
         if os.path.isfile(filename.strip()) is True:
@@ -84,7 +97,9 @@ class openArgoNcFile(object):
             self.profileData['PLATFORM_TYPE'] = self.profileData['INST_REFERENCE']
             del self.profileData['INST_REFERENCE']
         # write the basin mask
-        self.profileData['BASIN'] = self.profileData['NaN_MongoDB']
+        lat = float(self.profileData['LATITUDE'])
+        lon = float(self.profileData['LONGITUDE'])
+        self.profileData['BASIN'] = self.get_basin(lat, lon)
         self._decode_strings()
         self._format_measurements()
         self._check_pos_time()
@@ -245,4 +260,12 @@ class openArgoNcFile(object):
         for varTR in self.varsToRemove:
             if varTR in self.profileData.keys():
                 del self.profileData[varTR]
+
+    def get_basin(self, lat, lon):
+        """Returns the basin code for a given lat lon coordinates
+        	Ex.:
+        basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
+        	"""
+        basin = int(griddata(self.coords, self.basin, (lon, lat), method='nearest'))
+        return basin
 
