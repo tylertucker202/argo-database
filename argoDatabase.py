@@ -31,6 +31,7 @@ class argoDatabase(object):
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
         self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
+        self.p2D = netCDFToDoc()
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -181,8 +182,8 @@ class argoDatabase(object):
         idx = 0 #stometimes there are two profiles. The second profile is ignored.
         qcThreshold='1'
         try:
-            p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
-            doc = p2D.get_profile_doc()
+            self.p2D.init_doc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
+            doc = self.p2D.get_profile_doc()
             return doc
         except AttributeError as err:
             logging.debug(err.args)

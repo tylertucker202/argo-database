@@ -1,6 +1,5 @@
 import netCDF4
-from numpy import ma as ma
-from numpy import stack, nonzero
+import numpy as np
 from scipy.interpolate import griddata
 import os.path
 import logging
@@ -69,11 +68,11 @@ class openArgoNcFile(object):
     
     def _init_basin(self, basinFilename):
         basinNc = netCDF4.Dataset(basinFilename)
-        idx = nonzero(~basinNc.variables['BASIN_TAG'][:].mask)
+        idx = np.nonzero(~basinNc.variables['BASIN_TAG'][:].mask)
     	    #assert self.basinNc.variables['LONGITUDE'].mask == True
     	    #assert self.basinNc.variables['LATITUDE'].mask == True
         self.basin = basinNc.variables['BASIN_TAG'][:][idx].astype('i')
-        self.coords = stack([basinNc.variables['LATITUDE'][idx[0]], basinNc.variables['LONGITUDE'][idx[1]]]).T
+        self.coords = np.stack([basinNc.variables['LATITUDE'][idx[0]], basinNc.variables['LONGITUDE'][idx[1]]]).T
         
     def create_profile_data_if_exists(self, filename):
         if os.path.isfile(filename.strip()) is True:
@@ -123,8 +122,8 @@ class openArgoNcFile(object):
             else:
                 tmpNcVariables = ncData.variables[ncVar][:]
 
-            tmpNcVariables = ma.asanyarray(tmpNcVariables)
-            if ma.any(['STRING' in d for d in ncData.variables[ncVar].dimensions]):
+            tmpNcVariables = np.ma.asanyarray(tmpNcVariables)
+            if np.ma.any(['STRING' in d for d in ncData.variables[ncVar].dimensions]):
                 pass
             self.profileData[ncVar] = tmpNcVariables
 
@@ -133,7 +132,7 @@ class openArgoNcFile(object):
         for ncVar in self.strings_to_decode:
             if ncVar in self.profileData.keys():
                 tmpNcVariables = self.profileData[ncVar]
-                if type(tmpNcVariables) == ma.core.MaskedArray:
+                if type(tmpNcVariables) == np.ma.core.MaskedArray:
                     tmpNcVariables = b"".join(tmpNcVariables).decode('utf-8').strip('\x00')
                     tmpNcVariables = tmpNcVariables.replace('\x00',' ',1)
                     self.profileData[ncVar] = tmpNcVariables.replace('\x00','')

@@ -8,15 +8,16 @@ import logging
 import pandas as pd
 import numpy as np
 from datetime import timedelta
-import pdb
 import warnings
 
 warnings.simplefilter('error', RuntimeWarning)
 
 
 class netCDFToDoc(object):
-    def __init__(self,
-                 variables,
+    def __init__(self):
+        logging.debug('initializing netCDFToDoc')
+
+    def init_doc(self, variables,
                  dacName,
                  refDate,
                  remotePath,
@@ -30,6 +31,7 @@ class netCDFToDoc(object):
         self.variables = variables
         self.idx = idx
         self.cycleNumber = int(self.variables['CYCLE_NUMBER'][self.idx].astype(str))
+        self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.profileDoc = dict()
         
         # populate profileDoc
@@ -122,7 +124,7 @@ class netCDFToDoc(object):
             df.shape
         return df
 
-    def makeProfileDf(self):    
+    def makeProfileDf(self):
         profileDf = pd.DataFrame()
         keys = self.variables.keys()
         #  Profile measurements are gathered in a dataframe
@@ -149,8 +151,8 @@ class netCDFToDoc(object):
         elif 'psal' in profileDf.columns:
             profileDf.dropna(subset=['psal'], how='all', inplace=True)
         else:
-            raise ValueError('Float: {0} cycle: {1} has neither temp nor psal.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            raise ValueError('Profile:{0} has neither temp nor psal.'
+                          ' Not going to add'.format(self.profileId))
         profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
         qcColNames = [k for k in profileDf.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
         profileDf.drop(qcColNames, axis = 1, inplace = True)    
@@ -164,8 +166,8 @@ class netCDFToDoc(object):
         try:
             if type(self.variables[valueName][self.idx]) == np.ma.core.MaskedConstant:
                 value = self.variables[valueName][self.idx].astype(str)
-                logging.debug('Float: {0} cycle: {1} has unknown {2}.'
-                          ' Not going to add item to document'.format(self.cycleNumber, valueName))
+                logging.debug('Profile:{0} has unknown {1}.'
+                          ' Not going to add item to document'.format(self.profileId, valueName))
             else:
                 if valueName == 'DATA_MODE':
                     value = self.variables[valueName][self.idx].astype(str)
@@ -205,32 +207,31 @@ class netCDFToDoc(object):
         try:
             profileDf = self.makeProfileDf()
             if profileDf.shape[0] == 0:
-                raise AttributeError('Float: {0} cycle: {1} has no valid measurements.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+                raise AttributeError('Profile:{0} has no valid measurements.'
+                          ' Not going to add'.format(self.profileId))
         except ValueError as err:
-            logging.warning('Float: {0} cycle: {1} profileDf not created.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Profile:{0} profileDf not created.'
+                          ' Not going to add'.format(self.profileId))
             logging.warning('Reason: {}'.format(err.args))
             raise ValueError('Reason: {}'.format(err.args))
         except KeyError as err:
-            logging.warning('Key error. Float: {0} cycle: {1} profileDf not created.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Profile:{0} has KeyError:{1} profileDf not created.'
+                          ' Not going to add'.format(self.profileId, err))
             logging.warning('Reason: {}'.format(err.args))            
         except UnboundLocalError as err:
-            logging.warning('Float: {0} cycle: {1} profileDf not created.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
+                          ' Not going to add'.format(self.profileId, err))
             logging.warning('Reason: {}'.format(err.args))
             raise UnboundLocalError('Reason: {}'.format(err.args))
         except AttributeError as err:
-            logging.debug('Float: {0} cycle: {1} has no valid measurements.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
-            raise AttributeError('Float: {0} cycle: {1} has no valid measurements.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.debug('Profile:{} has AttributeError:{1} has no valid measurements.'
+                          ' Not going to add'.format(self.profileId, err))
+            raise AttributeError('Profile:{} has no valid measurements.'
+                          ' Not going to add'.format(self.profileId))
         except:
-            logging.warning('Float: {0} cycle: {1} profileDf not created.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Profile:{} has unknown error. profileDf not created.'
+                          ' Not going to add'.format(self.profileId))
             logging.warning('Reason: unknown')
-            pdb.set_trace()
             raise UnboundLocalError('Reason: unknown')
         
         try:
@@ -243,16 +244,15 @@ class netCDFToDoc(object):
             self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
             self.profileDoc['PRES_min_for_PSAL'] = presminForPsal.astype(np.float64)
         except:
-            pdb.set_trace()
-            logging.warning('unable to get presmax/min')
+            logging.warning('Profile {}: unable to get presmax/min for'.format(self.profileId))
             
 
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = int(maxPres)
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         if type(self.variables['JULD'][self.idx]) == np.ma.core.MaskedConstant:
-            raise AttributeError('Float: {0} cycle: {1} has unknown date.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            raise AttributeError('Profile:{0} has unknown date.'
+                          ' Not going to add'.format(self.profileId))
         date = refDate + timedelta(self.variables['JULD'][self.idx])
         self.profileDoc['date'] = date
         
@@ -268,8 +268,8 @@ class netCDFToDoc(object):
         phi = self.variables['LATITUDE'][self.idx]
         lam = self.variables['LONGITUDE'][self.idx]
         if type(phi) == np.ma.core.MaskedConstant or type(lam) == np.ma.core.MaskedConstant:
-            raise AttributeError('Float: {0} cycle: {1} has unknown lat-lon.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            raise AttributeError('Profile:{0} has unknown lat-lon.'
+                          ' Not going to add'.format(self.profileId))
 
         try:
             positionQC = str(self.variables['POSITION_QC'][self.idx].astype(int))
@@ -279,8 +279,8 @@ class netCDFToDoc(object):
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
         except:
-            logging.warning('Float: {0} cycle: {1} profileDf not created.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber))
+            logging.warning('Profile:{0} profileDf not created.'
+                          ' Not going to add'.format(self.profileId))
             logging.warning('check position qc')
         #  currently does not add do qc on position
         if positionQC == 4:
