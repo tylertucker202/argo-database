@@ -10,7 +10,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'argoTroublesomeProfiles.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argoTrouble'
+    dbName = 'argo'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)

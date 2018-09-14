@@ -233,12 +233,26 @@ class netCDFToDoc(object):
             presMinForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].min()
             presMaxForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].max()
             presMinForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].min()
-            self.profileDoc['pres_max_for_TEMP'] = presMaxForTemp.astype(np.float64)
-            self.profileDoc['PRES_min_for_TEMP'] = presMinForTemp.astype(np.float64)
-            self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
-            self.profileDoc['PRES_min_for_PSAL'] = presMinForPsal.astype(np.float64)
+            
+            if type(presMaxForTemp) != float or type(presMinForPsal) == float:
+                self.profileDoc['pres_max_for_TEMP'] = presMaxForTemp.astype(np.float64)
+            else:
+                logging.debug('Profile {}: unable to get pres_max_for_TEMP'.format(self.profileId))
+            if type(presMinForTemp) != float:
+                self.profileDoc['PRES_min_for_TEMP'] = presMinForTemp.astype(np.float64)
+            else:
+                logging.debug('Profile {}: unable to get pres_min_for_TEMP'.format(self.profileId))
+            if type(presMaxForPsal) != float:
+                self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
+            else:
+                logging.debug('Profile {}: unable to get pres_max_for_PSAL'.format(self.profileId))
+            if type(presMinForPsal) != float:
+                self.profileDoc['pres_min_for_PSAL'] = presMaxForPsal.astype(np.float64)
+            else:
+                logging.debug('Profile {}: unable to get pres_min_for_PSAL'.format(self.profileId))   
         except:
-            logging.warning('Profile {}: unable to get presmax/min for'.format(self.profileId))
+            pdb.set_trace()
+            logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
             
 
         maxPres = profileDf.pres.max()
