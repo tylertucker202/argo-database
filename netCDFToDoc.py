@@ -237,7 +237,6 @@ class netCDFToDoc(object):
             self.profileDoc['PRES_min_for_TEMP'] = presMinForTemp.astype(np.float64)
             self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
             self.profileDoc['PRES_min_for_PSAL'] = presMinForPsal.astype(np.float64)
-            pdb.set_trace()
         except:
             logging.warning('Profile {}: unable to get presmax/min for'.format(self.profileId))
             

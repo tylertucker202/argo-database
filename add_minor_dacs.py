@@ -10,7 +10,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'minorDacs.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'flag_argo'
+    dbName = 'argo'
     collectionName = 'profiles'
     dacs = ['nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):

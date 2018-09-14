@@ -10,7 +10,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'aoml.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'flag_argo'
+    dbName = 'argo'
     collectionName = 'profiles'
     dacs = ['aoml']    
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):

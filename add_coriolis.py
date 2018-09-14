@@ -10,7 +10,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'coriolis.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'flag_argo'
+    dbName = 'argo'
     collectionName = 'profiles'
     dacs = ['coriolis']    
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
