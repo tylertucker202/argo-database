@@ -197,7 +197,7 @@ class netCDFToDoc(object):
         try:
             profileDf = self.makeProfileDf()
             if profileDf.shape[0] == 0:
-                raise AttributeError
+                raise AttributeError('no valid measurements.')
         except ValueError as err:
             raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
                           ' Not going to add.'.format(self.profileId, err.args))
