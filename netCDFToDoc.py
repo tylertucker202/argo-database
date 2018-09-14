@@ -211,7 +211,7 @@ class netCDFToDoc(object):
             raise AttributeError('Profile:{0} has AttributeError:{1} profileDf not created.'
                           ' Not going to add.'.format(self.profileId, err))
         except Exception as err:
-            raise UnboundLocalError('Profile:{} has unknown error {1}. profileDf not created.'
+            raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err))
         
         try:
