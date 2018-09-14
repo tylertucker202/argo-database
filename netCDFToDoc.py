@@ -9,15 +9,14 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 import warnings
+import pdb
 
 warnings.simplefilter('error', RuntimeWarning)
 
 
 class netCDFToDoc(object):
-    def __init__(self):
-        logging.debug('initializing netCDFToDoc')
 
-    def init_doc(self, variables,
+    def __init__(self, variables,
                  dacName,
                  refDate,
                  remotePath,
@@ -59,9 +58,6 @@ class netCDFToDoc(object):
             return data
 
         df = pd.DataFrame()
-        
-        
-        not_adj = measStr.lower()+'_not_adj'
         adj = measStr.lower()
         
         doc_key = measStr.lower()
@@ -221,28 +217,27 @@ class netCDFToDoc(object):
         except UnboundLocalError as err:
             logging.warning('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
                           ' Not going to add'.format(self.profileId, err))
-            logging.warning('Reason: {}'.format(err.args))
             raise UnboundLocalError('Reason: {}'.format(err.args))
         except AttributeError as err:
-            logging.debug('Profile:{} has AttributeError:{1} has no valid measurements.'
+            logging.warning('Profile:{0} has AttributeError:{1} has no valid measurements.'
                           ' Not going to add'.format(self.profileId, err))
             raise AttributeError('Profile:{} has no valid measurements.'
                           ' Not going to add'.format(self.profileId))
         except:
             logging.warning('Profile:{} has unknown error. profileDf not created.'
                           ' Not going to add'.format(self.profileId))
-            logging.warning('Reason: unknown')
             raise UnboundLocalError('Reason: unknown')
         
         try:
-            presMaxForTemp = profileDf[ profileDf['temp'] == profileDf['temp'].max()]['pres'].max()
-            presminForTemp = profileDf[ profileDf['temp'] == profileDf['temp'].min()]['pres'].min()
-            presMaxForPsal = profileDf[ profileDf['temp'] == profileDf['temp'].max()]['pres'].max()
-            presminForPsal = profileDf[ profileDf['temp'] == profileDf['temp'].min()]['pres'].min()
+            presMaxForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].max()
+            presMinForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].min()
+            presMaxForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].max()
+            presMinForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].min()
             self.profileDoc['pres_max_for_TEMP'] = presMaxForTemp.astype(np.float64)
-            self.profileDoc['PRES_min_for_TEMP'] = presminForTemp.astype(np.float64)
+            self.profileDoc['PRES_min_for_TEMP'] = presMinForTemp.astype(np.float64)
             self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
-            self.profileDoc['PRES_min_for_PSAL'] = presminForPsal.astype(np.float64)
+            self.profileDoc['PRES_min_for_PSAL'] = presMinForPsal.astype(np.float64)
+            pdb.set_trace()
         except:
             logging.warning('Profile {}: unable to get presmax/min for'.format(self.profileId))
             

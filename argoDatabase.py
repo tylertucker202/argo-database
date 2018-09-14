@@ -31,7 +31,6 @@ class argoDatabase(object):
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
         self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
-        self.p2D = netCDFToDoc()
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -182,25 +181,23 @@ class argoDatabase(object):
         idx = 0 #stometimes there are two profiles. The second profile is ignored.
         qcThreshold='1'
         try:
-            self.p2D.init_doc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
-            doc = self.p2D.get_profile_doc()
+            p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
+            doc = p2D.get_profile_doc()
             return doc
         except AttributeError as err:
-            logging.debug(err.args)
+            logging.warning('Profile: {0} enountered AttributeError. \n Reason: {1}'.format(fileName, err.args))
             return
         except TypeError as err:
-            logging.warning('Type error encountered for profile: {}'.format(fileName))
-            logging.warning('Reason: {}'.format(err.args))
-        except ValueError as err:
-            logging.warning('Value Error encountered for profile: {}'.format(fileName))
-            logging.warning('Reason: {}'.format(err.args))
+            logging.warning('Profile: {0} enountered TypeError. \n Reason: {1}'.format(fileName, err.args))
+#        except ValueError as err:
+#            pdb.set_trace()
+#            logging.warning('Value Error encountered for profile: {}'.format(fileName))
+#            logging.warning('Reason: {}'.format(err.args))
         except UnboundLocalError as err:
-            logging.warning('Unbound Local Error encountered for profile: {}.'
-                          ' Not going to add'.format(fileName))
-            logging.warning('Reason: {}'.format(err.args))
-        except: 
-            logging.warning('Error encountered for profile: {}'.format(fileName))
-            logging.warning('Reason: unknown')
+            logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
+#        except: 
+#            logging.warning('Error encountered for profile: {}'.format(fileName))
+#            logging.warning('Reason: unknown')
 
     def add_single_profile(self, doc, file_name, attempt=0):
         if self.replaceProfile == True:

@@ -10,7 +10,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'aoml.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'flag_argo'
     collectionName = 'profiles'
     dacs = ['aoml']    
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     logging.basicConfig(format=FORMAT,
                         filename=LOGFILENAME,
                         level=logging.WARNING)
-    logging.debug('Start of log file')
+    logging.warning('Start of log file')
     HOME_DIR = os.getcwd()
     hostname = os.uname().nodename
     ad = argoDatabase(dbName, collectionName,

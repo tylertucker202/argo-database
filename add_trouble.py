@@ -17,7 +17,7 @@ if __name__ == '__main__':
     logging.basicConfig(format=FORMAT,
                         filename=LOGFILENAME,
                         level=logging.WARNING)
-    logging.debug('Start of log file')
+    logging.warning('Start of log file')
     HOME_DIR = os.getcwd()
     hostname = os.uname().nodename
     ad = argoDatabase(dbName,
@@ -27,4 +27,4 @@ if __name__ == '__main__':
                       dbDumpThreshold=10000,
                       removeExisting=True)
     ad.add_locally(OUTPUTDIR, howToAdd='profiles')
-    logging.debug('End of log file')
+    logging.warning('End of log file')
