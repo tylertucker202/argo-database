@@ -54,7 +54,7 @@ class netCDFToDoc(object):
                 try:
                     data = np.array([x.astype(str) for x in data])
                 except NotImplementedError:
-                    logging.warning('NotImplemented Error for idx: {1}'.format(self.idx))
+                    raise NotImplementedError('NotImplemented Error for idx: {1}'.format(self.idx))
             return data
 
         df = pd.DataFrame()
@@ -71,25 +71,22 @@ class netCDFToDoc(object):
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[doc_key] = np.nan
             except RuntimeWarning as err:
-                logging.warning('runtime warning when getting adjusted value. Reason: {}'.format(err.args))
-                logging.warning(('Float: {0} cycle: {1} may be missing an adjusted value.'
-                          ' Not going to add'.format(self.platformNumber, self.cycleNumber)))
+                raise RuntimeWarning('Profile:{0} runtime warning when getting adjusted value. Reason: {1}'.format(self.profileId, err.args))
+
                 
             else:  # sometimes a masked array is used
                 try:
                     df[doc_key] = self.variables[measStr + '_ADJUSTED'][self.idx, :].data
                 except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
+                    raise ValueError('Value error while formatting measurement {}: check data type'.format(measStr))
             try:
                 df.loc[df[doc_key] >= 99999, adj] = np.NaN
             except KeyError:
-                logging.warning('key not found...')
+                raise KeyError('key not found...')
             try:
                 df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][self.idx, :])
             except KeyError:
-                logging.warning('qc not found for {}'.format(measStr))
-                logging.warning('returning empty dataframe')
-                return pd.DataFrame()
+                raise KeyError('qc not found for {}'.format(measStr))
         else:
             # get unadjusted value. Types vary from arrays to masked arrays.
             if type(self.variables[measStr][self.idx, :]) == np.ndarray:
@@ -98,14 +95,13 @@ class netCDFToDoc(object):
                 try:
                     df[doc_key] = self.variables[measStr][self.idx, :].data
                 except ValueError:
-                    logging.warning('Value error while formatting measurement {}: check data type'.format(measStr))
+                    ValueError('Check data type for measurement {}'.format(measStr))
 	    # Sometimes non-adjusted value is invalid.
             # df.ix[df[doc_key] >= 99999, not_adj] = np.NaN # not sure this is needed anymore
             try:
                 df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
             except KeyError:
-                logging.warning('qc not found for {}'.format(measStr))
-                logging.warning('returning empty dataframe')
+                raise KeyError('qc not found for {}'.format(measStr))
                 return pd.DataFrame()
             
         """
@@ -114,10 +110,8 @@ class netCDFToDoc(object):
         try:
             df = df[df[doc_key+'_qc'] == self.qcThreshold]
         except KeyError:
-            logging.warning('measurement: {0} has no qc.'
+            raise KeyError('measurement: {0} has no qc.'
                       ' returning empty dataframe'.format(doc_key))
-            return pd.DataFrame()
-            df.shape
         return df
 
     def makeProfileDf(self):
@@ -203,30 +197,21 @@ class netCDFToDoc(object):
         try:
             profileDf = self.makeProfileDf()
             if profileDf.shape[0] == 0:
-                raise AttributeError('Profile:{0} has no valid measurements.'
-                          ' Not going to add'.format(self.profileId))
+                raise AttributeError
         except ValueError as err:
-            logging.warning('Profile:{0} profileDf not created.'
-                          ' Not going to add'.format(self.profileId))
-            logging.warning('Reason: {}'.format(err.args))
             raise ValueError('Reason: {}'.format(err.args))
         except KeyError as err:
-            logging.warning('Profile:{0} has KeyError:{1} profileDf not created.'
-                          ' Not going to add'.format(self.profileId, err))
-            logging.warning('Reason: {}'.format(err.args))            
+            raise ValueError('Profile:{0} has KeyError:{1} profileDf not created.'
+                          ' Not going to add.'.format(self.profileId, err))
         except UnboundLocalError as err:
-            logging.warning('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
+            raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
                           ' Not going to add'.format(self.profileId, err))
-            raise UnboundLocalError('Reason: {}'.format(err.args))
         except AttributeError as err:
-            logging.warning('Profile:{0} has AttributeError:{1} has no valid measurements.'
-                          ' Not going to add'.format(self.profileId, err))
             raise AttributeError('Profile:{} has no valid measurements.'
                           ' Not going to add'.format(self.profileId))
-        except:
-            logging.warning('Profile:{} has unknown error. profileDf not created.'
-                          ' Not going to add'.format(self.profileId))
-            raise UnboundLocalError('Reason: unknown')
+        except Exception as err:
+            raise UnboundLocalError('Profile:{} has unknown error {1}. profileDf not created.'
+                          ' Not going to add'.format(self.profileId, err))
         
         try:
             presMaxForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].max()
@@ -251,7 +236,6 @@ class netCDFToDoc(object):
             else:
                 logging.debug('Profile {}: unable to get pres_min_for_PSAL'.format(self.profileId))   
         except:
-            pdb.set_trace()
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
             
 
@@ -286,10 +270,9 @@ class netCDFToDoc(object):
                 positionQC = str(self.variables['POSITION_QC'][self.idx].data.astype(int))
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
-        except:
-            logging.warning('Profile:{0} profileDf not created.'
-                          ' Not going to add'.format(self.profileId))
-            logging.warning('check position qc')
+        except Exception as err:
+            raise Exception('Profile:{0} profileDf not created. Error {1}'
+                          ' Not going to add'.format(self.profileId, error))
         #  currently does not add do qc on position
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')
