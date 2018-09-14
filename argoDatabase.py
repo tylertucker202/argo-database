@@ -186,18 +186,13 @@ class argoDatabase(object):
             return doc
         except AttributeError as err:
             logging.warning('Profile: {0} enountered AttributeError. \n Reason: {1}'.format(fileName, err.args))
-            return
         except TypeError as err:
             logging.warning('Profile: {0} enountered TypeError. \n Reason: {1}'.format(fileName, err.args))
-#        except ValueError as err:
-#            pdb.set_trace()
-#            logging.warning('Value Error encountered for profile: {}'.format(fileName))
-#            logging.warning('Reason: {}'.format(err.args))
         except UnboundLocalError as err:
-            logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
-#        except: 
-#            logging.warning('Error encountered for profile: {}'.format(fileName))
-#            logging.warning('Reason: unknown')
+            if 'no valid measurements.' in err.args[0]:
+                logging.debug('Profile: {0} has no valid measurements. not going to add'.format(fileName))
+            else:
+                logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
 
     def add_single_profile(self, doc, file_name, attempt=0):
         if self.replaceProfile == True:
