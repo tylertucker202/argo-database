@@ -200,19 +200,19 @@ class netCDFToDoc(object):
                 raise AttributeError
         except ValueError as err:
             raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err))
+                          ' Not going to add.'.format(self.profileId, err.args))
         except KeyError as err:
             raise ValueError('Profile:{0} has KeyError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err))
+                          ' Not going to add.'.format(self.profileId, err.args))
         except UnboundLocalError as err:
             raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
-                          ' Not going to add'.format(self.profileId, err))
+                          ' Not going to add'.format(self.profileId, err.args))
         except AttributeError as err:
             raise AttributeError('Profile:{0} has AttributeError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err))
+                          ' Not going to add.'.format(self.profileId, err.args))
         except Exception as err:
             raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
-                          ' Not going to add'.format(self.profileId, err))
+                          ' Not going to add'.format(self.profileId, err.args))
         
         try:
             presMaxForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].max()
