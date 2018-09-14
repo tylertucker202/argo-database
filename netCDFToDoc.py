@@ -199,7 +199,8 @@ class netCDFToDoc(object):
             if profileDf.shape[0] == 0:
                 raise AttributeError
         except ValueError as err:
-            raise ValueError('Reason: {}'.format(err.args))
+            raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
+                          ' Not going to add.'.format(self.profileId, err))
         except KeyError as err:
             raise ValueError('Profile:{0} has KeyError:{1} profileDf not created.'
                           ' Not going to add.'.format(self.profileId, err))
@@ -207,8 +208,8 @@ class netCDFToDoc(object):
             raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
                           ' Not going to add'.format(self.profileId, err))
         except AttributeError as err:
-            raise AttributeError('Profile:{} has no valid measurements.'
-                          ' Not going to add'.format(self.profileId))
+            raise AttributeError('Profile:{0} has AttributeError:{1} profileDf not created.'
+                          ' Not going to add.'.format(self.profileId, err))
         except Exception as err:
             raise UnboundLocalError('Profile:{} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err))
