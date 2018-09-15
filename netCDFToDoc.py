@@ -233,7 +233,7 @@ class netCDFToDoc(object):
             else:
                 logging.debug('Profile {}: unable to get pres_max_for_PSAL'.format(self.profileId))
             if type(presMinForPsal) != float:
-                self.profileDoc['pres_min_for_PSAL'] = presMaxForPsal.astype(np.float64)
+                self.profileDoc['pres_min_for_PSAL'] = presMinForPsal.astype(np.float64)
             else:
                 logging.debug('Profile {}: unable to get pres_min_for_PSAL'.format(self.profileId))   
         except:
