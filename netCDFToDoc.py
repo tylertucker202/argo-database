@@ -250,10 +250,11 @@ class netCDFToDoc(object):
         self.profileDoc['date'] = date
         
         try:
-            dateQC = str(self.variables['JULD_QC'][self.idx].astype(int))
+            dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64)
+            self.profileDoc['date_qc'] = dateQC
         except AttributeError:
             if type(self.variables['JULD_QC'][self.idx] == np.ma.core.MaskedConstant):
-                dateQC = str(self.variables['JULD_QC'][self.idx].data.astype(int))
+                dateQC = self.variables['JULD_QC'][self.idx].data.astype(np.float64)
                 self.profileDoc['date_qc'] = dateQC
             else:
                 raise AttributeError('error with date_qc. Not going to add.')
@@ -265,10 +266,10 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.profileId))
 
         try:
-            positionQC = str(self.variables['POSITION_QC'][self.idx].astype(int))
+            positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64)
         except AttributeError:
             if type(self.variables['POSITION_QC'][self.idx] == np.ma.core.MaskedConstant):
-                positionQC = str(self.variables['POSITION_QC'][self.idx].data.astype(int))
+                positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64)
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
         except Exception as err:
