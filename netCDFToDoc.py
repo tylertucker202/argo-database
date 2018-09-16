@@ -194,6 +194,7 @@ class netCDFToDoc(object):
             self.add_string_values('INST_REFERENCE')
         self.add_string_values('DATA_MODE')
         self.add_string_values('PI_NAME')
+        self.add_string_values('WMO_INST_TYPE')
         try:
             profileDf = self.makeProfileDf()
             if profileDf.shape[0] == 0:
@@ -275,9 +276,9 @@ class netCDFToDoc(object):
         except Exception as err:
             raise Exception('Profile:{0} profileDf not created. Error {1}'
                           ' Not going to add'.format(self.profileId, error))
-        #  currently does not add do qc on position
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')
+
         self.profileDoc['position_qc'] = positionQC
         self.profileDoc['cycle_number'] = self.cycleNumber
         self.profileDoc['lat'] = phi
