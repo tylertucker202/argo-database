@@ -55,7 +55,7 @@ if __name__ == '__main__':
     for idx, interval in enumerate(intervals):
         presIntervals.append([idx+1, interval])
     datesSet = ver.get_space_time_dates()
-
+    pdb.set_trace()
     continueAtIdx = int(sys.argv[1])
     endAtIdx = int(sys.argv[2])
     logging.debug('start at idx:{}'.format(continueAtIdx))

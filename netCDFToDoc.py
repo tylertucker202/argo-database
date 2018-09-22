@@ -226,7 +226,7 @@ class netCDFToDoc(object):
             else:
                 logging.debug('Profile {}: unable to get pres_max_for_TEMP'.format(self.profileId))
             if type(presMinForTemp) != float:
-                self.profileDoc['PRES_min_for_TEMP'] = presMinForTemp.astype(np.float64)
+                self.profileDoc['pres_min_for_TEMP'] = presMinForTemp.astype(np.float64)
             else:
                 logging.debug('Profile {}: unable to get pres_min_for_TEMP'.format(self.profileId))
             if type(presMaxForPsal) != float:
@@ -303,4 +303,5 @@ class netCDFToDoc(object):
             direction = self.variables['DIRECTION'][self.idx].astype(str)
             if direction == 'D':
                 profile_id += 'D'
+            self.profileDoc['DIRECTION'] = 'D'
             self.profileDoc['_id'] = profile_id
