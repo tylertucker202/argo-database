@@ -114,7 +114,7 @@ class netCDFToDoc(object):
                       ' returning empty dataframe'.format(doc_key))
         return df
 
-    def makeProfileDf(self):
+    def make_profile_df(self):
         profileDf = pd.DataFrame()
         keys = self.variables.keys()
         #  Profile measurements are gathered in a dataframe
@@ -181,6 +181,25 @@ class netCDFToDoc(object):
         except:
             logging.debug('error when adding {0} to document.'
                           ' Not going to add item to document'.format(valueName))
+    
+    def add_max_min_pres2(self, df, param, maxBoolean):
+        
+        if not param in df.columns:
+            return
+        try:
+            if maxBoolean:
+                presValue = df[ df[param] != -999 ]['pres'].max()
+                maxMin = 'max'
+            else:
+                presValue = df[ df[param] != -999 ]['pres'].min()
+                maxMin = 'min'
+            if type(presValue) == np.float64:
+                paramName = 'pres_' + maxMin + '_for_' + param.upper()
+                self.profileDoc[paramName] = presValue.astype(np.float64)
+            else:
+                logging.debug('Profile {0}: unable to get {1} {2}'.format(self.profileId, maxMin, param))
+        except:
+            logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
 
     def make_profile_dict(self, dacName, refDate, remotePath, stationParameters):
         """
@@ -196,7 +215,7 @@ class netCDFToDoc(object):
         self.add_string_values('PI_NAME')
         self.add_string_values('WMO_INST_TYPE')
         try:
-            profileDf = self.makeProfileDf()
+            profileDf = self.make_profile_df()
             if profileDf.shape[0] == 0:
                 raise Exception('no valid measurements.')
         except ValueError as err:
@@ -215,32 +234,11 @@ class netCDFToDoc(object):
             raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err.args))
         
-        try:
-            presMaxForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].max()
-            presMinForTemp = profileDf[ profileDf['temp'] != -999 ]['pres'].min()
-            presMaxForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].max()
-            presMinForPsal = profileDf[ profileDf['psal'] != -999 ]['pres'].min()
-            
-            if type(presMaxForTemp) != float or type(presMinForPsal) == float:
-                self.profileDoc['pres_max_for_TEMP'] = presMaxForTemp.astype(np.float64)
-            else:
-                logging.debug('Profile {}: unable to get pres_max_for_TEMP'.format(self.profileId))
-            if type(presMinForTemp) != float:
-                self.profileDoc['pres_min_for_TEMP'] = presMinForTemp.astype(np.float64)
-            else:
-                logging.debug('Profile {}: unable to get pres_min_for_TEMP'.format(self.profileId))
-            if type(presMaxForPsal) != float:
-                self.profileDoc['pres_max_for_PSAL'] = presMaxForPsal.astype(np.float64)
-            else:
-                logging.debug('Profile {}: unable to get pres_max_for_PSAL'.format(self.profileId))
-            if type(presMinForPsal) != float:
-                self.profileDoc['pres_min_for_PSAL'] = presMinForPsal.astype(np.float64)
-            else:
-                logging.debug('Profile {}: unable to get pres_min_for_PSAL'.format(self.profileId))   
-        except:
-            logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
-            
-
+        self.add_max_min_pres2(profileDf, 'temp', maxBoolean=True)
+        self.add_max_min_pres2(profileDf, 'temp', maxBoolean=False)
+        self.add_max_min_pres2(profileDf, 'psal', maxBoolean=True)
+        self.add_max_min_pres2(profileDf, 'psal', maxBoolean=False)
+        
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = int(maxPres)
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
@@ -273,9 +271,12 @@ class netCDFToDoc(object):
                 positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64)
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
+        except ValueError as err:
+            raise ValueError('Profile:{0} not created. Error {1}'
+                          ' Not going to add'.format(self.profileId, err))
         except Exception as err:
-            raise Exception('Profile:{0} profileDf not created. Error {1}'
-                          ' Not going to add'.format(self.profileId, error))
+            raise Exception('Profile:{0} not created. Error {1}'
+                          ' Not going to add'.format(self.profileId, err))
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')
 
