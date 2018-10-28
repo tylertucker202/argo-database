@@ -12,7 +12,10 @@ ifremer
 grids
 *.csv
 *.ods
+*.txt
 *.ipynb_checkpoints/
 verdzi-api/out
 mat-flag-scanner/argovis-data/*
 mat-flag-scanner/argovis-mat-python/*
+test-files
+test-file-single

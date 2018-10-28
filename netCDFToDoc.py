@@ -155,14 +155,14 @@ class netCDFToDoc(object):
         """
         try:
             if type(self.variables[valueName][self.idx]) == np.ma.core.MaskedConstant:
-                value = self.variables[valueName][self.idx].astype(str)
+                value = self.variables[valueName][self.idx].astype(str).item()
                 logging.debug('Profile:{0} has unknown {1}.'
                           ' Not going to add item to document'.format(self.profileId, valueName))
             else:
                 if valueName == 'DATA_MODE':
-                    value = self.variables[valueName][self.idx].astype(str)
+                    value = self.variables[valueName][self.idx].astype(str).item()
                 else:
-                    value = ''.join([(x.astype(str)) for x in self.variables[valueName][self.idx].data])
+                    value = ''.join([(x.astype(str).item()) for x in self.variables[valueName][self.idx].data])
                     value = value.strip(' ')
 
             if valueName == 'INST_REFERENCE': # renames 'INST_REFERENCE' to 'PLATFORM_TYPE'
@@ -195,7 +195,7 @@ class netCDFToDoc(object):
                 maxMin = 'min'
             if type(presValue) == np.float64:
                 paramName = 'pres_' + maxMin + '_for_' + param.upper()
-                self.profileDoc[paramName] = presValue.astype(np.float64)
+                self.profileDoc[paramName] = presValue.astype(np.float64).item()
             else:
                 logging.debug('Profile {0}: unable to get {1} {2}'.format(self.profileId, maxMin, param))
         except:
@@ -245,30 +245,30 @@ class netCDFToDoc(object):
         if type(self.variables['JULD'][self.idx]) == np.ma.core.MaskedConstant:
             raise AttributeError('Profile:{0} has unknown date.'
                           ' Not going to add'.format(self.profileId))
-        date = refDate + timedelta(self.variables['JULD'][self.idx])
-        self.profileDoc['date'] = date
+
+        date = refDate + timedelta(self.variables['JULD'][self.idx].item())
         
         try:
-            dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64)
+            dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
             self.profileDoc['date_qc'] = dateQC
         except AttributeError:
             if type(self.variables['JULD_QC'][self.idx] == np.ma.core.MaskedConstant):
-                dateQC = self.variables['JULD_QC'][self.idx].data.astype(np.float64)
+                dateQC = np.float64(self.variables['JULD_QC'][self.idx].item())
                 self.profileDoc['date_qc'] = dateQC
             else:
                 raise AttributeError('error with date_qc. Not going to add.')
         
-        phi = self.variables['LATITUDE'][self.idx]
-        lam = self.variables['LONGITUDE'][self.idx]
+        phi = self.variables['LATITUDE'][self.idx].item()
+        lam = self.variables['LONGITUDE'][self.idx].item()
         if type(phi) == np.ma.core.MaskedConstant or type(lam) == np.ma.core.MaskedConstant:
             raise AttributeError('Profile:{0} has unknown lat-lon.'
                           ' Not going to add'.format(self.profileId))
 
         try:
-            positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64)
+            positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64).item()
         except AttributeError:
             if type(self.variables['POSITION_QC'][self.idx] == np.ma.core.MaskedConstant):
-                positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64)
+                positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64).item()
             else:
                 raise AttributeError('error with position_qc. Not going to add.')
         except ValueError as err:
@@ -301,7 +301,7 @@ class netCDFToDoc(object):
         if type(self.variables['DIRECTION'][self.idx]) == np.ma.core.MaskedConstant:
             logging.debug('direction unknown')
         else:
-            direction = self.variables['DIRECTION'][self.idx].astype(str)
+            direction = self.variables['DIRECTION'][self.idx].astype(str).item()
             if direction == 'D':
                 profile_id += 'D'
             self.profileDoc['DIRECTION'] = 'D'

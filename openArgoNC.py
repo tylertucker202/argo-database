@@ -214,7 +214,7 @@ class openArgoNcFile(object):
             for meas in self.measurementsTS:
 
                 if meas in self.profileData.keys():
-                    if self.profileData['PRES_inMongoDB'][self.profileData[meas+'_inMongoDB'] != self.profileData['NaN_MongoDB']].size != 0:
+                    if self.profileData['PRES_inMongoDB'][self.profileData[meas+'_inMongoDB']!=self.profileData['NaN_MongoDB']].size!=0:
                         self.profileData['PRES_max_for_'+meas] = max(self.profileData['PRES_inMongoDB'][self.profileData[meas+'_inMongoDB']!=self.profileData['NaN_MongoDB']])
                         self.profileData['PRES_min_for_'+meas] = min(self.profileData['PRES_inMongoDB'][self.profileData[meas+'_inMongoDB']!=self.profileData['NaN_MongoDB']])
                         self.profileData['STATION_PARAMETERS_inMongoDB'].append(meas)

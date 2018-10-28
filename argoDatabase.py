@@ -20,7 +20,8 @@ class argoDatabase(object):
                  replaceProfile=False,
                  qcThreshold='1', 
                  dbDumpThreshold=10000,
-                 removeExisting=True):
+                 removeExisting=True, 
+                 testMode=False):
         logging.debug('initializing ArgoDatabase')
         self.init_database(dbName)
         self.init_profiles_collection(collectionName)
@@ -31,6 +32,8 @@ class argoDatabase(object):
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
         self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
+        self.testMode = testMode # used for testing documents outside database
+        self.documents = []
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -69,33 +72,36 @@ class argoDatabase(object):
             logging.warning('howToAdd not recognized. not going to do anything.')
             return
 
-        if self.removeExisting == True: # Removes profiles on list before adding list (redundant...but requested)
-            #reExist = re.compile(r'.*D\d{1,}')
-            #delayModeFiles = list(filter(reDelay.match,files))
+        if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
             self.remove_profiles(files)
-    
 
         documents = []
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
             root_grp = Dataset(fileName, "r", format="NETCDF4")
-            remotePath = self.url + os.path.relpath(fileName,localDir)
+            remotePath = self.url + os.path.relpath(fileName, localDir)
             variables = root_grp.variables
+            
+            #current method of creating dac
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName)
             if isinstance(doc, dict):
                 doc = self.add_flags(doc, fileName)
                 documents.append(doc)
-            if len(documents) >= self.dbDumpThreshold:
+                if self.testMode:
+                    self.documents.append(doc)
+            if len(documents) >= self.dbDumpThreshold and not self.testMode:
                 logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName)
                 documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
-        if len(documents) == 1:
+        if len(documents) == 1 and not self.testMode:
             self.add_single_profile(documents[0], fileName)
-        elif len(documents) > 1:
+        elif len(documents) > 1 and not self.testMode:
             self.add_many_profiles(documents, fileName)
-            
+    def add_remotely(self, ftpAddress, howToAdd='all', files=[], dacs=[]):
+        return
+
     def add_flags(self, doc, filename):
         try:
             self.argoFlagsWriter.create_profile_data_if_exists(filename)
@@ -113,9 +119,6 @@ class argoDatabase(object):
         
         return doc
         
-        
-        
-
     def remove_profiles(self, files):
         #get profile ids
         idList = []
@@ -172,8 +175,6 @@ class argoDatabase(object):
 
         platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
         stationParameters = list(map(lambda param: self.format_param(param), variables['STATION_PARAMETERS'][0]))
-        numOfProfiles = variables['JULD'][:].shape[0]
-        logging.info('number of profiles inside file: {}'.format(numOfProfiles))
 
         refDateArray = variables['REFERENCE_DATE_TIME'][:]
         refStr = ''.join([x.astype(str) for x in refDateArray])
