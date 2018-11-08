@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'gui-v-tyler-test.log'
-    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'test-file-single')
+    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'test-files')
     HOMEDIR = os.getcwd()
     dbName = 'argo'
     collectionName = 'profiles'
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         GuiProfiles.append(doc)
     logging.info('finished files using Argo4MongoDB')
 
-    
+
     logging.info('Tyler profile length: {}'.format(len(TylerProfiles)))
     logging.info('Tyler profile length: {}'.format(len(GuiProfiles)))
     logging.info('end of log file')

@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import sys
+
+PATH = '../'
+sys.path.append(PATH)
 from argoDatabase import argoDatabase, getOutput
 
 if __name__ == '__main__':
@@ -10,7 +14,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'aoml.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     collectionName = 'profiles'
     dacs = ['aoml']    
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):

@@ -1,11 +1,6 @@
-
-
 """Procedures to load Argo profiles into ArgoVis MongoDB
-
-
    The first time run like:
    python argo4MongoDB.py --mode=create --mongodb-host localhost --npes 4 --basinMask ./basinmask_01.nc  ftp://ftp.ifremer.fr/ifremer/argo/dac/
-
    After that, run on append mode, which will only add new profiles into DB.
    python argo4MongoDB.py --mode=append --mongodb-host localhost --npes 4 --basinMask ./basinmask_01.nc  ftp://ftp.ifremer.fr/ifremer/argo/dac/
 """
@@ -46,7 +41,6 @@ logger.addHandler(ch)
 
 def find_nc_files(rootdir, pattern='^[DR]\d+_\d+D?.nc'):
     """Find files with pattern inside rootdir (generator)
-
        This can be used like
        for f in find_nc_files('my/dir/with/data'):
            print(f)
@@ -58,7 +52,6 @@ def find_nc_files(rootdir, pattern='^[DR]\d+_\d+D?.nc'):
 
 def get_basin(lat, lon, basin_filename='basinmask_01.nc'):
     """Returns the basin code for a given lat lon coordinates
-
        Ex.:
        basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
     """
@@ -75,14 +68,11 @@ def get_basin(lat, lon, basin_filename='basinmask_01.nc'):
     return int(griddata(coords, basin, (lon, lat), method='nearest'))
 
 
-def apply_qc(ds, min_PRES_DEEP_ARGO, inplace=False):
+def apply_qc(ds, min_PRES_DEEP_ARGO):
     """Mask data that failed QC criterion
     """
     assert 'PRES_QC' in ds, "Missing PRES_QC"
     assert 'TEMP_QC' in ds, "Missing TEMP_QC"
-
-    if not inplace:
-        ds = ds.copy(deep=True)
 
     valid_pres_idx = ds.PRES_QC.isin((b'1', '1')) | \
             (ds.PRES_QC.isin((b'2', '2')) & (ds.PRES > min_PRES_DEEP_ARGO))
@@ -101,13 +91,11 @@ def apply_qc(ds, min_PRES_DEEP_ARGO, inplace=False):
 
     ds = ds.dropna(dim='N_LEVELS', how='all', subset=['TEMP'])
 
-    if not inplace:
-        return ds
+    return ds
 
 
 def load_profile(f, min_PRES_DEEP_ARGO, basin_filename):
     """
-
        FTPServer = 'usgodae.org'
        FTPServer = 'ftp.ifremer.fr'
     """
@@ -155,7 +143,7 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
                 (profile.JULD_QC.values, x_id))
         return
 
-    apply_qc(profile, min_PRES_DEEP_ARGO, inplace=True)
+    profile = apply_qc(profile, min_PRES_DEEP_ARGO)
     if profile.N_LEVELS.size == 0:
         logger.error('None valid data on profile: %s' % x_id)
         return
@@ -200,9 +188,24 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
                                                       )['PRES'].min()
         STATION_PARAMETERS_in_MongoDB.append('PSAL')
 
-    output = profile.to_dict()['data_vars']
+    # ---- Create the dictionary for MongoDB ----
+    mvars = [v for v in ['PRES', 'TEMP', 'PSAL'] if v in profile]
+    measurements = profile[mvars]
+    for v in mvars:
+        measurements.rename({v: v.lower()}, inplace=True)
+    measurements = measurements.to_dataframe().to_dict('records')
+
+    qcvars = [v+'_QC' for v in mvars if v+'_QC' in profile]
+    measurements_qc = profile[qcvars]
+    for v in qcvars:
+        measurements_qc.rename({v: v.lower()}, inplace=True)
+    measurements_qc = measurements_qc.to_dataframe().to_dict('records')
+
+    output = profile.drop(mvars + qcvars).to_dict()['data_vars']
     for v in output:
         output[v] = output[v]['data']
+    output['measurements'] = measurements
+    output['measurements_qc'] = measurements_qc
 
     output['STATION_PARAMETERS_in_MongoDB'] = STATION_PARAMETERS_in_MongoDB
 
@@ -219,10 +222,8 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
 
 def find_files(src):
     """Find files to process inside src (local or FTP)
-
        Ex:
        Local: src='/data/argo/sio/'
-
        FTP: src='ftp://ftp.ifremer.fr/ifremer/argo/dac/'
     """
     if os.path.isfile(src):
@@ -242,10 +243,8 @@ def find_files(src):
 
 class Argo4MongoDB(object):
     """Read and digest Argo files in parallel
-
        This is a generator that reads several files in parallel and return
          one processed profile at a time as a dictionary.
-
       Arguments:
        - src [str]: Source of files to insert. Can be a local absolute path or
                       an ftp server with path. All child directories inside
@@ -256,14 +255,11 @@ class Argo4MongoDB(object):
        - min_PRES_DEEP_ARGO [int]: Max pressure for a regular argo.
        - basin_filename [str]: Path to basin mask file.
        - npes [int]: Number of parallel process
-
       It can be used like:
-
        >>> src = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
        >>> for d in Argo4MongoDB(src, 2500, './data/basinmask_01.nc', npes=8):
        >>>     print(d['_id'], len(d['TEMP']), d['PRES_max_for_TEMP'])
        >>>     my_func_to_insert_single_profile_into_MongoDB(d)
-
        ATENTION, at this point I'm not doing anything with failures. I'll
          improve that, but this should allow to load a bunch of datafiles
          into DB to allow the rest of the project to advance.

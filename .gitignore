@@ -19,3 +19,5 @@ mat-flag-scanner/argovis-data/*
 mat-flag-scanner/argovis-mat-python/*
 test-files
 test-file-single
+tmp/
+.vscode

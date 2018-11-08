@@ -38,24 +38,25 @@ class netCDFToDoc(object):
     
     def get_profile_doc(self):
         return self.profileDoc
+    
+    def format_qc_array(self, array):
+        """ Converts array of QC values (temp, psal, pres, etc) into list"""
+        if isinstance(array, np.ndarray):
+            data = [x.astype(str) for x in array]
+        elif type(array) == np.ma.core.MaskedArray:
+            data = array.data
+            try:
+                data = np.array([x.astype(str) for x in data])
+            except NotImplementedError:
+                raise NotImplementedError('NotImplemented Error for idx: {1}'.format(self.idx))
+        return data    
 
-    def format_measurments(self, measStr):
+    def format_measurments(self, measStr, includeQC=True):
         """
         Combines a measurement's real time and adjusted values into a 1D dataframe.
         An adjusted value replaces each real-time value. 
         Also includes a QC procedure that removes all data that doesn't meet the qc threshhold.
         """
-        def format_qc_array(array):
-            """ Converts array of QC values (temp, psal, pres, etc) into list"""
-            if type(array) == np.ndarray:
-                data = [x.astype(str) for x in array]
-            elif type(array) == np.ma.core.MaskedArray:
-                data = array.data
-                try:
-                    data = np.array([x.astype(str) for x in data])
-                except NotImplementedError:
-                    raise NotImplementedError('NotImplemented Error for idx: {1}'.format(self.idx))
-            return data
 
         df = pd.DataFrame()
         adj = measStr.lower()
@@ -65,7 +66,7 @@ class netCDFToDoc(object):
         if (self.profileDoc['DATA_MODE'] == 'D') or (self.profileDoc['DATA_MODE'] == 'A'):
             #use adjusted data
             try:
-                if type(self.variables[measStr + '_ADJUSTED'][self.idx, :]) == np.ndarray:
+                if isinstance(self.variables[measStr + '_ADJUSTED'][self.idx, :], np.ndarray):
                     df[doc_key] = self.variables[measStr + '_ADJUSTED'][self.idx, :]
             except KeyError:
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
@@ -84,22 +85,21 @@ class netCDFToDoc(object):
             except KeyError:
                 raise KeyError('key not found...')
             try:
-                df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][self.idx, :])
+                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][self.idx, :])
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
         else:
             # get unadjusted value. Types vary from arrays to masked arrays.
-            if type(self.variables[measStr][self.idx, :]) == np.ndarray:
+            if isinstance(self.variables[measStr][self.idx, :], np.ndarray):
                 df[doc_key] = self.variables[measStr][self.idx, :]
             else:  # sometimes a masked array is used
                 try:
                     df[doc_key] = self.variables[measStr][self.idx, :].data
                 except ValueError:
                     ValueError('Check data type for measurement {}'.format(measStr))
-	    # Sometimes non-adjusted value is invalid.
-            # df.ix[df[doc_key] >= 99999, not_adj] = np.NaN # not sure this is needed anymore
+	        # Sometimes non-adjusted value is invalid.
             try:
-                df[doc_key+'_qc'] = format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
+                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][self.idx, :])
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
                 return pd.DataFrame()
@@ -107,46 +107,53 @@ class netCDFToDoc(object):
         """
         QC procedure drops any row whos qc value does not equal '1'
         """
-        try:
-            df = df[df[doc_key+'_qc'] == self.qcThreshold]
-        except KeyError:
-            raise KeyError('measurement: {0} has no qc.'
-                      ' returning empty dataframe'.format(doc_key))
+        if includeQC:
+            try:
+                df = df[df[doc_key+'_qc'] == self.qcThreshold]
+            except KeyError:
+                raise KeyError('measurement: {0} has no qc.'
+                          ' returning empty dataframe'.format(doc_key))
+                return pd.DataFrame()
         return df
 
-    def make_profile_df(self):
-        profileDf = pd.DataFrame()
-        keys = self.variables.keys()
-        #  Profile measurements are gathered in a dataframe
-        measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
-        for measStr in measList:
-            if measStr in keys:
-                meas_df = self.format_measurments(measStr)
-                # append with index conserved
-                profileDf = pd.concat([profileDf, meas_df], axis=1)
-
+    def do_qc_on_measurements(self, df):
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
-        if not 'pres_qc' in profileDf.columns:
+        if not 'pres_qc' in df.columns:
             raise ValueError('Float: {0} has bad pressure qc.'
                           ' Not going to add'.format(self.platformNumber))
-        profileDf = profileDf[profileDf['pres_qc'] != np.NaN]
-        profileDf.dropna(axis=0, how='all', inplace=True)
+        df = df[df['pres_qc'] != np.NaN]
+        df.dropna(axis=0, how='all', inplace=True)
         # Drops the values where pressure isn't reported
-        profileDf.dropna(axis=0, subset=['pres'], inplace=True)
+        df.dropna(axis=0, subset=['pres'], inplace=True)
         # Drops the values where both temp and psal aren't reported
-        if 'temp' in profileDf.columns and 'psal' in profileDf.columns:
-            profileDf.dropna(subset=['temp', 'psal'], how='all', inplace=True)
-        elif 'temp' in profileDf.columns: 
-            profileDf.dropna(subset=['temp'], how='all', inplace=True)
-        elif 'psal' in profileDf.columns:
-            profileDf.dropna(subset=['psal'], how='all', inplace=True)
+        if 'temp' in df.columns and 'psal' in df.columns:
+            df.dropna(subset=['temp', 'psal'], how='all', inplace=True)
+        elif 'temp' in df.columns: 
+            df.dropna(subset=['temp'], how='all', inplace=True)
+        elif 'psal' in df.columns:
+            df.dropna(subset=['psal'], how='all', inplace=True)
         else:
             raise ValueError('Profile:{0} has neither temp nor psal.'
                           ' Not going to add'.format(self.profileId))
-        profileDf.fillna(-999, inplace=True) # API needs all measurements to be a number
-        qcColNames = [k for k in profileDf.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
-        profileDf.drop(qcColNames, axis = 1, inplace = True)    
-        return profileDf
+        df.fillna(-999, inplace=True) # API needs all measurements to be a number
+        qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
+        df.drop(qcColNames, axis = 1, inplace = True)    
+        return df
+
+    def make_profile_df(self, includeQC=True):
+        df = pd.DataFrame()
+        keys = self.variables.keys()
+        #  Profile measurements are gathered in a dataframe
+        measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        
+        for measStr in measList:
+            if measStr in keys:
+                meas_df = self.format_measurments(measStr, includeQC)
+                # append with index conserved
+                df = pd.concat([df, meas_df], axis=1)
+        if includeQC:
+            df = self.do_qc_on_measurements(df)
+        return df
 
     def add_string_values(self, valueName):
         """
@@ -154,7 +161,7 @@ class netCDFToDoc(object):
         if missing or is masked, values will not be added to the document.
         """
         try:
-            if type(self.variables[valueName][self.idx]) == np.ma.core.MaskedConstant:
+            if isinstance(self.variables[valueName][self.idx], np.ma.core.MaskedConstant):
                 value = self.variables[valueName][self.idx].astype(str).item()
                 logging.debug('Profile:{0} has unknown {1}.'
                           ' Not going to add item to document'.format(self.profileId, valueName))
@@ -182,24 +189,35 @@ class netCDFToDoc(object):
             logging.debug('error when adding {0} to document.'
                           ' Not going to add item to document'.format(valueName))
     
-    def add_max_min_pres2(self, df, param, maxBoolean):
+    def add_max_min_pres(self, df, param, maxBoolean):
         
         if not param in df.columns:
             return
         try:
+            reducedDf = df[ df[param] != -999 ]['pres']
+            if reducedDf.empty:
+                return
             if maxBoolean:
-                presValue = df[ df[param] != -999 ]['pres'].max()
+                presValue = reducedDf.max()
+                presValue = presValue.astype(np.float64)
                 maxMin = 'max'
             else:
-                presValue = df[ df[param] != -999 ]['pres'].min()
+                presValue = reducedDf.min()
+                presValue = presValue.astype(np.float64)
                 maxMin = 'min'
-            if type(presValue) == np.float64:
-                paramName = 'pres_' + maxMin + '_for_' + param.upper()
-                self.profileDoc[paramName] = presValue.astype(np.float64).item()
-            else:
-                logging.debug('Profile {0}: unable to get {1} {2}'.format(self.profileId, maxMin, param))
+
+            paramName = 'pres_' + maxMin + '_for_' + param.upper()
+            self.profileDoc[paramName] = presValue
         except:
+            pdb.set_trace()
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
+
+    def add_bgc_flag(self):
+        bgcKeys = ['CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        if any (k in bgcKeys for k in self.variables.keys()):
+            self.profileDoc['containsBGC'] = 1
+            df = self.make_profile_df(includeQC=False)
+            self.profileDoc['bgcMeas'] = df.astype(np.float64).to_dict(orient='records')
 
     def make_profile_dict(self, dacName, refDate, remotePath, stationParameters):
         """
@@ -216,7 +234,7 @@ class netCDFToDoc(object):
         self.add_string_values('WMO_INST_TYPE')
         try:
             profileDf = self.make_profile_df()
-            if profileDf.shape[0] == 0:
+            if profileDf.empty:
                 raise Exception('no valid measurements.')
         except ValueError as err:
             raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
@@ -234,25 +252,26 @@ class netCDFToDoc(object):
             raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err.args))
         
-        self.add_max_min_pres2(profileDf, 'temp', maxBoolean=True)
-        self.add_max_min_pres2(profileDf, 'temp', maxBoolean=False)
-        self.add_max_min_pres2(profileDf, 'psal', maxBoolean=True)
-        self.add_max_min_pres2(profileDf, 'psal', maxBoolean=False)
+        self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
+        self.add_max_min_pres(profileDf, 'temp', maxBoolean=False)
+        self.add_max_min_pres(profileDf, 'psal', maxBoolean=True)
+        self.add_max_min_pres(profileDf, 'psal', maxBoolean=False)
         
         maxPres = profileDf.pres.max()
-        self.profileDoc['max_pres'] = int(maxPres)
+        self.profileDoc['max_pres'] = np.float64(maxPres)
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
-        if type(self.variables['JULD'][self.idx]) == np.ma.core.MaskedConstant:
+        if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
             raise AttributeError('Profile:{0} has unknown date.'
                           ' Not going to add'.format(self.profileId))
 
         date = refDate + timedelta(self.variables['JULD'][self.idx].item())
+        self.profileDoc['date'] = date
         
         try:
             dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
             self.profileDoc['date_qc'] = dateQC
         except AttributeError:
-            if type(self.variables['JULD_QC'][self.idx] == np.ma.core.MaskedConstant):
+            if isinstance(self.variables['JULD_QC'][self.idx], np.ma.core.MaskedConstant):
                 dateQC = np.float64(self.variables['JULD_QC'][self.idx].item())
                 self.profileDoc['date_qc'] = dateQC
             else:
@@ -260,7 +279,7 @@ class netCDFToDoc(object):
         
         phi = self.variables['LATITUDE'][self.idx].item()
         lam = self.variables['LONGITUDE'][self.idx].item()
-        if type(phi) == np.ma.core.MaskedConstant or type(lam) == np.ma.core.MaskedConstant:
+        if isinstance(phi, np.ma.core.MaskedConstant) or isinstance(lam, np.ma.core.MaskedConstant):
             raise AttributeError('Profile:{0} has unknown lat-lon.'
                           ' Not going to add'.format(self.profileId))
 
@@ -285,20 +304,21 @@ class netCDFToDoc(object):
         self.profileDoc['lat'] = phi
         self.profileDoc['lon'] = lam
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
-        self.profileDoc['geo2DLocation'] = [lam, phi]
-        self.profileDoc['dac'] = dacName
         self.profileDoc['platform_number'] = self.platformNumber
         self.profileDoc['station_parameters'] = stationParameters
         profile_id = self.platformNumber + '_' + str(self.cycleNumber)
         url = remotePath
         self.profileDoc['nc_url'] = url
+        
+        self.add_bgc_flag()
+
         """
         Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
         cycle number doesn't change. So, to have a unique identifer, this 
         the _id field has a 'D' appended
         """
-        if type(self.variables['DIRECTION'][self.idx]) == np.ma.core.MaskedConstant:
+        if isinstance(self.variables['DIRECTION'][self.idx], np.ma.core.MaskedConstant):
             logging.debug('direction unknown')
         else:
             direction = self.variables['DIRECTION'][self.idx].astype(str).item()

@@ -8,7 +8,6 @@ import numpy as np
 from datetime import datetime
 from netCDF4 import Dataset
 import bson.errors
-from bson.decimal128 import Decimal128
 import pdb
 from netCDFToDoc import netCDFToDoc
 from openArgoNC import openArgoNcFile
@@ -34,6 +33,7 @@ class argoDatabase(object):
         self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
         self.testMode = testMode # used for testing documents outside database
         self.documents = []
+        self.totalDocumentsAdded = 0
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -49,7 +49,7 @@ class argoDatabase(object):
             self.profiles_coll.create_index([('cycle_number', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('dac', pymongo.DESCENDING)])
             self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
-            self.profiles_coll.create_index([('geo2DLocation', pymongo.GEO2D)])
+            self.profiles_coll.create_index([('containsBGC', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
 
@@ -75,6 +75,7 @@ class argoDatabase(object):
         if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
             self.remove_profiles(files)
 
+        logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
@@ -99,8 +100,6 @@ class argoDatabase(object):
             self.add_single_profile(documents[0], fileName)
         elif len(documents) > 1 and not self.testMode:
             self.add_many_profiles(documents, fileName)
-    def add_remotely(self, ftpAddress, howToAdd='all', files=[], dacs=[]):
-        return
 
     def add_flags(self, doc, filename):
         try:
@@ -125,17 +124,19 @@ class argoDatabase(object):
         for fileName in files:
             profileName = fileName.split('/')[-1]
             profileName = profileName[1:-3]
+            profileCycle = profileName.split('_')
+            cycle = profileName.split('_')[1].lstrip('0')
+            profileName = profileCycle[0] + '_' + cycle
             idList.append(profileName)
-            #self.profiles_coll.remove({'_id':profileName})
         #remove all profiles at once
-        logging.debug('removing delayed profiles before reintroducing')
-        logging.debug('number of profiles deleted: {}'.format(len(idList)))
+        logging.debug('removing profiles before reintroducing')
+        logging.debug('number of profiles to be deleted: {}'.format(len(idList)))
         countBefore = self.profiles_coll.find({}).count()
         self.profiles_coll.delete_many({'_id': {'$in': idList}})
         countAfter = self.profiles_coll.find({}).count()
         delta = countBefore - countAfter
         self.profiles_coll.find({}).count()
-        logging.debug('number of delayed profiles: {}'.format(delta))
+        logging.debug('number of profiles removed: {}'.format(delta))
 
     @staticmethod
     def format_param(param):
@@ -198,9 +199,10 @@ class argoDatabase(object):
                 logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
 
     def add_single_profile(self, doc, file_name, attempt=0):
-        if self.replaceProfile == True:
+        if self.replaceProfile:
             try:
                 self.profiles_coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
+                self.totalDocumentsAdded += 1
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
@@ -211,6 +213,7 @@ class argoDatabase(object):
         else:
             try:
                 self.profiles_coll.insert_one(doc)
+                self.totalDocumentsAdded += 1
             except pymongo.errors.DuplicateKeyError:
                 logging.error('duplicate key: {0}'.format(doc['_id']))
                 logging.error('not going to add')
@@ -226,6 +229,7 @@ class argoDatabase(object):
     def add_many_profiles(self, documents, file_name):
         try:
             self.profiles_coll.insert_many(documents, ordered=False)
+            self.totalDocumentsAdded += len(documents)
         except pymongo.errors.BulkWriteError as bwe:
             writeErrors = bwe.details['writeErrors']
             problem_idx = []

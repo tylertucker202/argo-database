@@ -3,14 +3,17 @@
 import logging
 import os
 from argoDatabase import argoDatabase, getOutput
+import sys
 
+PATH = '../'
+sys.path.append(PATH)
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'minorDacs.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     collectionName = 'profiles'
     dacs = ['nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):

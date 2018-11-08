@@ -3,17 +3,14 @@
 import logging
 import os
 import sys
-PATH = '../'
-sys.path.append(PATH)
 from argoDatabase import argoDatabase
-
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOGFILENAME = 'argoTroublesomeProfiles.log'
-    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
+    LOGFILENAME = 'addFromTmp.log'
+    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo-tmp'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
