@@ -303,6 +303,7 @@ class netCDFToDoc(object):
         self.profileDoc['cycle_number'] = self.cycleNumber
         self.profileDoc['lat'] = phi
         self.profileDoc['lon'] = lam
+        self.profileDoc['dac'] = dacName
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
         self.profileDoc['platform_number'] = self.platformNumber
         self.profileDoc['station_parameters'] = stationParameters
