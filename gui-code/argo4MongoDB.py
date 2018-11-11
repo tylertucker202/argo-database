@@ -372,7 +372,7 @@ if __name__ == '__main__':
                             basin_filename=args.basinMask,
                             npes=args.npes)
 
-    dbName = 'argo'
+    dbName = 'argo-gui'
     collectionName = 'profiles'
 
     client = MongoClient('mongodb://%s:27017/' % args.dbhost)
