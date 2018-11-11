@@ -4,6 +4,8 @@ import logging
 import os
 from argoDatabase import argoDatabase, getOutput
 import sys
+import multiprocessing as mp
+from numpy import array_split
 
 PATH = '../'
 sys.path.append(PATH)
@@ -29,6 +31,19 @@ if __name__ == '__main__':
                  qcThreshold='1', 
                  dbDumpThreshold=10000,
                  removeExisting=False)
-    ad.add_locally(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
+    files = ad.get_file_names_to_add(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
+    try:
+        npes
+    except NameError:
+        npes = mp.cpu_count()
+    fileArray = array_split(files, npes)
+    processes = [mp.Process(target=ad.add_locally, args=(OUTPUTDIR, fileChunk)) for fileChunk in fileArray]
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join()
+        
+    #ad.add_locally(OUTPUTDIR, files)
+    logging.warning('Total documents added: {}'.format(ad.totalDocumentsAdded))
     logging.warning('End of log file')
 

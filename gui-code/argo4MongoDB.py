@@ -126,6 +126,11 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
     # define the variables of interest
     vars_N_PROF = ['_id','PLATFORM_NUMBER', 'PI_NAME', 'STATION_PARAMETERS', 'CYCLE_NUMBER', 'DIRECTION', 'DATA_CENTRE', 'DATA_MODE', 'WMO_INST_TYPE', 'JULD', 'JULD_QC', 'LATITUDE', 'LONGITUDE', 'POSITION_QC', 'POSITIONING_SYSTEM', 'PRES', 'PRES_QC', 'PRES_ADJUSTED', 'PRES_ADJUSTED_QC', 'TEMP', 'TEMP_QC', 'TEMP_ADJUSTED', 'TEMP_ADJUSTED_QC', 'PSAL', 'PSAL_QC', 'PSAL_ADJUSTED', 'PSAL_ADJUSTED_QC', 'VERTICAL_SAMPLING_SCHEME', 'PLATFORM_TYPE']
 
+    renaming = {'LONGITUDE': 'lon', 'LATITUDE': 'lat', 'JULD_QC': 'date_qc',
+                'POSITION_QC': 'position_qc' , 'CYCLE_NUMBER': 'cycle_number',
+                'PLATFORM_NUMBER': 'platform_number',
+                'STATION_PARAMETERS': 'station_parameters'}
+
     profile['_id'] = "{0}_{1}".format(profile.PLATFORM_NUMBER.values,
                                   profile.CYCLE_NUMBER.values)
     if profile['DIRECTION'] == 'D':
@@ -151,10 +156,14 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
         logger.debug('There are valid data on profile: %s' % x_id)
 
     if ('PSAL' not in profile):
+        profile['PSAL'] = profile.TEMP * np.nan
+        profile['PSAL_QC'] = profile.TEMP_QC * 0 + 4
         logger.info('Missing PSAL on: %s' % x_id)
     elif profile.PSAL.isnull().all():
-        profile = profile.drop(['PSAL', 'PSAL_QC'])
+        # profile = profile.drop(['PSAL', 'PSAL_QC'])
         logger.warning('None valid PSAL on profile: %s' % x_id)
+
+    profile['PSAL'] = profile.PSAL.where(~profile.PSAL.isnull(), -999)
 
     for v in [v for v in profile.variables if v[-3:]=='_QC']:
         profile[v] = profile[v].where(~profile[v].isnull(), 0).astype('i')
@@ -175,7 +184,7 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
         elif profile[v].dtype.kind in ['U', 'S', 'O']:
             profile[v].where(~profile[v].isnull(), NaN_MongoDB_char)
 
-    STATION_PARAMETERS_in_MongoDB = ['PRES', 'TEMP']
+    STATION_PARAMETERS_inMongoDB = ['PRES', 'TEMP']
 
     profile['PRES_max_for_TEMP'] = profile.PRES.max()
     profile['PRES_min_for_TEMP'] = profile.PRES.min()
@@ -186,8 +195,10 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
         profile['PRES_min_for_PSAL'] = profile.dropna(dim='N_LEVELS',
                                                       subset=['PSAL']
                                                       )['PRES'].min()
-        STATION_PARAMETERS_in_MongoDB.append('PSAL')
+        STATION_PARAMETERS_inMongoDB.append('PSAL')
 
+    profile.rename(renaming, inplace=True)
+    profile['max_pres'] = profile['PRES_max_for_TEMP']
     # ---- Create the dictionary for MongoDB ----
     mvars = [v for v in ['PRES', 'TEMP', 'PSAL'] if v in profile]
     measurements = profile[mvars]
@@ -207,11 +218,18 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
     output['measurements'] = measurements
     output['measurements_qc'] = measurements_qc
 
-    output['STATION_PARAMETERS_in_MongoDB'] = STATION_PARAMETERS_in_MongoDB
+    output['STATION_PARAMETERS_inMongoDB'] = STATION_PARAMETERS_inMongoDB
+
+    output['geoLocation'] = {'type': 'Point',
+                             'coordinates': [output['lon'],
+                                             output['lat']]}
+    output['geo2DLocation'] = {'type': 'Point',
+                               'coordinates': [output['lon'],
+                                               output['lat']]}
 
     try:
-        output['BASIN'] = get_basin(float(profile['LATITUDE']),
-                                    float(profile['LONGITUDE']),
+        output['BASIN'] = get_basin(float(profile['lat']),
+                                    float(profile['lon']),
                                     basin_filename)
     except:
         logger.warning('Using basin mask = NaN on profile: %s' % x_id)
@@ -380,4 +398,4 @@ if __name__ == '__main__':
                 insert_one(db, p)
 
     elif args.mode == 'update':
-        print("I'm sorry, I'm not ready to update the database")
+print("I'm sorry, I'm not ready to update the database")

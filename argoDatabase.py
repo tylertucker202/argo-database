@@ -52,12 +52,12 @@ class argoDatabase(object):
             self.profiles_coll.create_index([('containsBGC', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
+    
+    @staticmethod
+    def get_file_names_to_add(localDir, howToAdd='all', files=[], dacs=[]):
 
-    def add_locally(self, localDir, howToAdd='all', files=[], dacs=[]):
-        os.chdir(localDir)
         reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
         if howToAdd=='by_dac_profiles':
-            files = []
             logging.debug('adding dac profiles from path: {0}'.format(localDir))
             for dac in dacs:
                 logging.debug('On dac: {0}'.format(dac))
@@ -71,6 +71,9 @@ class argoDatabase(object):
         else:
             logging.warning('howToAdd not recognized. not going to do anything.')
             return
+        return files        
+
+    def add_locally(self, localDir, files):
 
         if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
             self.remove_profiles(files)

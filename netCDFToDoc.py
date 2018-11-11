@@ -251,6 +251,9 @@ class netCDFToDoc(object):
         except Exception as err:
             raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err.args))
+        self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
+        
+        
         
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=False)
@@ -259,7 +262,6 @@ class netCDFToDoc(object):
         
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = np.float64(maxPres)
-        self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
             raise AttributeError('Profile:{0} has unknown date.'
                           ' Not going to add'.format(self.profileId))
