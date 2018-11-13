@@ -29,7 +29,7 @@ if __name__ == '__main__':
                       collectionName,
                       replaceProfile=False,
                       qcThreshold='1', 
-                      dbDumpThreshold=10000,
+                      dbDumpThreshold=1000,
                       removeExisting=True,
                       testMode=False)
     

@@ -29,7 +29,7 @@ if __name__ == '__main__':
     ad = argoDatabase(dbName, collectionName,
                  replaceProfile=True,
                  qcThreshold='1', 
-                 dbDumpThreshold=10000,
+                 dbDumpThreshold=1000,
                  removeExisting=False)
     files = ad.get_file_names_to_add(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
     try:

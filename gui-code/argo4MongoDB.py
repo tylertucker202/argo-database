@@ -11,7 +11,7 @@ import multiprocessing as mp
 import time
 from ftplib import FTP
 import logging
-
+import pdb
 import numpy as np
 import netCDF4
 from scipy.interpolate import griddata
@@ -186,25 +186,25 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
 
     STATION_PARAMETERS_inMongoDB = ['PRES', 'TEMP']
 
-    profile['PRES_max_for_TEMP'] = profile.PRES.max()
-    profile['PRES_min_for_TEMP'] = profile.PRES.min()
+    profile['PRES_max_for_TEMP'] = np.float64(profile.PRES.max())
+    profile['PRES_min_for_TEMP'] = np.float64(profile.PRES.min())
     if 'PSAL' in profile:
-        profile['PRES_max_for_PSAL'] = profile.dropna(dim='N_LEVELS',
+        profile['PRES_max_for_PSAL'] = np.float64(profile.dropna(dim='N_LEVELS',
                                                       subset=['PSAL']
-                                                      )['PRES'].max()
-        profile['PRES_min_for_PSAL'] = profile.dropna(dim='N_LEVELS',
+                                                      )['PRES'].max())
+        profile['PRES_min_for_PSAL'] = np.float64(profile.dropna(dim='N_LEVELS',
                                                       subset=['PSAL']
-                                                      )['PRES'].min()
+                                                      )['PRES'].min())
         STATION_PARAMETERS_inMongoDB.append('PSAL')
 
     profile.rename(renaming, inplace=True)
-    profile['max_pres'] = profile['PRES_max_for_TEMP']
+    profile['max_pres'] = np.float64(profile['PRES_max_for_TEMP'])
     # ---- Create the dictionary for MongoDB ----
     mvars = [v for v in ['PRES', 'TEMP', 'PSAL'] if v in profile]
     measurements = profile[mvars]
     for v in mvars:
         measurements.rename({v: v.lower()}, inplace=True)
-    measurements = measurements.to_dataframe().to_dict('records')
+    measurements = measurements.astype(np.float64).to_dataframe().to_dict('records')
 
     qcvars = [v+'_QC' for v in mvars if v+'_QC' in profile]
     measurements_qc = profile[qcvars]
@@ -221,11 +221,8 @@ def profile4mongodb(profile, min_PRES_DEEP_ARGO, basin_filename):
     output['STATION_PARAMETERS_inMongoDB'] = STATION_PARAMETERS_inMongoDB
 
     output['geoLocation'] = {'type': 'Point',
-                             'coordinates': [output['lon'],
-                                             output['lat']]}
-    output['geo2DLocation'] = {'type': 'Point',
-                               'coordinates': [output['lon'],
-                                               output['lat']]}
+                             'coordinates': [np.float64(output['lon']),
+                                             np.float64(output['lat'])]}
 
     try:
         output['BASIN'] = get_basin(float(profile['lat']),
@@ -325,20 +322,21 @@ class Argo4MongoDB(object):
         self.queue.put('END')
 
 
-def insert_one(db, p):
+def insert_one(db, profDoc):
     try:
-        db.insert_one(p)
+        db.insert_one(profDoc)
     except bson.errors.InvalidBSON:
-        logger.error('Invalid BSON, profile: {}'.format(p['_id']))
+        logger.error('Invalid BSON, profile: {}'.format(profDoc['_id']))
     except bson.errors.InvalidDocument:
-        logger.error('Invalid Document, profile: {}'.format(p['_id']))
+        pdb.set_trace()
+        logger.error('Invalid Document, profile: {}'.format(profDoc['_id']))
     except pymongo.errors.DuplicateKeyError:
         logger.error('Trying to insert a duplicate, profile: {}'.format(
-            p['_id']))
+            profDoc['_id']))
     except pymongo.errors.WriteError:
-        logger.error('Fail to record profile: {}'.format(p['_id']))
+        logger.error('Fail to record profile: {}'.format(profDoc['_id']))
 
-    logger.debug('Inserted profile: {}'.format(p['_id']))
+    logger.debug('Inserted profile: {}'.format(profDoc['_id']))
 
 
 if __name__ == '__main__':
@@ -398,4 +396,4 @@ if __name__ == '__main__':
                 insert_one(db, p)
 
     elif args.mode == 'update':
-print("I'm sorry, I'm not ready to update the database")
+        print("I'm sorry, I'm not ready to update the database")

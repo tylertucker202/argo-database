@@ -24,6 +24,7 @@ class argoDatabase(object):
         logging.debug('initializing ArgoDatabase')
         self.init_database(dbName)
         self.init_profiles_collection(collectionName)
+        self.dbName = dbName
         self.home_dir = os.getcwd()
         self.replaceProfile = replaceProfile
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
@@ -40,6 +41,13 @@ class argoDatabase(object):
         dbUrl = 'mongodb://localhost:27017/'
         client = pymongo.MongoClient(dbUrl)
         self.db = client[dbName]
+    
+    @staticmethod
+    def create_collection(dbName, collectionName='profiles'):
+        dbUrl = 'mongodb://localhost:27017/'
+        client = pymongo.MongoClient(dbUrl)
+        db = client[dbName]
+        return db[collectionName]    
 
     def init_profiles_collection(self, collectionName):
         try:
@@ -77,6 +85,8 @@ class argoDatabase(object):
 
         if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
             self.remove_profiles(files)
+            
+        coll = self.create_collection(self.dbName)
 
         logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
@@ -96,13 +106,13 @@ class argoDatabase(object):
                     self.documents.append(doc)
             if len(documents) >= self.dbDumpThreshold and not self.testMode:
                 logging.debug('dumping data to database')
-                self.add_many_profiles(documents, fileName)
+                self.add_many_profiles(documents, fileName, coll)
                 documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
         if len(documents) == 1 and not self.testMode:
-            self.add_single_profile(documents[0], fileName)
+            self.add_single_profile(documents[0], fileName, coll)
         elif len(documents) > 1 and not self.testMode:
-            self.add_many_profiles(documents, fileName)
+            self.add_many_profiles(documents, fileName, coll)
 
     def add_flags(self, doc, filename):
         try:
@@ -201,10 +211,10 @@ class argoDatabase(object):
             else:
                 logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
 
-    def add_single_profile(self, doc, file_name, attempt=0):
+    def add_single_profile(self, doc, file_name, coll, attempt=0):
         if self.replaceProfile:
             try:
-                self.profiles_coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
+                coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
                 self.totalDocumentsAdded += 1
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
@@ -215,7 +225,7 @@ class argoDatabase(object):
                 logging.warning('Type error while inserting one document.')
         else:
             try:
-                self.profiles_coll.insert_one(doc)
+                coll.profiles_coll.insert_one(doc)
                 self.totalDocumentsAdded += 1
             except pymongo.errors.DuplicateKeyError:
                 logging.error('duplicate key: {0}'.format(doc['_id']))
@@ -229,9 +239,9 @@ class argoDatabase(object):
             except TypeError:
                 logging.warning('Type error while inserting one document.')
 
-    def add_many_profiles(self, documents, file_name):
+    def add_many_profiles(self, documents, file_name, coll):
         try:
-            self.profiles_coll.insert_many(documents, ordered=False)
+            coll.insert_many(documents, ordered=False)
             self.totalDocumentsAdded += len(documents)
         except pymongo.errors.BulkWriteError as bwe:
             writeErrors = bwe.details['writeErrors']
@@ -242,11 +252,11 @@ class argoDatabase(object):
             logging.warning('bulk write failed for: {0}'.format(file_name))
             logging.warning('adding the failed documents one at a time.')
             for doc in trouble_list:
-                self.add_single_profile(doc, file_name)
+                coll.add_single_profile(doc, file_name)
         except bson.errors.InvalidDocument:
             logging.warning('bson error')
             for doc in documents:
-                self.add_single_profile(doc, file_name)
+                coll.add_single_profile(doc, file_name)
         except TypeError:
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
             logging.warning('Type error during insert_many method. Check documents.')
