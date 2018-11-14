@@ -26,12 +26,15 @@ class netCDFToDoc(object):
                  qcThreshold='1'):
         logging.debug('initializing netCDFToDoc')
         self.platformNumber = platformNumber
-        self.qcThreshold = qcThreshold
         self.variables = variables
         self.idx = idx
         self.cycleNumber = int(self.variables['CYCLE_NUMBER'][self.idx].astype(str))
         self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.profileDoc = dict()
+        self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
+        self.measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        self.qcDeepThreshold = ['1', '2', '3']
+        self.qcThreshold = qcThreshold
         
         # populate profileDoc
         self.make_profile_dict(dacName, refDate, remotePath, stationParameters)
@@ -51,7 +54,7 @@ class netCDFToDoc(object):
                 raise NotImplementedError('NotImplemented Error for idx: {1}'.format(self.idx))
         return data    
 
-    def format_measurments(self, measStr, includeQC=True):
+    def format_measurments(self, measStr):
         """
         Combines a measurement's real time and adjusted values into a 1D dataframe.
         An adjusted value replaces each real-time value. 
@@ -103,20 +106,27 @@ class netCDFToDoc(object):
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
                 return pd.DataFrame()
-            
+
+        return df
+    
+    def do_qc_on_meas(self, df, measStr):
         """
         QC procedure drops any row whos qc value does not equal '1'
         """
-        if includeQC:
-            try:
-                df = df[df[doc_key+'_qc'] == self.qcThreshold]
-            except KeyError:
-                raise KeyError('measurement: {0} has no qc.'
-                          ' returning empty dataframe'.format(doc_key))
-                return pd.DataFrame()
+        try:
+            if self.deepFloat:
+                dfShallow = df[ df['pres'] <= 2000]
+                dfDeep = df[ df['pres'] > 2000]
+                df = pd.concat([dfShallow, dfDeep[dfDeep[measStr+'_qc'] in self.qcDeepThreshold]], axis=0 )
+            else:
+                df = df[df[measStr+'_qc'] == self.qcThreshold]
+        except KeyError:
+            raise KeyError('measurement: {0} has no qc.'
+                      ' returning empty dataframe'.format(measStr))
+            return pd.DataFrame()
         return df
 
-    def do_qc_on_measurements(self, df):
+    def drop_nan_from_df(self, df):
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
         if not 'pres_qc' in df.columns:
             raise ValueError('Float: {0} has bad pressure qc.'
@@ -144,15 +154,17 @@ class netCDFToDoc(object):
         df = pd.DataFrame()
         keys = self.variables.keys()
         #  Profile measurements are gathered in a dataframe
-        measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
-        
-        for measStr in measList:
+        for measStr in self.measList:
             if measStr in keys:
-                meas_df = self.format_measurments(measStr, includeQC)
+                meas_df = self.format_measurments(measStr)
+                if includeQC:
+                    meas_df = self.do_qc_on_meas(meas_df, measStr.lower())
                 # append with index conserved
                 df = pd.concat([df, meas_df], axis=1)
         if includeQC:
-            df = self.do_qc_on_measurements(df)
+            df = self.drop_nan_from_df(df)
+        else:
+            df.fillna(-999, inplace=True)
         return df
 
     def add_string_values(self, valueName):
@@ -190,7 +202,6 @@ class netCDFToDoc(object):
                           ' Not going to add item to document'.format(valueName))
     
     def add_max_min_pres(self, df, param, maxBoolean):
-        
         if not param in df.columns:
             return
         try:
@@ -209,7 +220,6 @@ class netCDFToDoc(object):
             paramName = 'pres_' + maxMin + '_for_' + param.upper()
             self.profileDoc[paramName] = presValue
         except:
-            pdb.set_trace()
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
 
     def add_bgc_flag(self):
@@ -218,6 +228,16 @@ class netCDFToDoc(object):
             self.profileDoc['containsBGC'] = 1
             df = self.make_profile_df(includeQC=False)
             self.profileDoc['bgcMeas'] = df.astype(np.float64).to_dict(orient='records')
+    
+    def check_if_deep_profile(self):
+        try:
+            if self.profileDoc['WMO_INST_TYPE'] in self.deepFloatWMO:
+                deepFloat = True
+            else:
+                deepFloat = False
+        except NameError:
+            deepFloat = False
+        return deepFloat
 
     def make_profile_dict(self, dacName, refDate, remotePath, stationParameters):
         """
@@ -232,10 +252,9 @@ class netCDFToDoc(object):
         self.add_string_values('DATA_MODE')
         self.add_string_values('PI_NAME')
         self.add_string_values('WMO_INST_TYPE')
+        self.deepFloat = self.check_if_deep_profile()
         try:
-            profileDf = self.make_profile_df()
-            if profileDf.empty:
-                raise Exception('no valid measurements.')
+            profileDf = self.make_profile_df(includeQC=True)
         except ValueError as err:
             raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
                           ' Not going to add.'.format(self.profileId, err.args))
