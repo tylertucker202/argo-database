@@ -100,16 +100,16 @@ if __name__ == '__main__':
                        + '-' + todayDate + '.txt'
     reBR = r'^(?!.*BR\d{1,})' # ignore characters starting with BR followed by a digit
     logging.warning('Downloading Profile Indexes')
-    download_todays_file()
+    #download_todays_file()
     logging.warning('Generating dataframe')
-    minDate = datetime.today() - timedelta(days=1)
-    maxDate = datetime.today()
+    minDate = datetime.today() - timedelta(days=4)
+    maxDate = datetime.today() - timedelta(days=2)
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     df = get_df_of_files_to_add(localProfileIndex)
     print(df.shape)
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    #mp_create_dir_of_files(df)
+    mp_create_dir_of_files(df)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     hostname = os.uname().nodename
