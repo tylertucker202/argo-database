@@ -1,7 +1,5 @@
 certifi==2018.10.15
 cftime==1.0.2.1
-mkl-fft==1.0.6
-mkl-random==1.0.2
 netCDF4==1.4.1
 numpy==1.15.4
 pandas==0.23.4

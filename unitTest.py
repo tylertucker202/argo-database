@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import os
 import pdb
+import sys
+#sys.path('..')
 from argoDatabase import argoDatabase
 import unittest
 
@@ -61,6 +63,7 @@ class grid_and_area_unit_tests(unittest.TestCase):
         return
     
     def test_document_creation(self):
+        pdb.set_trace()
         self.assertIsInstance(self.ad.documents, list, 'should be list')
         self.assertIsInstance(self.ad.documents[0], dict, 'should be dict')
         #print(self.ad.documents)

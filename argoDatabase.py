@@ -34,7 +34,6 @@ class argoDatabase(object):
         self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
         self.testMode = testMode # used for testing documents outside database
         self.documents = []
-        self.totalDocumentsAdded = 0
 
     def init_database(self, dbName):
         logging.debug('initializing init_database')
@@ -215,7 +214,6 @@ class argoDatabase(object):
         if self.replaceProfile:
             try:
                 coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
-                self.totalDocumentsAdded += 1
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
@@ -226,7 +224,6 @@ class argoDatabase(object):
         else:
             try:
                 coll.insert_one(doc)
-                self.totalDocumentsAdded += 1
             except pymongo.errors.DuplicateKeyError:
                 logging.error('duplicate key: {0}'.format(doc['_id']))
                 logging.error('not going to add')
@@ -242,7 +239,6 @@ class argoDatabase(object):
     def add_many_profiles(self, documents, file_name, coll):
         try:
             coll.insert_many(documents, ordered=False)
-            self.totalDocumentsAdded += len(documents)
         except pymongo.errors.BulkWriteError as bwe:
             writeErrors = bwe.details['writeErrors']
             problem_idx = []
