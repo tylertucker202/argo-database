@@ -26,7 +26,7 @@ def download_todays_file():
         ftp.cwd(ftpPath)
         with open(localProfileIndex, "wb") as f:
             ftp.retrbinary("RETR " + profileText, f.write)
-    
+
 def get_df_of_files_to_add(filename):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
     df = pd.DataFrame()
@@ -67,7 +67,7 @@ def mp_create_dir_of_files(df, npes=None):
             p.start()
         for p in processes:
             p.join()
-            
+
 def clean_up_space():
     #remove indexList
     os.remove(localProfileIndex)
@@ -75,14 +75,14 @@ def clean_up_space():
     fileName = os.path.join( os.getcwd(), 'tmp' )
     shutil.rmtree(fileName)
 
-    
+
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'addFromTmp.log'
-    OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'tmp')
+    OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo-tmp'
+    dbName = 'argo2'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -96,15 +96,14 @@ if __name__ == '__main__':
     profileText = 'ar_index_global_prof.txt'
     localProfileIndex = os.path.curdir \
                        + os.sep \
-                       + 'profile-indexes' \
                        + os.sep + profileText.strip('.txt') \
                        + '-' + todayDate + '.txt'
     reBR = r'^(?!.*BR\d{1,})' # ignore characters starting with BR followed by a digit
     logging.warning('Downloading Profile Indexes')
-    download_todays_file()
+    #download_todays_file()
     logging.warning('Generating dataframe')
-    minDate = datetime.today() - timedelta(days=1)
-    maxDate = datetime.today()
+    minDate = datetime.today() - timedelta(days=4)
+    maxDate = datetime.today() - timedelta(days=2)
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     df = get_df_of_files_to_add(localProfileIndex)
@@ -132,11 +131,9 @@ if __name__ == '__main__':
         p.start()
     for p in processes:
         p.join()
-        
-    #ad.add_locally(OUTPUTDIR, files)
+
     logging.warning('Total documents added: {}'.format(ad.totalDocumentsAdded))
-    
     logging.warning('Cleaning up space')
-    clean_up_space()
+    #clean_up_space()
     logging.warning('End of log file')
     
