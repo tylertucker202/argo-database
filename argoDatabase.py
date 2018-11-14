@@ -225,7 +225,7 @@ class argoDatabase(object):
                 logging.warning('Type error while inserting one document.')
         else:
             try:
-                coll.profiles_coll.insert_one(doc)
+                coll.insert_one(doc)
                 self.totalDocumentsAdded += 1
             except pymongo.errors.DuplicateKeyError:
                 logging.error('duplicate key: {0}'.format(doc['_id']))
@@ -252,11 +252,11 @@ class argoDatabase(object):
             logging.warning('bulk write failed for: {0}'.format(file_name))
             logging.warning('adding the failed documents one at a time.')
             for doc in trouble_list:
-                coll.add_single_profile(doc, file_name)
+                self.add_single_profile(doc, file_name, coll)
         except bson.errors.InvalidDocument:
             logging.warning('bson error')
             for doc in documents:
-                coll.add_single_profile(doc, file_name)
+                self.add_single_profile(doc, file_name, coll)
         except TypeError:
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
             logging.warning('Type error during insert_many method. Check documents.')
