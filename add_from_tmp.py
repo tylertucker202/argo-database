@@ -95,15 +95,14 @@ if __name__ == '__main__':
     todayDate = datetime.today().strftime('%Y-%m-%d')
     profileText = 'ar_index_global_prof.txt'
     localProfileIndex = os.path.curdir \
-                       + os.sep \
                        + os.sep + profileText.strip('.txt') \
                        + '-' + todayDate + '.txt'
     reBR = r'^(?!.*BR\d{1,})' # ignore characters starting with BR followed by a digit
     logging.warning('Downloading Profile Indexes')
-    #download_todays_file()
+    download_todays_file()
     logging.warning('Generating dataframe')
-    minDate = datetime.today() - timedelta(days=4)
-    maxDate = datetime.today() - timedelta(days=2)
+    minDate = datetime.today() - timedelta(days=1)
+    maxDate = datetime.today()
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     df = get_df_of_files_to_add(localProfileIndex)
@@ -132,8 +131,7 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
-    logging.warning('Total documents added: {}'.format(ad.totalDocumentsAdded))
     logging.warning('Cleaning up space')
-    #clean_up_space()
+    clean_up_space()
     logging.warning('End of log file')
     
