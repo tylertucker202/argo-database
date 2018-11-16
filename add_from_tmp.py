@@ -114,20 +114,20 @@ if __name__ == '__main__':
                        + os.sep + mixedProfileName.strip('.txt') \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
     minDate = datetime.today() - timedelta(days=1)
     maxDate = datetime.today()
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
-    #dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
-    #dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
     #pdb.set_trace()
-    #df = merge_dfs(dfGlobal, dfMixed)
-    #print(df.shape)
-    #logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    #mp_create_dir_of_files(df, GDAC, ftpPath)
+    df = merge_dfs(dfGlobal, dfMixed)
+    print(df.shape)
+    logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
+    mp_create_dir_of_files(df, GDAC, ftpPath)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     hostname = os.uname().nodename
@@ -153,4 +153,3 @@ if __name__ == '__main__':
     logging.warning('Cleaning up space')
     clean_up_space(globalProfileIndex, mixedProfileIndex)
     logging.warning('End of log file')
-    
