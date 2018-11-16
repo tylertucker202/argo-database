@@ -35,7 +35,6 @@ class netCDFToDoc(object):
         self.measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
         self.qcDeepThreshold = ['1', '2', '3']
         self.qcThreshold = qcThreshold
-        
         # populate profileDoc
         self.make_profile_dict(dacName, refDate, remotePath, stationParameters)
     
@@ -194,7 +193,7 @@ class netCDFToDoc(object):
                 instRefExists = 'INST_REFERENCE' in self.variables.keys()
                 logging.debug('PLATFORM_TYPE not found.'
                               'INST_REFERENCE exists? {}'.format(instRefExists))
-                raise KeyError    
+                raise KeyError  
             logging.debug('unknown key {0}.'
                           ' Not going to add item to document'.format(valueName))
         except:
@@ -252,6 +251,8 @@ class netCDFToDoc(object):
         self.add_string_values('DATA_MODE')
         self.add_string_values('PI_NAME')
         self.add_string_values('WMO_INST_TYPE')
+        self.add_string_values('VERTICAL_SAMPLING_SCHEME')
+        
         self.deepFloat = self.check_if_deep_profile()
         try:
             profileDf = self.make_profile_df(includeQC=True)
@@ -272,6 +273,7 @@ class netCDFToDoc(object):
                           ' Not going to add'.format(self.profileId, err.args))
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         
+        self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
         
         
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
@@ -331,7 +333,6 @@ class netCDFToDoc(object):
         profile_id = self.platformNumber + '_' + str(self.cycleNumber)
         url = remotePath
         self.profileDoc['nc_url'] = url
-        
         self.add_bgc_flag()
 
         """

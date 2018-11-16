@@ -15,7 +15,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'argoTroublesomeProfiles.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -46,5 +46,4 @@ if __name__ == '__main__':
         p.join()
         
     #ad.add_locally(OUTPUTDIR, files)
-    logging.warning('Total documents added: {}'.format(ad.totalDocumentsAdded))
     logging.warning('End of log file')

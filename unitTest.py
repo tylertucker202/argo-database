@@ -17,7 +17,7 @@ class grid_and_area_unit_tests(unittest.TestCase):
         self.ad = argoDatabase(self.dbName,
                           self.collectionName,
                           replaceProfile=False,
-                          qcThreshold='1', 
+                          qcThreshold='1',
                           dbDumpThreshold=10000,
                           removeExisting=False,
                           testMode=True)
@@ -35,6 +35,7 @@ class grid_and_area_unit_tests(unittest.TestCase):
                 'pres_max_for_PSAL',
                 'pres_min_for_PSAL',
                 'containsBGC',
+                'VERTICAL_SAMPLING_SCHEME',
                 'bgcMeas']
         self.requiredKeys = \
                 ['max_pres',
@@ -52,7 +53,6 @@ class grid_and_area_unit_tests(unittest.TestCase):
                 'nc_url',
                 'DIRECTION',
                 '_id',
-                'VERTICAL_SAMPLING_SCHEME',
                 'STATION_PARAMETERS_inMongoDB',
                 'BASIN']
 
@@ -63,7 +63,7 @@ class grid_and_area_unit_tests(unittest.TestCase):
         return
     
     def test_document_creation(self):
-        pdb.set_trace()
+        #pdb.set_trace()
         self.assertIsInstance(self.ad.documents, list, 'should be list')
         self.assertIsInstance(self.ad.documents[0], dict, 'should be dict')
         #print(self.ad.documents)

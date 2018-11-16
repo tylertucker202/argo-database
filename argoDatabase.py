@@ -5,12 +5,13 @@ import re
 import glob
 import logging
 import numpy as np
+from scipy.interpolate import griddata
 from datetime import datetime
 from netCDF4 import Dataset
 import bson.errors
 import pdb
 from netCDFToDoc import netCDFToDoc
-from openArgoNC import openArgoNcFile
+import pandas as pd
 
 class argoDatabase(object):
     def __init__(self,
@@ -22,8 +23,8 @@ class argoDatabase(object):
                  removeExisting=True, 
                  testMode=False):
         logging.debug('initializing ArgoDatabase')
-        self.init_database(dbName)
-        self.init_profiles_collection(collectionName)
+        #self.init_database(dbName)
+        #self.init_profiles_collection(collectionName)
         self.dbName = dbName
         self.home_dir = os.getcwd()
         self.replaceProfile = replaceProfile
@@ -31,44 +32,82 @@ class argoDatabase(object):
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
-        self.argoFlagsWriter = openArgoNcFile() # used for adding additional flags
         self.testMode = testMode # used for testing documents outside database
         self.documents = []
+        self.init_basin()
+        
+    def init_basin(self, basinFilename='basinmask_01.nc'):
+        nc = Dataset(basinFilename, 'r')
+    
+        assert nc.variables['LONGITUDE'].mask == True
+        assert nc.variables['LATITUDE'].mask == True
+    
+        idx = np.nonzero(~nc.variables['BASIN_TAG'][:].mask)
+        self.basin = nc.variables['BASIN_TAG'][:][idx].astype('i')
+        self.coords = np.stack([nc.variables['LATITUDE'][idx[0]],
+                           nc.variables['LONGITUDE'][idx[1]]]).T
 
+    def get_basin(self, lat, lon, basin_filename='basinmask_01.nc'):
+        """Returns the basin code for a given lat lon coordinates
+           Ex.:
+           basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
+        """   
+        return int(griddata(self.coords, self.basin, (lon, lat), method='nearest'))
+    
     def init_database(self, dbName):
         logging.debug('initializing init_database')
         dbUrl = 'mongodb://localhost:27017/'
         client = pymongo.MongoClient(dbUrl)
         self.db = client[dbName]
     
-    @staticmethod
-    def create_collection(dbName, collectionName='profiles'):
+
+    def create_collection(self, dbName, collectionName='profiles'):
         dbUrl = 'mongodb://localhost:27017/'
         client = pymongo.MongoClient(dbUrl)
         db = client[dbName]
-        return db[collectionName]    
+        coll = db[collectionName]
+        coll = self.init_profiles_collection(coll)
+        return coll    
 
-    def init_profiles_collection(self, collectionName):
+    @staticmethod
+    def init_profiles_collection(coll):
         try:
-            self.profiles_coll = self.db[collectionName]
-            self.profiles_coll.create_index([('date', pymongo.DESCENDING)])
-            self.profiles_coll.create_index([('platform_number', pymongo.DESCENDING)])
-            self.profiles_coll.create_index([('cycle_number', pymongo.DESCENDING)])
-            self.profiles_coll.create_index([('dac', pymongo.DESCENDING)])
-            self.profiles_coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
-            self.profiles_coll.create_index([('containsBGC', pymongo.DESCENDING)])
+            coll.create_index([('date', pymongo.DESCENDING)])
+            coll.create_index([('platform_number', pymongo.DESCENDING)])
+            coll.create_index([('cycle_number', pymongo.DESCENDING)])
+            coll.create_index([('dac', pymongo.DESCENDING)])
+            coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
+            coll.create_index([('containsBGC', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
+        return coll
     
     @staticmethod
-    def get_file_names_to_add(localDir, howToAdd='all', files=[], dacs=[]):
+    def remove_duplicate_if_mixed(files):
+        '''remove platforms from core that exist in mixed df'''
+        df = pd.DataFrame()
+        df['file'] = files
+        df['filename'] = df['file'].apply(lambda x: x.split('/')[-1])
+        df['profile'] = df['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
+        df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
+        df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
+        dfMixed = df[ df['prefix'].str.contains('M')]
+        dfCore = df[ ~df['prefix'].str.contains('M')]
+        rmPlat = dfMixed['platform'].unique().tolist()
+        dfTruncCore = dfCore[ ~dfCore['platform'].isin(rmPlat)]
+        outDf = pd.concat([dfMixed, dfTruncCore], axis=0, sort=False)
+        outFiles = outDf.file.tolist()
+        return outFiles
+
+    def get_file_names_to_add(self, localDir, howToAdd='all', files=[], dacs=[]):
+
 
         reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
         if howToAdd=='by_dac_profiles':
             logging.debug('adding dac profiles from path: {0}'.format(localDir))
             for dac in dacs:
                 logging.debug('On dac: {0}'.format(dac))
-                files = files+glob.glob(os.path.join(localDir, dac, '**', 'profiles', '*.nc'))     
+                files = files+glob.glob(os.path.join(localDir, dac, '**', 'profiles', '*.nc'))
         elif howToAdd=='profile_list':
             logging.debug('adding profiles in provided list')
         elif howToAdd=='profiles':
@@ -78,14 +117,15 @@ class argoDatabase(object):
         else:
             logging.warning('howToAdd not recognized. not going to do anything.')
             return
+        files = self.remove_duplicate_if_mixed(files)
         return files        
 
     def add_locally(self, localDir, files):
 
-        if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
-            self.remove_profiles(files)
-            
         coll = self.create_collection(self.dbName)
+        if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
+            self.remove_profiles(files, coll)
+            
 
         logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
@@ -99,7 +139,7 @@ class argoDatabase(object):
             #current method of creating dac
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName)
             if isinstance(doc, dict):
-                doc = self.add_flags(doc, fileName)
+                doc = self.add_basin(doc, fileName)
                 documents.append(doc)
                 if self.testMode:
                     self.documents.append(doc)
@@ -113,24 +153,15 @@ class argoDatabase(object):
         elif len(documents) > 1 and not self.testMode:
             self.add_many_profiles(documents, fileName, coll)
 
-    def add_flags(self, doc, filename):
+    def add_basin(self, doc, fileName):
         try:
-            self.argoFlagsWriter.create_profile_data_if_exists(filename)
-            flagDoc = self.argoFlagsWriter.get_profile_data()
-        except TypeError as err:
-            logging.warning('Type error: {}'.format(err))
-            logging.warning('could not retrieve flags for: {}'.format(filename))
-            return doc            
+            doc['BASIN'] = self.get_basin(doc['lat'], doc['lon'])
         except:
-            logging.warning('unknown error for: {}. could not retrieve flags'.format(filename))
-            return doc
-        doc['VERTICAL_SAMPLING_SCHEME'] = flagDoc['VERTICAL_SAMPLING_SCHEME']
-        doc['STATION_PARAMETERS_inMongoDB'] = flagDoc['STATION_PARAMETERS_inMongoDB']
-        doc['BASIN'] = flagDoc['BASIN']
-        
+            logging.warning('not able to retireve basin flag for filename: {}'.format(fileName))
+            doc['BASIN'] = int(-999)
         return doc
         
-    def remove_profiles(self, files):
+    def remove_profiles(self, files, coll):
         #get profile ids
         idList = []
         for fileName in files:
@@ -143,11 +174,11 @@ class argoDatabase(object):
         #remove all profiles at once
         logging.debug('removing profiles before reintroducing')
         logging.debug('number of profiles to be deleted: {}'.format(len(idList)))
-        countBefore = self.profiles_coll.find({}).count()
-        self.profiles_coll.delete_many({'_id': {'$in': idList}})
-        countAfter = self.profiles_coll.find({}).count()
+        countBefore = coll.find({}).count()
+        coll.delete_many({'_id': {'$in': idList}})
+        countAfter = coll.find({}).count()
         delta = countBefore - countAfter
-        self.profiles_coll.find({}).count()
+        coll.find({}).count()
         logging.debug('number of profiles removed: {}'.format(delta))
 
     @staticmethod
