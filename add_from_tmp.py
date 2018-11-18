@@ -8,9 +8,13 @@ from datetime import datetime, timedelta
 import multiprocessing as mp
 import tempfile
 from numpy import array_split
+import warnings
 from argoDatabase import argoDatabase
 import shutil
 
+#  Sometimes netcdf contain nan. This will suppress runtime warnings.
+warnings.simplefilter('error', RuntimeWarning)
+np.warnings.filterwarnings('ignore')
 def profiles_from_ftp(conn, filename):
     """Create an Argo profile object from a remote FTP file
     """
@@ -93,7 +97,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'addFromTmp.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo-don'
+    dbName = 'argo2'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -114,20 +118,20 @@ if __name__ == '__main__':
                        + os.sep + mixedProfileName.strip('.txt') \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
-    minDate = datetime.today() - timedelta(days=1)
+    minDate = datetime.today() - timedelta(days=3)
     maxDate = datetime.today()
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
-    #dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
-    #dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
     #pdb.set_trace()
-    #df = merge_dfs(dfGlobal, dfMixed)
-    #print(df.shape)
-    #logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    #mp_create_dir_of_files(df, GDAC, ftpPath)
+    df = merge_dfs(dfGlobal, dfMixed)
+    print(df.shape)
+    logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
+    mp_create_dir_of_files(df, GDAC, ftpPath)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     hostname = os.uname().nodename

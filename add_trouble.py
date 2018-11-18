@@ -3,11 +3,14 @@
 import logging
 import os
 import sys
-PATH = '../'
-sys.path.append(PATH)
 from argoDatabase import argoDatabase
 import multiprocessing as mp
 from numpy import array_split
+import warnings
+from numpy import warnings as npwarnings
+#  Sometimes netcdf contain nan. This will suppress runtime warnings.
+warnings.simplefilter('error', RuntimeWarning)
+npwarnings.filterwarnings('ignore')
 
 if __name__ == '__main__':
 
@@ -15,7 +18,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'argoTroublesomeProfiles.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argo2'
+    dbName = 'argo3'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -33,7 +36,7 @@ if __name__ == '__main__':
                       removeExisting=True,
                       testMode=False)
     
-    files = ad.get_file_names_to_add(OUTPUTDIR, howToAdd='profiles')
+    files = ad.get_file_names_to_add(OUTPUTDIR)
     try:
         npes
     except NameError:

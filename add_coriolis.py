@@ -6,16 +6,18 @@ from argoDatabase import argoDatabase, getOutput
 import sys
 import multiprocessing as mp
 from numpy import array_split
-
-PATH = '../'
-sys.path.append(PATH)
+import warnings
+from numpy import warnings as npwarnings
+#  Sometimes netcdf contain nan. This will suppress runtime warnings.
+warnings.simplefilter('error', RuntimeWarning)
+npwarnings.filterwarnings('ignore')
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'coriolis.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo2'
+    dbName = 'argo3'
     collectionName = 'profiles'
     dacs = ['coriolis']    
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
@@ -29,9 +31,9 @@ if __name__ == '__main__':
     ad = argoDatabase(dbName, collectionName,
                  replaceProfile=True,
                  qcThreshold='1', 
-                 dbDumpThreshold=10000,
+                 dbDumpThreshold=1000,
                  removeExisting=False)
-    files = ad.get_file_names_to_add(OUTPUTDIR, howToAdd='by_dac_profiles', dacs=dacs)
+    files = ad.get_file_names_to_add(OUTPUTDIR, dacs=dacs)
     try:
         npes
     except NameError:

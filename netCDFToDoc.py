@@ -12,7 +12,7 @@ import warnings
 import pdb
 
 warnings.simplefilter('error', RuntimeWarning)
-
+np.warnings.filterwarnings('ignore')
 
 class netCDFToDoc(object):
 
@@ -74,7 +74,7 @@ class netCDFToDoc(object):
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[doc_key] = np.nan
             except RuntimeWarning as err:
-                raise RuntimeWarning('Profile:{0} runtime warning when getting adjusted value. Reason: {1}'.format(self.profileId, err.args))
+                raise RuntimeWarning('Profile:{0} measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(self.profileId, measStr, err.args))
 
                 
             else:  # sometimes a masked array is used
@@ -145,13 +145,12 @@ class netCDFToDoc(object):
             raise ValueError('Profile:{0} has neither temp nor psal.'
                           ' Not going to add'.format(self.profileId))
         df.fillna(-999, inplace=True) # API needs all measurements to be a number
-        qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  # qc values are no longer needed.
-        df.drop(qcColNames, axis = 1, inplace = True)    
         return df
 
     def make_profile_df(self, includeQC=True):
         df = pd.DataFrame()
         keys = self.variables.keys()
+        
         #  Profile measurements are gathered in a dataframe
         for measStr in self.measList:
             if measStr in keys:
@@ -160,8 +159,10 @@ class netCDFToDoc(object):
                     meas_df = self.do_qc_on_meas(meas_df, measStr.lower())
                 # append with index conserved
                 df = pd.concat([df, meas_df], axis=1)
+        qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
         if includeQC:
             df = self.drop_nan_from_df(df)
+            df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
         else:
             df.fillna(-999, inplace=True)
         return df
@@ -269,6 +270,7 @@ class netCDFToDoc(object):
             raise AttributeError('Profile:{0} has AttributeError:{1} profileDf not created.'
                           ' Not going to add.'.format(self.profileId, err.args))
         except Exception as err:
+            pdb.set_trace()
             raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
                           ' Not going to add'.format(self.profileId, err.args))
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
@@ -319,8 +321,8 @@ class netCDFToDoc(object):
         except Exception as err:
             raise Exception('Profile:{0} not created. Error {1}'
                           ' Not going to add'.format(self.profileId, err))
-        if positionQC == 4:
-            raise ValueError('position_qc is a 4. Not going to add.')
+        if positionQC == 4 or positionQC == 9:
+            raise ValueError('position_qc is either missing or a 4. Not going to add.')
 
         self.profileDoc['position_qc'] = positionQC
         self.profileDoc['cycle_number'] = self.cycleNumber

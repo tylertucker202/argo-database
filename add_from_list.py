@@ -8,6 +8,11 @@ from argoDatabase import argoDatabase
 import add_from_tmp as aft
 from datetime import datetime
 import re
+import warnings
+from numpy import warnings as npwarnings
+#  Sometimes netcdf contain nan. This will suppress runtime warnings.
+warnings.simplefilter('error', RuntimeWarning)
+npwarnings.filterwarnings('ignore')
 
 def get_df_of_files_to_add_from_platform_list(filename, platformList):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)

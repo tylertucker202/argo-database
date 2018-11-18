@@ -16,15 +16,16 @@ import pandas as pd
 class argoDatabase(object):
     def __init__(self,
                  dbName,
-                 collectionName, 
+                 collectionName='profiles', 
                  replaceProfile=False,
                  qcThreshold='1', 
                  dbDumpThreshold=10000,
                  removeExisting=True, 
-                 testMode=False):
+                 testMode=False,
+                 basinFilename='basinmask_01.nc', 
+                 addToDb=True):
         logging.debug('initializing ArgoDatabase')
-        #self.init_database(dbName)
-        #self.init_profiles_collection(collectionName)
+        self.collectionName = collectionName
         self.dbName = dbName
         self.home_dir = os.getcwd()
         self.replaceProfile = replaceProfile
@@ -33,8 +34,10 @@ class argoDatabase(object):
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
         self.testMode = testMode # used for testing documents outside database
+        self.addToDb = addToDb
         self.documents = []
-        self.init_basin()
+        self.init_basin(basinFilename)
+
         
     def init_basin(self, basinFilename='basinmask_01.nc'):
         nc = Dataset(basinFilename, 'r')
@@ -47,25 +50,26 @@ class argoDatabase(object):
         self.coords = np.stack([nc.variables['LATITUDE'][idx[0]],
                            nc.variables['LONGITUDE'][idx[1]]]).T
 
-    def get_basin(self, lat, lon, basin_filename='basinmask_01.nc'):
+    def get_basin(self, lat, lon):
         """Returns the basin code for a given lat lon coordinates
            Ex.:
            basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
         """   
         return int(griddata(self.coords, self.basin, (lon, lat), method='nearest'))
     
-    def init_database(self, dbName):
-        logging.debug('initializing init_database')
-        dbUrl = 'mongodb://localhost:27017/'
-        client = pymongo.MongoClient(dbUrl)
-        self.db = client[dbName]
-    
+    def add_basin(self, doc, fileName):
+        try:
+            doc['BASIN'] = self.get_basin(doc['lat'], doc['lon'])
+        except:
+            logging.warning('not able to retireve basin flag for filename: {}'.format(fileName))
+            doc['BASIN'] = int(-999)
+        return doc
 
-    def create_collection(self, dbName, collectionName='profiles'):
+    def create_collection(self):
         dbUrl = 'mongodb://localhost:27017/'
         client = pymongo.MongoClient(dbUrl)
-        db = client[dbName]
-        coll = db[collectionName]
+        db = client[self.dbName]
+        coll = db[self.collectionName]
         coll = self.init_profiles_collection(coll)
         return coll    
 
@@ -83,14 +87,18 @@ class argoDatabase(object):
         return coll
     
     @staticmethod
-    def remove_duplicate_if_mixed(files):
-        '''remove platforms from core that exist in mixed df'''
+    def create_df_of_files(files):
         df = pd.DataFrame()
         df['file'] = files
         df['filename'] = df['file'].apply(lambda x: x.split('/')[-1])
         df['profile'] = df['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
         df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
         df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
+        return df        
+    
+    def remove_duplicate_if_mixed(self, files):
+        '''remove platforms from core that exist in mixed df'''
+        df = self.create_df_of_files(files)
         dfMixed = df[ df['prefix'].str.contains('M')]
         dfCore = df[ ~df['prefix'].str.contains('M')]
         rmPlat = dfMixed['platform'].unique().tolist()
@@ -99,33 +107,28 @@ class argoDatabase(object):
         outFiles = outDf.file.tolist()
         return outFiles
 
-    def get_file_names_to_add(self, localDir, howToAdd='all', files=[], dacs=[]):
-
-
+    def get_file_names_to_add(self, localDir, dacs=[]):
+        files = []
         reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
-        if howToAdd=='by_dac_profiles':
-            logging.debug('adding dac profiles from path: {0}'.format(localDir))
+        if len(dacs) != 0:
             for dac in dacs:
                 logging.debug('On dac: {0}'.format(dac))
                 files = files+glob.glob(os.path.join(localDir, dac, '**', 'profiles', '*.nc'))
-        elif howToAdd=='profile_list':
-            logging.debug('adding profiles in provided list')
-        elif howToAdd=='profiles':
+        else:
             logging.debug('adding profiles individually')
             files = files+glob.glob(os.path.join(localDir, '**', '**', 'profiles', '*.nc'))
-            files = list(filter(reBR.search, files))
-        else:
-            logging.warning('howToAdd not recognized. not going to do anything.')
-            return
+
+        files = list(filter(reBR.search, files))
         files = self.remove_duplicate_if_mixed(files)
         return files        
 
     def add_locally(self, localDir, files):
+        
+        if self.addToDb:
+            coll = self.create_collection()
 
-        coll = self.create_collection(self.dbName)
-        if self.removeExisting and not self.testMode: # Removes profiles on list before adding list (redundant...but requested)
+        if self.removeExisting and self.addToDb: # Removes profiles on list before adding list
             self.remove_profiles(files, coll)
-            
 
         logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
@@ -143,23 +146,15 @@ class argoDatabase(object):
                 documents.append(doc)
                 if self.testMode:
                     self.documents.append(doc)
-            if len(documents) >= self.dbDumpThreshold and not self.testMode:
+            if len(documents) >= self.dbDumpThreshold and self.addToDb:
                 logging.debug('dumping data to database')
                 self.add_many_profiles(documents, fileName, coll)
                 documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
-        if len(documents) == 1 and not self.testMode:
+        if len(documents) == 1 and self.addToDb:
             self.add_single_profile(documents[0], fileName, coll)
-        elif len(documents) > 1 and not self.testMode:
+        elif len(documents) > 1 and self.addToDb:
             self.add_many_profiles(documents, fileName, coll)
-
-    def add_basin(self, doc, fileName):
-        try:
-            doc['BASIN'] = self.get_basin(doc['lat'], doc['lon'])
-        except:
-            logging.warning('not able to retireve basin flag for filename: {}'.format(fileName))
-            doc['BASIN'] = int(-999)
-        return doc
         
     def remove_profiles(self, files, coll):
         #get profile ids
@@ -288,8 +283,7 @@ class argoDatabase(object):
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
             logging.warning('Type error during insert_many method. Check documents.')
             logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
-        
-        
+            
 def getOutput():
     mySystem = os.uname().nodename
     if mySystem == 'carby':
