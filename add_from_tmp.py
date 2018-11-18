@@ -8,13 +8,14 @@ from datetime import datetime, timedelta
 import multiprocessing as mp
 import tempfile
 from numpy import array_split
-import warnings
 from argoDatabase import argoDatabase
 import shutil
 
+import warnings
+from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
-np.warnings.filterwarnings('ignore')
+npwarnings.filterwarnings('ignore')
 def profiles_from_ftp(conn, filename):
     """Create an Argo profile object from a remote FTP file
     """
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
     download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
-    minDate = datetime.today() - timedelta(days=3)
+    minDate = datetime.today() - timedelta(days=1)
     maxDate = datetime.today()
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
