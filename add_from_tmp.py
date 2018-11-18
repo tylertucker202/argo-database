@@ -157,4 +157,3 @@ if __name__ == '__main__':
     logging.warning('Cleaning up space')
     clean_up_space(globalProfileIndex, mixedProfileIndex)
     logging.warning('End of log file')
-    
