@@ -223,7 +223,8 @@ class netCDFToDoc(object):
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
 
     def add_bgc_flag(self):
-        bgcKeys = ['CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        #bgcKeys = ['CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        bgcKeys = ['DOXY', 'CHLA', 'CDOM', 'NITRATE']
         if any (k in bgcKeys for k in self.variables.keys()):
             self.profileDoc['containsBGC'] = 1
             df = self.make_profile_df(includeQC=False)

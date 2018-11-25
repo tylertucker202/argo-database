@@ -26,6 +26,7 @@ def profiles_from_ftp(conn, filename):
     return tmp
 
 def download_todays_file(GDAC, ftpPath, profileIndex, profileText):
+    pdb.set_trace()
     with FTP(GDAC) as ftp:
         ftp.login()
         ftp.cwd(ftpPath)
@@ -98,7 +99,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'addFromTmp.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo2'
+    dbName = 'argo3'
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -113,13 +114,13 @@ if __name__ == '__main__':
     globalProfileName = 'ar_index_this_week_prof.txt'
     mixedProfileName = 'argo_merge-profile_index.txt'
     globalProfileIndex = os.path.curdir \
-                       + os.sep + globalProfileName.strip('.txt') \
+                       + os.sep + globalProfileName[:-4] \
                        + '-' + todayDate + '.txt'
     mixedProfileIndex = os.path.curdir \
-                       + os.sep + mixedProfileName.strip('.txt') \
+                       + os.sep + mixedProfileName[:-4] \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
     download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
     minDate = datetime.today() - timedelta(days=1)
