@@ -144,7 +144,7 @@ if __name__ == '__main__':
                       dbDumpThreshold=1000,
                       removeExisting=False,
                       testMode=False)
-    files = ad.get_file_names_to_add(OUTPUTDIR, howToAdd='profiles')
+    files = ad.get_file_names_to_add(OUTPUTDIR)
     try:
         npes
     except NameError:
