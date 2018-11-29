@@ -19,7 +19,7 @@ maxDate = '2018-11-26'
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOGFILENAME = 'addFromTmp.log'
+    LOGFILENAME = 'dateRange.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
     dbName = 'argo'
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     logging.basicConfig(format=FORMAT,
                         filename=LOGFILENAME,
                         level=logging.INFO)
-    logging.warning('Starting add_from_tmp script')
+    logging.warning('Starting add_from_daterange script')
     ftpPath = os.path.join(os.sep, 'ifremer', 'argo')
     GDAC = 'ftp.ifremer.fr'
     todayDate = datetime.today().strftime('%Y-%m-%d')
@@ -66,7 +66,8 @@ if __name__ == '__main__':
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
                       removeExisting=False,
-                      testMode=False)
+                      testMode=False,
+                      basinFilename=basinPath)
     files = ad.get_file_names_to_add(OUTPUTDIR)
     try:
         npes

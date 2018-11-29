@@ -11,11 +11,11 @@ case $HOSTNAME in
   (carby) 
 		echo "this is carby"
 		echo "adding minor dacs"
-                /home/tyler/anaconda3/envs/argo/bin/python add_minor_dacs.py
+                /home/tyler/anaconda3/envs/argo/bin/python minor_dacs.py
 		echo "adding coriolis"
-		/home/tyler/anaconda3/envs/argo/bin/python add_coriolis.py
+		/home/tyler/anaconda3/envs/argo/bin/python coriolis.py
 		echo "adding aoml"
-		/home/tyler/anaconda3/envs/argo/bin/python add_aoml.py
+		/home/tyler/anaconda3/envs/argo/bin/python aoml.py
 		;;
   (kadavu.ucsd.edu) 
 		echo "this is kadavu"
@@ -29,10 +29,10 @@ case $HOSTNAME in
   (*) 
         	echo "this lab 416"
 		echo "adding minor dacs"
-                /home/gstudent4/anaconda2/envs/argo/bin/python add_minor_dacs.py
+                /home/gstudent4/anaconda2/envs/argo/bin/python minor_dacs.py
 		echo "adding coriolis"
-		/home/gstudent4/anaconda2/envs/argo/bin/python add_coriolis.py
+		/home/gstudent4/anaconda2/envs/argo/bin/python coriolis.py
 		echo "adding aoml"
-		/home/gstudent4/anaconda2/envs/argo/bin/python add_aoml.py
+		/home/gstudent4/anaconda2/envs/argo/bin/python aoml.py
 		;;
 esac

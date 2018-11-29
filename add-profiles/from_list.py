@@ -35,7 +35,7 @@ def get_df_of_files_to_add_from_platform_list(filename, platformList):
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOGFILENAME = 'addFromList.log'
+    LOGFILENAME = 'fromList.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
     dbName = 'argo'

@@ -97,7 +97,7 @@ def clean_up_space(globalProfileIndex, mixedProfileIndex):
 
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOGFILENAME = 'addFromTmp.log'
+    LOGFILENAME = 'fromTmp.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
     dbName = 'argo'
