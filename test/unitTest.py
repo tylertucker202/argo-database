@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-
+import sys
+sys.path.append('..')
 from argoDatabaseTest import argoDatabaseTest
 from netCDFToDocTest import netCDFToDocTest
 import warnings

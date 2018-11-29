@@ -140,7 +140,8 @@ class argoDatabase(object):
             variables = root_grp.variables
             
             #current method of creating dac
-            doc = self.make_profile_doc(variables, dacName, remotePath, fileName)
+            nProf = root_grp.dimensions['N_PROF'].size
+            doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf)
             if isinstance(doc, dict):
                 doc = self.add_basin(doc, fileName)
                 documents.append(doc)
@@ -199,7 +200,7 @@ class argoDatabase(object):
             pass
         return formatted_param.strip(' ')
 
-    def make_profile_doc(self, variables, dacName, remotePath, fileName):
+    def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf):
         """
         Retrieves some meta information and counts number of profile measurements.
         Sometimes a profile will contain more than one measurement in variables field.
@@ -221,7 +222,7 @@ class argoDatabase(object):
         idx = 0 #stometimes there are two profiles. The second profile is ignored.
         qcThreshold='1'
         try:
-            p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold)
+            p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold, nProf)
             doc = p2D.get_profile_doc()
             return doc
         except AttributeError as err:

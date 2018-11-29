@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+sys.path.append('..')
 from argoDatabase import argoDatabase
 import multiprocessing as mp
 from numpy import array_split
@@ -18,7 +19,8 @@ if __name__ == '__main__':
     LOGFILENAME = 'argoTroublesomeProfiles.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argo3'
+    dbName = 'argo'
+    basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
@@ -34,7 +36,8 @@ if __name__ == '__main__':
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
                       removeExisting=True,
-                      testMode=False)
+                      testMode=False,
+                      basinFilename=basinPath )
     
     files = ad.get_file_names_to_add(OUTPUTDIR)
     try:

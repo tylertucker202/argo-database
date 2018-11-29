@@ -111,7 +111,7 @@ class netCDFToDoc(unittest.TestCase):
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        profiles = ['5904663_1', '5904663_100', '5903260_219', '5903260_1']
+        profiles = ['5904663_1', '5904663_67', '5903260_219', '5903260_1']
         df = df[ df['_id'].isin(profiles)]
         self.ad.testMode = False
         self.ad.removeExisting = True
@@ -122,6 +122,7 @@ class netCDFToDoc(unittest.TestCase):
         coll = self.ad.create_collection()
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
+            self.assertIsInstance(doc, dict, 'doc should exist')
             self.assertIsInstance(doc['containsBGC'], int, '_id: {} should have bgc'.format(_id))
             self.assertIsInstance(doc['bgcMeas'], list)
             self.assertIsInstance(doc['bgcMeas'][0], dict)
@@ -177,7 +178,6 @@ class netCDFToDoc(unittest.TestCase):
         coll = self.ad.create_collection()
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
-            pdb.set_trace()
             self.assertTrue(True)
 
     def test_strings(self):

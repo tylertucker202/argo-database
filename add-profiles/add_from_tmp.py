@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append('..')
 from ftplib import FTP
 import pandas as pd
 import pdb
@@ -26,7 +28,6 @@ def profiles_from_ftp(conn, filename):
     return tmp
 
 def download_todays_file(GDAC, ftpPath, profileIndex, profileText):
-    pdb.set_trace()
     with FTP(GDAC) as ftp:
         ftp.login()
         ftp.cwd(ftpPath)
@@ -43,9 +44,9 @@ def get_df_of_files_to_add(filename, minDate, maxDate):
         chunk['prefix'] = chunk['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
         chunk['platform'] = chunk['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
         chunk.dropna(axis=0, how='any', inplace=True)
-        chunk.date_update = pd.to_datetime(chunk.date_update.astype(int), format='%Y%m%d%H%M%S')
-        chunk.date = pd.to_datetime(chunk.date.astype(int), format='%Y%m%d%H%M%S')
-        chunk = chunk[(chunk.date_update >= minDate) & (chunk.date_update <= maxDate)]
+        chunk['date_update'] = pd.to_datetime(chunk['date_update'].astype(int), format='%Y%m%d%H%M%S')
+        chunk['date'] = pd.to_datetime(chunk['date'].astype(int), format='%Y%m%d%H%M%S')
+        chunk = chunk[(chunk['date_update'] >= minDate) & (chunk['date_update'] <= maxDate)]
         df = pd.concat([df, chunk])
     return df
 
@@ -99,7 +100,8 @@ if __name__ == '__main__':
     LOGFILENAME = 'addFromTmp.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo3'
+    dbName = 'argo'
+    basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
         os.remove(LOGFILENAME)
