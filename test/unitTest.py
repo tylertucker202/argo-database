@@ -6,6 +6,7 @@ import sys
 sys.path.append('..')
 from argoDatabaseTest import argoDatabaseTest
 from netCDFToDocTest import netCDFToDocTest
+from testMeasToDf import measToDfTest
 import warnings
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import multiprocessing as mp
 from numpy import array_split
 from argoDatabase import argoDatabase
-from from_tmp import download_todays_file, get_df_of_files_to_add, merge_dfs
+from from_tmp import download_todays_file, get_df_of_files_to_add, merge_dfs, mp_create_dir_of_files,  clean_up_space
 import warnings
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
@@ -44,8 +44,8 @@ if __name__ == '__main__':
                        + os.sep + mixedProfileName[:-4] \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
@@ -54,9 +54,8 @@ if __name__ == '__main__':
     df = merge_dfs(dfGlobal, dfMixed)
     df = df[(df.date >= minDate) & (df.date <= maxDate)]
     print(df.shape)
-    pdb.set_trace()
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    #mp_create_dir_of_files(df, GDAC, ftpPath)
+    mp_create_dir_of_files(df, GDAC, ftpPath)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     hostname = os.uname().nodename

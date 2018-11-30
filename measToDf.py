@@ -12,16 +12,12 @@ import pdb
 
 class measToDf(object):
     def __init__(self, variables,
-                 platformNumber,
                  idx=0,
                  qcThreshold='1',
                  nProf=1):
         logging.debug('initializing measToDf')
-        self.platformNumber = platformNumber
         self.variables = variables
         self.idx = idx
-        self.cycleNumber = int(self.variables['CYCLE_NUMBER'][idx].astype(str))
-        self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
         self.bgcKeys = ['DOXY', 'CHLA', 'CDOM', 'NITRATE']
         self.qcDeepThreshold = ['1', '2', '3']
@@ -29,7 +25,7 @@ class measToDf(object):
         self.nProf = nProf
         
     @staticmethod
-    def format_qc_array(array, idx):
+    def format_qc_array(array):
         """ Converts array of QC values (temp, psal, pres, etc) into list"""
         if isinstance(array, np.ndarray):
             data = [x.astype(str) for x in array]
@@ -38,7 +34,7 @@ class measToDf(object):
             try:
                 data = np.array([x.astype(str) for x in data])
             except NotImplementedError:
-                raise NotImplementedError('NotImplemented Error for idx: {1}'.format(idx))
+                raise NotImplementedError('NotImplemented Error while formatting qc')
         return data    
 
     def format_measurments(self, measStr, idx):
@@ -47,10 +43,8 @@ class measToDf(object):
         An adjusted value replaces each real-time value. 
         Also includes a QC procedure that removes all data that doesn't meet the qc threshhold.
         """
-
         df = pd.DataFrame()
         adj = measStr.lower()
-        
         doc_key = measStr.lower()
 
         if (self.profileDoc['DATA_MODE'] == 'D') or (self.profileDoc['DATA_MODE'] == 'A'):
@@ -62,9 +56,7 @@ class measToDf(object):
                 logging.debug('adjusted value for {} does not exist'.format(measStr))
                 df[doc_key] = np.nan
             except RuntimeWarning as err:
-                raise RuntimeWarning('Profile:{0} measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(self.profileId, measStr, err.args))
-
-                
+                raise RuntimeWarning('measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(measStr, err.args))
             else:  # sometimes a masked array is used
                 try:
                     df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :].data
@@ -75,7 +67,7 @@ class measToDf(object):
             except KeyError:
                 raise KeyError('key not found...')
             try:
-                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :], idx)
+                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :])
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
         else:
@@ -89,11 +81,10 @@ class measToDf(object):
                     ValueError('Check data type for measurement {}'.format(measStr))
 	        # Sometimes non-adjusted value is invalid.
             try:
-                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][idx, :], idx)
+                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][idx, :])
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
                 return pd.DataFrame()
-
         return df
     
     def do_qc_on_meas(self, df, measStr):
@@ -111,13 +102,14 @@ class measToDf(object):
             raise KeyError('measurement: {0} has no qc.'
                       ' returning empty dataframe'.format(measStr))
             return pd.DataFrame()
+        if df.empty:
+            return pd.DataFrame()
         return df
 
     def drop_nan_from_df(self, df):
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
         if not 'pres_qc' in df.columns:
-            raise ValueError('Float: {0} has bad pressure qc.'
-                          ' Not going to add'.format(self.platformNumber))
+            raise ValueError('bad pressure qc.'.format(self.platformNumber))
         df = df[df['pres_qc'] != np.NaN]
         df.dropna(axis=0, how='all', inplace=True)
         # Drops the values where pressure isn't reported
@@ -130,20 +122,44 @@ class measToDf(object):
         elif 'psal' in df.columns:
             df.dropna(subset=['psal'], how='all', inplace=True)
         else:
-            raise ValueError('Profile:{0} has neither temp nor psal.'
-                          ' Not going to add'.format(self.profileId))
-        df.fillna(-999, inplace=True) # API needs all measurements to be a number
+            raise ValueError('df has neither temp nor psal.')
+            
+        # profile must include both temperature and pressure
+        if not 'pres' in df.columns:
+            raise ValueError('df has no pres')
+        if not 'temp' in df.columns:
+            raise ValueError('df has no temp')
         return df
     
+    @staticmethod
+    def mergeDfs(df1, df2):
+        '''combins df1 into df2 for nan in df2'''
+        df1 = df1.astype(float).replace(-999, np.NaN)
+        df2 = df2.astype(float).replace(-999, np.NaN)
+        df1 = df1.set_index('pres')
+        df2 = df2.set_index('pres')
+        df = df2
+        df = df.combine_first(df1)
+        df.dropna(axis=0, how='all', inplace=True)
+        
+        #reformat
+        df.fillna(-999, inplace=True)
+        qcCol = [x for x in df.columns if x.endswith('_qc')]
+        df[qcCol] = df[qcCol].astype(int).astype(str)
+        return df.reset_index()
+        
+    
     def createBGC(self):
-        df = pd.DataFrame()
-        if self.nProf > 1:
-            pdb.set_trace()
-        for idx in range(self.nProf):
-            profDf = self.make_profile_df(idx, includeQC=False)
-            #  TODO: perform a merge on parameters that exist on both
-            df = pd.concat([df, profDf], axis = 0)
-        return df.astype(np.float64).to_dict(orient='records')
+        ''' BGC measurements are found in several indexes. meregeDFs here we loop through
+        each N_PROF and merge using the mergeDFs method.'''
+        df = self.make_profile_df(self.idx, includeQC=False)
+        if self.nProf == 1:
+            return df.astype(np.float64).to_dict(orient='records')
+        else:
+            for idx in range(2, self.nProf):
+                profDf = self.make_profile_df(idx, includeQC=False)
+                df = self.mergeDfs(df, profDf)
+            return df.astype(np.float64).to_dict(orient='records')
 
     def make_profile_df(self, idx, includeQC=True):
         df = pd.DataFrame()
@@ -160,6 +176,5 @@ class measToDf(object):
         if includeQC:
             df = self.drop_nan_from_df(df)
             df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
-        else:
-            df.fillna(-999, inplace=True)
+        df.fillna(-999, inplace=True) # API needs all measurements to be a number
         return df

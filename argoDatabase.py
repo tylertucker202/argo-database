@@ -226,16 +226,16 @@ class argoDatabase(object):
             doc = p2D.get_profile_doc()
             return doc
         except AttributeError as err:
-            logging.warning('Profile: {0} enountered AttributeError. \n Reason: {1}'.format(fileName, err.args))
+            logging.warning('Profile: {0} enountered AttributeError: {1}'.format(fileName.split('/')[-1], err.args))
         except TypeError as err:
-            logging.warning('Profile: {0} enountered TypeError. \n Reason: {1}'.format(fileName, err.args))
+            logging.warning('Profile: {0} enountered TypeError: {1}'.format(fileName.split('/')[-1], err.args))
         except ValueError as err:
-            logging.warning('Profile: {0} enountered ValueError. \n Reason: {1}'.format(fileName, err.args))
+            logging.warning('Profile: {0} enountered ValueError: {1}'.format(fileName.split('/')[-1], err.args))
         except UnboundLocalError as err:
             if 'no valid measurements.' in err.args[0]:
-                logging.warning('Profile: {0} has no valid measurements. not going to add'.format(fileName))
+                logging.warning('Profile: {0} has no valid measurements. not going to add'.format(fileName.split('/')[-1]))
             else:
-                logging.warning('Profile: {0} encountered UnboundLocalError. \n Reason: {1}'.format(fileName, err.args))
+                logging.warning('Profile: {0} encountered UnboundLocalError: {1}'.format(fileName.split('/')[-1], err.args))
 
     def add_single_profile(self, doc, file_name, coll, attempt=0):
         if self.replaceProfile:
@@ -253,8 +253,6 @@ class argoDatabase(object):
                 coll.insert_one(doc)
             except pymongo.errors.DuplicateKeyError:
                 logging.error('duplicate key: {0}'.format(doc['_id']))
-                logging.error('not going to add')
-    
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
                                 'for filename : {0}'.format(doc['_id'], file_name))
@@ -272,8 +270,7 @@ class argoDatabase(object):
             for we in writeErrors:
                 problem_idx.append(we['index'])
             trouble_list = [documents[i] for i in problem_idx]
-            logging.warning('bulk write failed for: {0}'.format(file_name))
-            logging.warning('adding the failed documents one at a time.')
+            logging.warning('bulk write failed for: {0}. adding failed documents on at a time'.format(file_name))
             for doc in trouble_list:
                 self.add_single_profile(doc, file_name, coll)
         except bson.errors.InvalidDocument:

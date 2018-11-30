@@ -28,10 +28,12 @@ class netCDFToDoc(measToDf):
         logging.debug('initializing netCDFToDoc')
     
         measToDf.__init__(self, variables,
-                 platformNumber,
                  idx,
                  qcThreshold,
                  nProf)
+        self.platformNumber = platformNumber
+        self.cycleNumber = int(self.variables['CYCLE_NUMBER'][idx].astype(str))
+        self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.profileDoc = dict()
         self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
         # populate profileDoc
@@ -125,21 +127,15 @@ class netCDFToDoc(measToDf):
         try:
             profileDf = self.make_profile_df(self.idx, includeQC=True)
         except ValueError as err:
-            raise ValueError('Profile:{0} has ValueError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err.args))
+            raise ValueError('Profile:{0} has ValueError:{1}'.format(self.profileId, err.args))
         except KeyError as err:
-            raise ValueError('Profile:{0} has KeyError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err.args))
+            raise ValueError('Profile:{0} has KeyError:{1}'.format(self.profileId, err.args))
         except UnboundLocalError as err:
-            raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1} profileDf not created.'
-                          ' Not going to add'.format(self.profileId, err.args))
+            raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1}'.format(self.profileId, err.args))
         except AttributeError as err:
-            raise AttributeError('Profile:{0} has AttributeError:{1} profileDf not created.'
-                          ' Not going to add.'.format(self.profileId, err.args))
+            raise AttributeError('Profile:{0} has AttributeError:{1}'.format(self.profileId, err.args))
         except Exception as err:
-            pdb.set_trace()
-            raise UnboundLocalError('Profile:{0} has unknown error {1}. profileDf not created.'
-                          ' Not going to add'.format(self.profileId, err.args))
+            raise UnboundLocalError('Profile:{0} has unknown error {1}'.format(self.profileId, err.args))
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         
         self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
@@ -199,7 +195,7 @@ class netCDFToDoc(measToDf):
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
         self.profileDoc['platform_number'] = self.platformNumber
         self.profileDoc['station_parameters'] = stationParameters
-        profile_id = self.platformNumber + '_' + str(self.cycleNumber)
+        profile_id = self.profileId
         url = remotePath
         self.profileDoc['nc_url'] = url
 

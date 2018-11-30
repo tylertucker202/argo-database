@@ -22,7 +22,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-class netCDFToDoc(unittest.TestCase):
+class netCDFToDocTest(unittest.TestCase):
 
     def setUp(self):
         self.OUTPUTDIR = os.path.join(os.getcwd(), 'test-files')
