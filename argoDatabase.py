@@ -135,7 +135,12 @@ class argoDatabase(object):
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
-            root_grp = Dataset(fileName, "r", format="NETCDF4")
+            
+            try:
+                root_grp = Dataset(fileName, "r", format="NETCDF4")
+            except OSError as err:
+                logging.warning('File not read: {}'.format(err))
+                continue
             remotePath = self.url + os.path.relpath(fileName, localDir)
             variables = root_grp.variables
             
