@@ -19,7 +19,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'aoml.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     dacs = ['aoml']    

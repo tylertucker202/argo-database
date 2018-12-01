@@ -22,7 +22,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'dateRange.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
