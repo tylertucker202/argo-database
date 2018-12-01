@@ -156,7 +156,8 @@ class measToDf(object):
         if self.nProf == 1:
             return df.astype(np.float64).to_dict(orient='records')
         else:
-            for idx in range(2, self.nProf):
+            #  For now, merge first and second idx.
+            for idx in range(1, 2):
                 profDf = self.make_profile_df(idx, includeQC=False)
                 df = self.mergeDfs(df, profDf)
             return df.astype(np.float64).to_dict(orient='records')

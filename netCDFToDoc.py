@@ -127,15 +127,15 @@ class netCDFToDoc(measToDf):
         try:
             profileDf = self.make_profile_df(self.idx, includeQC=True)
         except ValueError as err:
-            raise ValueError('Profile:{0} has ValueError:{1}'.format(self.profileId, err.args))
+            raise ValueError('measurements not created:{1}'.format(self.profileId, err.args))
         except KeyError as err:
-            raise ValueError('Profile:{0} has KeyError:{1}'.format(self.profileId, err.args))
+            raise ValueError('measurements not created:{1}'.format(self.profileId, err.args))
         except UnboundLocalError as err:
-            raise UnboundLocalError('Profile:{0} has UnboundLocalError:{1}'.format(self.profileId, err.args))
+            raise UnboundLocalError('measurements not created:{1}'.format(self.profileId, err.args))
         except AttributeError as err:
-            raise AttributeError('Profile:{0} has AttributeError:{1}'.format(self.profileId, err.args))
+            raise AttributeError('measurements:{1}'.format(self.profileId, err.args))
         except Exception as err:
-            raise UnboundLocalError('Profile:{0} has unknown error {1}'.format(self.profileId, err.args))
+            raise UnboundLocalError('measurements have unknown error {1}'.format(self.profileId, err.args))
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         
         self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
@@ -149,11 +149,11 @@ class netCDFToDoc(measToDf):
         maxPres = profileDf.pres.max()
         self.profileDoc['max_pres'] = np.float64(maxPres)
         if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
-            raise AttributeError('Profile:{0} has unknown date.'
-                          ' Not going to add'.format(self.profileId))
-
-        date = refDate + timedelta(self.variables['JULD'][self.idx].item())
-        self.profileDoc['date'] = date
+            logging.warning('Profile:{0} has unknown date. filling with refDate {1}'.format(self.profileId, refDate))
+            self.profileDoc['date'] = refDate
+        else:
+            date = refDate + timedelta(self.variables['JULD'][self.idx].item())
+            self.profileDoc['date'] = date            
         
         try:
             dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
@@ -163,29 +163,32 @@ class netCDFToDoc(measToDf):
                 dateQC = np.float64(self.variables['JULD_QC'][self.idx].item())
                 self.profileDoc['date_qc'] = dateQC
             else:
-                raise AttributeError('error with date_qc. Not going to add.')
+                logging.warning('error with date_qc. filling with -999.')
+                self.profileDoc['date_qc'] = -999
         
         phi = self.variables['LATITUDE'][self.idx].item()
         lam = self.variables['LONGITUDE'][self.idx].item()
         if isinstance(phi, np.ma.core.MaskedConstant) or isinstance(lam, np.ma.core.MaskedConstant):
-            raise AttributeError('Profile:{0} has unknown lat-lon.'
-                          ' Not going to add'.format(self.profileId))
+            phi, lam = 0.0, 0.0
+            logging.warning('Profile:{0} has unknown lat-lon.'
+                          ' Filling with 0, 0'.format(self.profileId))
 
         try:
             positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64).item()
-        except AttributeError:
+        except AttributeError as err:
             if type(self.variables['POSITION_QC'][self.idx] == np.ma.core.MaskedConstant):
                 positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64).item()
             else:
-                raise AttributeError('error with position_qc. Not going to add.')
+                positionQC = -999
+                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileId, err.args))
         except ValueError as err:
-            raise ValueError('Profile:{0} not created. Error {1}'
-                          ' Not going to add'.format(self.profileId, err))
+            positionQC = -999
+            logging.warning('Profile:{0} positionQc value error {1}. Filling with -999'.format(self.profileId, err.args))
         except Exception as err:
-            raise Exception('Profile:{0} not created. Error {1}'
-                          ' Not going to add'.format(self.profileId, err))
-        if positionQC == 4 or positionQC == 9:
-            raise ValueError('position_qc is either missing or a 4. Not going to add.')
+            positionQC = -999
+            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err.args))
+        if positionQC == 4:
+            raise ValueError('position_qc is a 4. Not going to add.')
 
         self.profileDoc['position_qc'] = positionQC
         self.profileDoc['cycle_number'] = self.cycleNumber

@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from argoDatabase import argoDatabase, getOutput
 import sys
 sys.path.append('..')
+from argoDatabase import argoDatabase, getOutput
 import multiprocessing as mp
 from numpy import array_split
 import warnings
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'coriolis.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     dacs = ['coriolis']    
@@ -38,10 +38,12 @@ if __name__ == '__main__':
                  testMode=False,
                  basinFilename=basinPath)
     files = ad.get_file_names_to_add(OUTPUTDIR, dacs=dacs)
+    
+    npes = 10
     try:
         npes
     except NameError:
-        npes = mp.cpu_count()
+        npes = mp.cpu_count() - 
     fileArray = array_split(files, npes)
     processes = [mp.Process(target=ad.add_locally, args=(OUTPUTDIR, fileChunk)) for fileChunk in fileArray]
     for p in processes:

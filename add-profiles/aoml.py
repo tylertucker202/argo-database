@@ -40,6 +40,8 @@ if __name__ == '__main__':
                  basinFilename=basinPath)
     
     files = ad.get_file_names_to_add(OUTPUTDIR, dacs=dacs)
+    
+    npes = 10
     try:
         npes
     except NameError:

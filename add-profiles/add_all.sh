@@ -20,11 +20,11 @@ case $HOSTNAME in
   (kadavu.ucsd.edu) 
 		echo "this is kadavu"
 		echo "adding minor dacs"
-                python3.6 add_minor_dacs.py
+                python3.6 minor_dacs.py
 		echo "adding coriolis"
-		python3.6 add_coriolis.py
+		python3.6 coriolis.py
 		echo "adding aoml"
-		python3.6 add_aoml.py
+		python3.6 aoml.py
 		;;
   (*) 
         	echo "this lab 416"
