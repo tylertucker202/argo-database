@@ -20,11 +20,11 @@ def get_feature_collection(file):
         featureColl = json.loads(featureColl)
     return featureColl
 
-def create_collection():
+def create_collection(collName):
     dbUrl = 'mongodb://localhost:27017/'
     client = pymongo.MongoClient(dbUrl)
     db = client['argo3']
-    coll = db['covars']
+    coll = db[collName]
     return coll
 
 def format_features(features):
@@ -36,35 +36,40 @@ def format_features(features):
         formattedFeatures.append(doc)
     return formattedFeatures
 
+def create_covar_docs(localDir):
+    files = glob.glob(os.path.join(localDir, '*.js'))
+    docs = []
+    for file in files:
+        doc = {}
+        lat = float(file.strip('.js').split('_')[-3])
+        lng = float(file.strip('.js').split('_')[-1])
+        _id = str(lng)+'_'+ str(lat)
+        doc['_id'] = _id
+        doc['geoLocation'] = {'type': 'Point', 'coordinates': [lng, lat]}
+        featureColl = get_feature_collection(file)
+        features = format_features(featureColl['features'])
+        doc['features'] = features
+        docs.append(doc)
+    return docs
+
+def add_docs_to_database(collName, docs):
+    coll = create_collection(collName)
+    coll.drop()    
+    for doc in docs:
+        try:
+            coll.insert(doc)
+        except:
+            pdb.set_trace()
+            doc    
+    coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
+
 localDir = './60_day'
-files = glob.glob(os.path.join(localDir, '*.js'))
-docs = []
-for file in files:
-    doc = {}
-    lat = float(file.strip('.js').split('_')[-3])
-    lng = float(file.strip('.js').split('_')[-1])
-    _id = str(lng)+'_'+ str(lat)
-    doc['_id'] = _id
-    doc['geoLocation'] = {'type': 'Point', 'coordinates': [lng, lat]}
-    featureColl = get_feature_collection(file)
-    features = format_features(featureColl['features'])
-    doc['features'] = features
-    docs.append(doc)
+collName = 'shortCovars'
+docs = create_covar_docs(localDir)
+add_docs_to_database(collName, docs)
 
-df = pd.DataFrame(docs)
-df['coords'] = df['geoLocation'].apply(lambda x: x['coordinates'])
-df.coords.astype(str).unique()
-
-coll = create_collection()
-coll.drop()
-
-for doc in docs:
-    try:
-        coll.insert(doc)
-    except:
-        pdb.set_trace()
-        doc
-
-coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
-        
+localDir = './140_day'
+collName = 'longCovars'
+docs = create_covar_docs(localDir)
+add_docs_to_database(collName, docs)
         

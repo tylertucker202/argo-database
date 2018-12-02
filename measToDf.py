@@ -63,10 +63,6 @@ class measToDf(object):
                 except ValueError:
                     raise ValueError('Value error while formatting measurement {}: check data type'.format(measStr))
             try:
-                df.loc[df[doc_key] >= 99999, adj] = np.NaN
-            except KeyError:
-                raise KeyError('key not found...')
-            try:
                 df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :])
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
@@ -85,6 +81,7 @@ class measToDf(object):
             except KeyError:
                 raise KeyError('qc not found for {}'.format(measStr))
                 return pd.DataFrame()
+        df.loc[df[doc_key] > 9999, adj] = np.NaN
         return df
     
     def do_qc_on_meas(self, df, measStr):
@@ -141,18 +138,29 @@ class measToDf(object):
         df = df2
         df = df.combine_first(df1)
         df.dropna(axis=0, how='all', inplace=True)
-        
+        df.dropna(axis=1, how='all', inplace=True)
         #reformat
         df.fillna(-999, inplace=True)
         qcCol = [x for x in df.columns if x.endswith('_qc')]
         df[qcCol] = df[qcCol].astype(int).astype(str)
         return df.reset_index()
+
+    @staticmethod
+    def formatBgcDf(df):
+        df = df.astype(float).replace(-999, np.NaN)
+        df.dropna(axis=0, how='all', inplace=True)
+        df.dropna(axis=1, how='all', inplace=True)
+        df.fillna(-999, inplace=True)
+        qcCol = [x for x in df.columns if x.endswith('_qc')]
+        df[qcCol] = df[qcCol].astype(int).astype(str)
+        return df
         
     
     def createBGC(self):
         ''' BGC measurements are found in several indexes. meregeDFs here we loop through
         each N_PROF and merge using the mergeDFs method.'''
         df = self.make_profile_df(self.idx, includeQC=False)
+        df = self.formatBgcDf(df)
         if self.nProf == 1:
             return df.astype(np.float64).to_dict(orient='records')
         else:

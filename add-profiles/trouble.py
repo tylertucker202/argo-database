@@ -19,7 +19,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'trouble.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argo-trouble'
+    dbName = 'argo3'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
