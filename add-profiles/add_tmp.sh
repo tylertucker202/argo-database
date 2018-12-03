@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo 'Start of adding tmp'
+ADDDIR=`pwd`
 DATE=`date +%y-%m-%d-%H:%M`
 echo $DATE
 echo 'going to run add_from_tmp.py'
@@ -10,10 +11,14 @@ case $HOSTNAME in
                 /home/tyler/anaconda3/envs/argo/bin/python from_tmp.py
 		;;
   (argovis) 
-		       /root/anaconda3/envs/argo/bin/python from_tmp.py
+                cd $ADDDIR
+                pwd
+		 /root/anaconda3/envs/argo/bin/python from_tmp.py
 		;;
   (*)
-		python add_from_tmp.py
+                cd $ADDDIR
+                pwd
+		/root/anaconda3/envs/argo/bin/python3.6 from_tmp.py
 		;;
 esac
 PYENDDATE=`date +%y-%m-%d-%H:%M`

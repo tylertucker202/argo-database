@@ -23,7 +23,7 @@ def get_feature_collection(file):
 def create_collection(collName):
     dbUrl = 'mongodb://localhost:27017/'
     client = pymongo.MongoClient(dbUrl)
-    db = client['argo3']
+    db = client['argo2']
     coll = db[collName]
     return coll
 

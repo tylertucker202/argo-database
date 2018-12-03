@@ -100,7 +100,7 @@ if __name__ == '__main__':
     LOGFILENAME = 'fromTmp.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
+    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
@@ -122,8 +122,8 @@ if __name__ == '__main__':
                        + os.sep + mixedProfileName[:-4] \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
     minDate = datetime.today() - timedelta(days=1)
     maxDate = datetime.today()
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     df = merge_dfs(dfGlobal, dfMixed)
     print(df.shape)
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    #mp_create_dir_of_files(df, GDAC, ftpPath)
+    mp_create_dir_of_files(df, GDAC, ftpPath)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     hostname = os.uname().nodename
@@ -145,7 +145,8 @@ if __name__ == '__main__':
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
                       removeExisting=False,
-                      testMode=False)
+                      testMode=False,
+                      basinFilename=basinPath)
     files = ad.get_file_names_to_add(OUTPUTDIR)
     try:
         npes
