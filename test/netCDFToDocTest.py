@@ -76,13 +76,13 @@ class netCDFToDocTest(unittest.TestCase):
                 ['nc_url', str],
                 ['DIRECTION', str],
                 ['_id', str],
-                ['STATION_PARAMETERS_inMongoDB', list],
+                ['station_parameters_in_nc', list],
                 ['BASIN', int]]
                 
 
     def tearDown(self):
         return
-        
+    
     def test_document_creation(self):
         self.ad.addToDb = False
         self.ad.testMode = True
@@ -128,7 +128,7 @@ class netCDFToDocTest(unittest.TestCase):
             self.assertIsInstance(doc['bgcMeas'][0], dict)
 
     def test_optional_keys(self):
-        '''Used to find out why some fields are missing'''
+        #Used to find out why some fields are missing
         profiles = [ '5905059_1', '5905059_100', '5905059_99', '5905059_98', '5904663_97', '2900784_297' '2901182_8']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -179,15 +179,18 @@ class netCDFToDocTest(unittest.TestCase):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             self.assertTrue(True)
-
-    def test_strings(self):
-        return
-
-    def test_ints(self):
-        return
-
-    def test_floats(self):
-        return
+    
+    def test_deep(self):
+        platform = ['5905164', '5905234']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['platform'].isin(platform)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should not be added")
     
 if __name__ == '__main__':
     unittest.main()

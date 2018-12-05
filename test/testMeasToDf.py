@@ -47,10 +47,9 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
-
+    
     def test_noisy_platform(self):
-        '''check platform with noisy bgc meas'''
-        #todo: check time it takes to make 3901498
+        #check platform with noisy bgc meas
         platform = ['3901498']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -63,6 +62,23 @@ class measToDfTest(unittest.TestCase):
         for doc in self.ad.documents:
             bgcDf = pd.DataFrame(doc['bgcMeas'])
             self.assertEqual(bgcDf.dropna(axis=1, how='all').shape[1], bgcDf.shape[1], 'should not contain empty columns')
+    
+    def test_bbp_platform(self):
+        #check platform with bbp parameter
+        platform = ['5903586']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['platform'].isin(platform)].head()
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            self.assertTrue('BBP700' in doc['station_parameters_in_nc'], 'should have bbp700')
+            self.assertTrue('DOXY' in doc['station_parameters_in_nc'], 'should have DOXY')
+            self.assertTrue('CHLA' in doc['station_parameters_in_nc'], 'should have CHLA')
+            self.assertTrue('NITRATE' in doc['station_parameters_in_nc'], 'should have NITRATE')
             
     
     def test_all_bad_temp(self):

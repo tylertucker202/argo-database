@@ -21,3 +21,8 @@ test-files
 test-file-single
 tmp/
 .vscode
+60_day
+140_day
+add-profiles/tmp
+add-profiles/*.txt
+*.xlsx

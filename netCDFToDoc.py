@@ -28,16 +28,17 @@ class netCDFToDoc(measToDf):
         logging.debug('initializing netCDFToDoc')
     
         measToDf.__init__(self, variables,
-                 idx,
-                 qcThreshold,
-                 nProf)
+                             stationParameters,
+                             idx,
+                             qcThreshold,
+                             nProf)
         self.platformNumber = platformNumber
         self.cycleNumber = int(self.variables['CYCLE_NUMBER'][idx].astype(str))
         self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.profileDoc = dict()
         self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
         # populate profileDoc
-        self.make_profile_dict(dacName, refDate, remotePath, stationParameters)
+        self.make_profile_dict(dacName, refDate, remotePath)
     
     def get_profile_doc(self):
         return self.profileDoc
@@ -108,7 +109,7 @@ class netCDFToDoc(measToDf):
             deepFloat = False
         return deepFloat
 
-    def make_profile_dict(self, dacName, refDate, remotePath, stationParameters):
+    def make_profile_dict(self, dacName, refDate, remotePath):
         """
         Takes a profile measurement and formats it into a dictionary object.
         """
@@ -125,7 +126,10 @@ class netCDFToDoc(measToDf):
         
         self.deepFloat = self.check_if_deep_profile()
         try:
-            profileDf = self.make_profile_df(self.idx, includeQC=True)
+            if self.deepFloat:
+                profileDf = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
+            else:
+                profileDf = self.make_profile_df(self.idx, self.coreList, includeQC=True)
         except ValueError as err:
             raise ValueError('measurements not created:{1}'.format(self.profileId, err.args))
         except KeyError as err:
@@ -138,7 +142,8 @@ class netCDFToDoc(measToDf):
             raise UnboundLocalError('measurements have unknown error {1}'.format(self.profileId, err.args))
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         
-        self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
+        #self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
+        self.profileDoc['station_parameters'] = profileDf.columns.tolist()
         
         
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
@@ -197,12 +202,14 @@ class netCDFToDoc(measToDf):
         self.profileDoc['dac'] = dacName
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
         self.profileDoc['platform_number'] = self.platformNumber
-        self.profileDoc['station_parameters'] = stationParameters
+        
+        stationParametersInNc = [item for sublist in self.stationParameters for item in sublist]
+        self.profileDoc['station_parameters_in_nc'] = stationParametersInNc
         profile_id = self.profileId
         url = remotePath
         self.profileDoc['nc_url'] = url
 
-        if any (k in self.bgcKeys for k in self.variables.keys()):
+        if any (k in self.bgcList for k in stationParametersInNc):
             self.profileDoc['containsBGC'] = 1
             self.profileDoc['bgcMeas'] = self.createBGC()
 

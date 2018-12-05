@@ -204,6 +204,17 @@ class argoDatabase(object):
             logging.error(' check type: {}'.format(type(param)))
             pass
         return formatted_param.strip(' ')
+    
+    def getStationParameters(self, statParam):
+        stationParameters = []
+        for idx in range(0, statParam.shape[0]):
+            params = list(map(lambda param: self.format_param(param), statParam[idx]))
+            dimStatParam = [x for x in params if x]
+            stationParameters.append(dimStatParam)
+        return stationParameters
+        
+        
+        
 
     def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf):
         """
@@ -219,8 +230,8 @@ class argoDatabase(object):
                 logging.info('duplicate cycle numbers found...')
 
         platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
-        stationParameters = list(map(lambda param: self.format_param(param), variables['STATION_PARAMETERS'][0]))
-
+        
+        stationParameters = self.getStationParameters(variables['STATION_PARAMETERS'])
         refDateArray = variables['REFERENCE_DATE_TIME'][:]
         refStr = ''.join([x.astype(str) for x in refDateArray])
         refDate = datetime.strptime(refStr, '%Y%m%d%H%M%S')

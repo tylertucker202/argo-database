@@ -8,18 +8,54 @@ Created on Tue Nov 27 16:59:48 2018
 import numpy as np
 import pandas as pd
 import logging
+import re
 import pdb
 
 class measToDf(object):
     def __init__(self, variables,
+                 stationParameters,
                  idx=0,
                  qcThreshold='1',
                  nProf=1):
         logging.debug('initializing measToDf')
+        self.stationParameters = stationParameters
         self.variables = variables
         self.idx = idx
-        self.measList = ['TEMP', 'PRES', 'PSAL', 'CNDC', 'DOXY', 'CHLA', 'CDOM', 'NITRATE']
-        self.bgcKeys = ['DOXY', 'CHLA', 'CDOM', 'NITRATE']
+        self.coreList = ['TEMP',
+                         'PRES',
+                         'PSAL',
+                         'CNDC']
+        self.measList = ['TEMP',
+                         'PRES',
+                         'PSAL',
+                         'CNDC', 
+                         'DOXY',
+                         'CHLA',
+                         'CDOM',
+                         'NITRATE',
+                         'CP',
+                         'BBP',
+                         'TURBIDITY',
+                         'BISULFIDE',
+                         'PH_IN_SITU_TOTAL',
+                         'DOWN_IRRADIANCE',
+                         'UP_RADIANCE',
+                         'DOWNWELLING_PAR']
+
+        self.bgcList =   ['PRES',
+                         'DOXY',
+                         'CHLA',
+                         'CDOM',
+                         'NITRATE',
+                         'CP',
+                         'BBP',
+                         'TURBIDITY',
+                         'BISULFIDE',
+                         'PH_IN_SITU_TOTAL',
+                         'DOWN_IRRADIANCE',
+                         'UP_RADIANCE',
+                         'DOWNWELLING_PAR']
+
         self.qcDeepThreshold = ['1', '2', '3']
         self.qcThreshold = qcThreshold
         self.nProf = nProf
@@ -89,12 +125,25 @@ class measToDf(object):
         QC procedure drops any row whos qc value does not equal '1'
         """
         try:
-            if self.deepFloat:
-                dfShallow = df[ df['pres'] <= 2000]
-                dfDeep = df[ df['pres'] > 2000]
-                df = pd.concat([dfShallow, dfDeep[dfDeep[measStr+'_qc'] in self.qcDeepThreshold]], axis=0 )
-            else:
-                df = df[df[measStr+'_qc'] == self.qcThreshold]
+            df = df[df[measStr+'_qc'] == self.qcThreshold]
+        except KeyError:
+            raise KeyError('measurement: {0} has no qc.'
+                      ' returning empty dataframe'.format(measStr))
+            return pd.DataFrame()
+        if df.empty:
+            return pd.DataFrame()
+        return df
+    
+    def do_qc_on_deep_meas(self, df, measStr):
+        """
+        QC procedure drops any row whos qc value does not equal '1'
+        """
+        try:
+            dfShallow = df[ df['pres'] <= 2000]
+            dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
+            dfDeep = df[ df['pres'] > 2000]
+            dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold)]
+            df = pd.concat([dfShallow, dfDeep], axis=0 )
         except KeyError:
             raise KeyError('measurement: {0} has no qc.'
                       ' returning empty dataframe'.format(measStr))
@@ -127,7 +176,7 @@ class measToDf(object):
         if not 'temp' in df.columns:
             raise ValueError('df has no temp')
         return df
-    
+
     @staticmethod
     def mergeDfs(df1, df2):
         '''combins df1 into df2 for nan in df2'''
@@ -159,26 +208,51 @@ class measToDf(object):
     def createBGC(self):
         ''' BGC measurements are found in several indexes. meregeDFs here we loop through
         each N_PROF and merge using the mergeDFs method.'''
-        df = self.make_profile_df(self.idx, includeQC=False)
+        df = self.make_profile_df(self.idx, self.bgcList, includeQC=False)
         df = self.formatBgcDf(df)
         if self.nProf == 1:
             return df.astype(np.float64).to_dict(orient='records')
         else:
             #  For now, merge first and second idx.
-            for idx in range(1, 2):
-                profDf = self.make_profile_df(idx, includeQC=False)
+            for idx in range(1, self.nProf):
+                profDf = self.make_profile_df(idx, self.bgcList, includeQC=False)
                 df = self.mergeDfs(df, profDf)
             return df.astype(np.float64).to_dict(orient='records')
-
-    def make_profile_df(self, idx, includeQC=True):
+            
+    def make_deep_profile_df(self, idx, measList, includeQC=True):
+        ''' Deep profiles use pressure in their qc process'''
         df = pd.DataFrame()
-        keys = self.variables.keys()
+        keys = self.stationParameters[idx]
         #  Profile measurements are gathered in a dataframe
-        for measStr in self.measList:
-            if measStr in keys:
-                meas_df = self.format_measurments(measStr, idx)
+        if self.deepFloat:
+            pres = self.format_measurments('PRES', idx)
+        for key in keys:
+            if re.sub(r'\d+', '', key) in measList: # sometimes meas has digits
+                meas_df = self.format_measurments(key, idx)
+            if includeQC and key != 'PRES':
+                meas_df['pres'] = pres['pres']
+                meas_df['pres_qc'] = pres['pres_qc']
+                meas_df = self.do_qc_on_deep_meas(meas_df, key.lower())
+                meas_df.drop(['pres', 'pres_qc'], axis=1, inplace=True)
+                df = pd.concat([df, meas_df], axis=1)
+        pres = self.do_qc_on_deep_meas(pres, 'pres')
+        df = pd.concat([pres, df], axis=1)  # join pressure axis
+        qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
+        if includeQC:
+            df = self.drop_nan_from_df(df)
+            df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
+        df.fillna(-999, inplace=True) # API needs all measurements to be a number
+        return df
+
+    def make_profile_df(self, idx, measList, includeQC=True):
+        df = pd.DataFrame()
+        keys = self.stationParameters[idx]
+        #  Profile measurements are gathered in a dataframe
+        for key in keys:
+            if re.sub(r'\d+', '', key) in measList: # sometimes meas has digits
+                meas_df = self.format_measurments(key, idx)
                 if includeQC:
-                    meas_df = self.do_qc_on_meas(meas_df, measStr.lower())
+                    meas_df = self.do_qc_on_meas(meas_df, key.lower())
                 # append with index conserved
                 df = pd.concat([df, meas_df], axis=1)
         qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
