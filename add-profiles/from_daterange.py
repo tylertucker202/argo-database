@@ -1,13 +1,12 @@
 import os
 import sys
 sys.path.append('..')
-import pdb
 import logging
 from datetime import datetime, timedelta
 import multiprocessing as mp
 from numpy import array_split
 from argoDatabase import argoDatabase
-from from_tmp import download_todays_file, get_df_of_files_to_add, merge_dfs, mp_create_dir_of_files,  clean_up_space
+from from_tmp_functions import download_todays_file, get_df_of_files_to_add, merge_dfs, mp_create_dir_of_files, clean_up_space
 import warnings
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
@@ -17,12 +16,12 @@ npwarnings.filterwarnings('ignore')
 minDate = '2018-11-23'
 maxDate = '2018-11-26'
 
+dbName = 'argo2'
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'dateRange.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
@@ -44,8 +43,8 @@ if __name__ == '__main__':
                        + os.sep + mixedProfileName[:-4] \
                        + '-' + todayDate + '.txt'
     logging.warning('Downloading Profile Indexes')
-    #download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))

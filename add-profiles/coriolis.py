@@ -12,13 +12,13 @@ from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
-if __name__ == '__main__':
 
+dbName = 'argo2'
+if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'coriolis.log'
     OUTPUTDIR = getOutput()
     HOMEDIR = os.getcwd()
-    dbName = 'argo2'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     dacs = ['coriolis']    

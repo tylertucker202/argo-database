@@ -16,6 +16,8 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
+dbName = 'argo2'
+
 def get_df_of_files_to_add_from_platform_list(filename, platformList):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
     df = pd.DataFrame()
@@ -38,7 +40,6 @@ if __name__ == '__main__':
     LOGFILENAME = 'fromList.log'
     OUTPUTDIR = os.path.join(os.getcwd(), 'tmp')
     HOMEDIR = os.getcwd()
-    dbName = 'argo'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     platformList = ['4900902']

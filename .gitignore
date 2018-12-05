@@ -10,9 +10,9 @@ troublesome-files
 troublesomeFiles
 ifremer
 grids
-*.csv
 *.ods
 *.txt
+*.csv
 *.ipynb_checkpoints/
 verdzi-api/out
 mat-flag-scanner/argovis-data/*

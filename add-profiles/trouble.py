@@ -13,13 +13,13 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
+dbName = 'argo2'
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'trouble.log'
     OUTPUTDIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     HOMEDIR = os.getcwd()
-    dbName = 'argo3'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     collectionName = 'profiles'
     if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
