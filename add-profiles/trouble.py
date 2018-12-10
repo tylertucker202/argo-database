@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 sys.path.append('..')
+lib_path = os.path.abspath(os.path.join(__file__, os.pardir))
+sys.path.append(lib_path)
 from argoDatabase import argoDatabase
 import multiprocessing as mp
 from numpy import array_split

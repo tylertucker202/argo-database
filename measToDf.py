@@ -184,15 +184,35 @@ class measToDf(object):
         df2 = df2.astype(float).replace(-999, np.NaN)
         df1 = df1.set_index('pres')
         df2 = df2.set_index('pres')
-        df = df2
-        df = df.combine_first(df1)
+        df = pd.concat( [df1, df2], axis=0, join='outer', sort='true')
+        df = df.reset_index()
+        
+        checkNanColumns = [x for x in df.columns if not x.endswith('_qc') and x != 'pres']
+        df.dropna(axis=0, how='all', subset=checkNanColumns, inplace=True)
+        df.dropna(axis=1, how='all', inplace=True)
+        #reformat
+        df.fillna(-999, inplace=True)
+        qcCol = [x for x in df.columns if x.endswith('_qc')]
+        df[qcCol] = df[qcCol].astype(int).astype(str)
+        return df
+
+    @staticmethod
+    def mergeDfsOriginal(df1, df2):
+        '''combins df1 into df2 for nan in df2'''
+        df1 = df1.astype(float).replace(-999, np.NaN)
+        df2 = df2.astype(float).replace(-999, np.NaN)
+        df1 = df1.set_index('pres')
+        df2 = df2.set_index('pres')
+        #df2 = df2[ df2['pres_qc'] != '4']
+        df = df2.combine_first(df1)
+        df = df.reset_index()
         df.dropna(axis=0, how='all', inplace=True)
         df.dropna(axis=1, how='all', inplace=True)
         #reformat
         df.fillna(-999, inplace=True)
         qcCol = [x for x in df.columns if x.endswith('_qc')]
         df[qcCol] = df[qcCol].astype(int).astype(str)
-        return df.reset_index()
+        return df
 
     @staticmethod
     def formatBgcDf(df):
@@ -209,26 +229,28 @@ class measToDf(object):
         ''' BGC measurements are found in several indexes. meregeDFs here we loop through
         each N_PROF and merge using the mergeDFs method.'''
         df = self.make_profile_df(self.idx, self.bgcList, includeQC=False)
-        df = self.formatBgcDf(df)
         if self.nProf == 1:
+            df = self.formatBgcDf(df)
             return df.astype(np.float64).to_dict(orient='records')
         else:
-            #  For now, merge first and second idx.
             for idx in range(1, self.nProf):
                 profDf = self.make_profile_df(idx, self.bgcList, includeQC=False)
+                if set(profDf.columns) == {'pres', 'pres_qc'}:  #  Ignores items not in bgcList (core parameters)
+                    continue
                 df = self.mergeDfs(df, profDf)
+            df = self.formatBgcDf(df)
             return df.astype(np.float64).to_dict(orient='records')
             
     def make_deep_profile_df(self, idx, measList, includeQC=True):
         ''' Deep profiles use pressure in their qc process'''
         df = pd.DataFrame()
         keys = self.stationParameters[idx]
-        #  Profile measurements are gathered in a dataframe
-        if self.deepFloat:
-            pres = self.format_measurments('PRES', idx)
+        pres = self.format_measurments('PRES', idx)
         for key in keys:
             if re.sub(r'\d+', '', key) in measList: # sometimes meas has digits
                 meas_df = self.format_measurments(key, idx)
+            else:
+                continue
             if includeQC and key != 'PRES':
                 meas_df['pres'] = pres['pres']
                 meas_df['pres_qc'] = pres['pres_qc']
