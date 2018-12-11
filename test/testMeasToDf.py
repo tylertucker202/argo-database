@@ -48,7 +48,6 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
-    '''
     def test_noisy_platform(self):
         #check platform with noisy bgc meas
         platform = ['3901498']
@@ -159,9 +158,8 @@ class measToDfTest(unittest.TestCase):
             dfBGC.dropna(axis=0, how='all', inplace=True)
             afterShape = dfBGC.shape[0]
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
-    '''
     def test_missing_pres_in_bgc(self):
-        # check on missing doxy
+        # this was failing when adding bgc. Now it works
         profiles = ['6901659_1']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -172,7 +170,7 @@ class measToDfTest(unittest.TestCase):
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
         for doc in self.ad.documents:
-            lastPres = doc['measurements'][-1]['pres']
-            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
+            df = pd.DataFrame( doc['bgcMeas'])
+            self.assertGreater(df.shape[0], 0, 'should contain bgcMeas')
 if __name__ == '__main__':
     unittest.main()
