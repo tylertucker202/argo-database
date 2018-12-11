@@ -43,6 +43,8 @@ class measToDf(object):
                          'DOWNWELLING_PAR']
 
         self.bgcList =   ['PRES',
+                          'TEMP',
+                          'PSAL',
                          'DOXY',
                          'CHLA',
                          'CDOM',
@@ -242,7 +244,7 @@ class measToDf(object):
         
     
     def createBGC(self):
-        ''' BGC measurements are found in several indexes. meregeDFs here we loop through
+        ''' BGC measurements are found in several indexes. Here we loop through
         each N_PROF and merge using the mergeDFs method.'''
         df = self.make_profile_df(self.idx, self.bgcList, includeQC=False)
         if self.nProf == 1:
@@ -255,7 +257,10 @@ class measToDf(object):
                     continue
                 if set(profDf.columns) == {'pres', 'pres_qc'}:  #  Ignores items not in bgcList (core parameters)
                     continue
-                df = self.mergeDfs(df, profDf)
+                if df.empty:
+                    df = profDf
+                else:
+                    df = self.mergeDfs(df, profDf)
             df = self.formatBgcDf(df)
             return df.astype(np.float64).to_dict(orient='records')
             

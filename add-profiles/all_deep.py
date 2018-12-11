@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
-import os
 import sys
-import pdb
 import csv
 sys.path.append('..')
 from argoDatabase import argoDatabase, getOutput
-import multiprocessing as mp
-from numpy import array_split
+from multiprocessing import cpu_count
+from addFunctions import format_logger, run_parallel_process
 import warnings
 
 from numpy import warnings as npwarnings
@@ -17,32 +15,20 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
 dbName = 'argo-deep'
+npes = cpu_count()
 if __name__ == '__main__':
-
-    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOGFILENAME = 'deep.log'
-    OUTPUTDIR = getOutput()
-    HOMEDIR = os.getcwd()
-    basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    collectionName = 'profiles'
+    format_logger('deep.log', level=logging.DEBUG)
+    logging.warning('Start of log file')
     dacs = ['aoml', 'coriolis', 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
-    if os.path.exists(os.path.join(HOMEDIR, LOGFILENAME)):
-        os.remove(LOGFILENAME)
-    logging.basicConfig(format=FORMAT,
-                        filename=LOGFILENAME,
-                        level=logging.WARNING)
-    logging.debug('Start of log file')
-    HOME_DIR = os.getcwd()
-    hostname = os.uname().nodename
-
-    ad = argoDatabase(dbName, collectionName,
-                 replaceProfile=True,
-                 qcThreshold='1', 
-                 dbDumpThreshold=1000,
-                 removeExisting=True,
-                 testMode=False,
-                 basinFilename=basinPath)
-    allFiles = ad.get_file_names_to_add(OUTPUTDIR, dacs=dacs)
+    ncFileDir = getOutput()
+    ad = argoDatabase(dbName, 'profiles',
+                      replaceProfile=True,
+                      qcThreshold='1', 
+                      dbDumpThreshold=1000,
+                      removeExisting=True,
+                      testMode=False)
+    
+    allFiles = ad.get_file_names_to_add(ncFileDir, dacs=dacs)
     with open('deepPlatforms.csv', 'r') as f:
         reader = csv.reader(f)
         deepProfList = list(reader)
@@ -52,17 +38,6 @@ if __name__ == '__main__':
         platform = file.split('/')[-3]
         if platform in deepProfList:
             files.append(file)
-    try:
-        npes
-    except NameError:
-        npes = mp.cpu_count() 
-    fileArray = array_split(files, npes)
-    processes = [mp.Process(target=ad.add_locally, args=(OUTPUTDIR, fileChunk)) for fileChunk in fileArray]
-    for p in processes:
-        p.start()
-    for p in processes:
-        p.join()
-        
-    #ad.add_locally(OUTPUTDIR, files)
-    logging.warning('End of log file')
 
+    run_parallel_process(ad, files, npes)
+    logging.warning('End of log file')

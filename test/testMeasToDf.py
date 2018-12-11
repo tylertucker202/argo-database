@@ -48,9 +48,9 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
-    '''
+    
     def test_noisy_platform(self):
-        #check platform with noisy bgc meas
+        #  check platform with noisy bgc meas
         platform = ['3901498']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -65,7 +65,7 @@ class measToDfTest(unittest.TestCase):
             self.assertEqual(bgcDf.dropna(axis=1, how='all').shape[1], bgcDf.shape[1], 'should not contain empty columns')
     
     def test_bgc_platform(self):
-        #check platform with bbp parameter
+        #  check platform with bgc parameter
         platform = ['5903586']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -91,7 +91,7 @@ class measToDfTest(unittest.TestCase):
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
     
     def test_all_bad_temp(self):
-        #nc with bad qc on temp should not be created
+        #  nc with bad qc on temp should not be created
         profiles = ['6900287_8']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -104,7 +104,7 @@ class measToDfTest(unittest.TestCase):
         self.assertEqual(len(self.ad.documents), 0, "profile 6900287_8 should not be added")
     
     def test_deep(self):
-        # check on missing doxy
+        #  Check that deep profiles are added
         profiles = ['6901762_46', '6901762_8']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -120,7 +120,7 @@ class measToDfTest(unittest.TestCase):
     
 
     def test_big_bgc(self):
-        #check platform with bbp parameter
+        #  check platform with large bgc measurements. Merge should be less than 5000 rows.
         platform = ['3902124']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -137,10 +137,11 @@ class measToDfTest(unittest.TestCase):
             beforeShape = dfBGC.shape[0]
             dfBGC.dropna(axis=0, how='all', inplace=True)
             afterShape = dfBGC.shape[0]
+            self.assertLess(beforeShape, 5000, 'bgc df looking really big')
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
 
     def test_missing_bgc(self):
-        #check platform with adjusted bgc parameterthat has been masked.
+        #  check platform with adjusted bgc parameterthat has been masked.
         platform = ['1901499']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -159,10 +160,10 @@ class measToDfTest(unittest.TestCase):
             dfBGC.dropna(axis=0, how='all', inplace=True)
             afterShape = dfBGC.shape[0]
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
-    '''
+    
     def test_missing_pres_in_bgc(self):
-        # this was failing when adding bgc. Now it works
-        profiles = ['6901659_1', '6901472_500']
+        #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
+        profiles = ['6901659_1', '6901473_500', '6902547_1', '6901657_1']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))

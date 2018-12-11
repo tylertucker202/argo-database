@@ -2,11 +2,11 @@ import os
 from ftplib import FTP
 import pandas as pd
 import re
+import logging
 import multiprocessing as mp
 import tempfile
 from numpy import array_split
 import shutil
-import logging
 from datetime import datetime, timedelta
 
 import warnings
@@ -14,6 +14,20 @@ from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
+
+
+todayDate = datetime.today().strftime('%Y-%m-%d')
+globalProfileName = 'ar_index_this_week_prof.txt'
+mixedProfileName = 'argo_merge-profile_index.txt'
+globalProfileIndex = os.path.curdir \
+                   + os.sep + globalProfileName[:-4] \
+                   + '-' + todayDate + '.txt'
+mixedProfileIndex = os.path.curdir \
+                   + os.sep + mixedProfileName[:-4] \
+                   + '-' + todayDate + '.txt'
+ftpPath = os.path.join(os.sep, 'ifremer', 'argo')
+GDAC = 'ftp.ifremer.fr'
+
 def profiles_from_ftp(conn, filename):
     """Create an Argo profile object from a remote FTP file
     """
@@ -29,6 +43,56 @@ def download_todays_file(GDAC, ftpPath, profileIndex, profileText):
         ftp.cwd(ftpPath)
         with open(profileIndex, "wb") as f:
             ftp.retrbinary("RETR " + profileText, f.write)
+
+def get_df_of_files_to_add_from_platform_list(filename, platformList):
+    dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
+    df = pd.DataFrame()
+    for chunk in dfChunk:
+        chunk.drop(['latitude', 'longitude', 'institution', 'ocean', 'profiler_type'], axis=1, inplace=True)
+        chunk['filename'] = chunk['file'].apply(lambda x: x.split('/')[-1])
+        chunk['profile'] = chunk['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
+        chunk['prefix'] = chunk['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
+        chunk['platform'] = chunk['profile'].apply(lambda x: re.sub(r'(_\d{})', '', x))
+        chunk.dropna(axis=0, how='any', inplace=True)
+        chunk.date_update = pd.to_datetime(chunk.date_update.astype(int), format='%Y%m%d%H%M%S')
+        chunk.date = pd.to_datetime(chunk.date.astype(int), format='%Y%m%d%H%M%S')
+        chunk = chunk[chunk['platform'].isin(platformList)]
+        df = pd.concat([df, chunk], axis=0, sort=False)
+    return df
+
+def get_df_from_platform_list(platformList):
+    logging.warning('Downloading Profile Indexes')
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    logging.warning('Generating dataframes')
+    dfGlobal = get_df_of_files_to_add_from_platform_list(globalProfileIndex, platformList)
+    dfMixed = get_df_of_files_to_add_from_platform_list(mixedProfileIndex, platformList)
+    df = merge_dfs(dfGlobal, dfMixed)
+    return df
+
+def get_df_from_dates_updated(minDate, maxDate):
+    logging.warning('Downloading Profile Indexes')
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    logging.warning('Generating dataframes')
+    logging.warning('minDate: {}'.format(minDate))
+    logging.warning('maxDate: {}'.format(maxDate))
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    df = merge_dfs(dfGlobal, dfMixed)
+    return df
+
+
+def get_df_from_dates(minDate, maxDate):
+    download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
+    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    logging.warning('Generating dataframes')
+    logging.warning('minDate: {}'.format(minDate))
+    logging.warning('maxDate: {}'.format(maxDate))
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    df = merge_dfs(dfGlobal, dfMixed)
+    df = df[(df.date >= minDate) & (df.date <= maxDate)]
 
 def get_df_of_files_to_add(filename, minDate, maxDate):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
@@ -68,7 +132,7 @@ def create_dir_of_files(df, GDAC, ftpPath):
             with open(fileName, "wb") as f:
                 ftp.retrbinary("RETR " + row.file, f.write)
 
-def mp_create_dir_of_files(df, GDAC, ftpPath, npes=None):
+def mp_create_dir_of_files(df, GDAC=GDAC, ftpPath=ftpPath, npes=None):
     if npes is None:
         npes = mp.cpu_count()
     if npes is 1:
@@ -101,17 +165,3 @@ def clean_up_space(globalProfileIndex, mixedProfileIndex):
     #remove files in tmp
     fileName = os.path.join( os.getcwd(), 'tmp' )
     shutil.rmtree(fileName)
-    
-
-class StreamToLogger(object):
-   """
-   Fake file-like stream object that redirects writes to a logger instance.
-   """
-   def __init__(self, logger, log_level=logging.INFO):
-      self.logger = logger
-      self.log_level = log_level
-      self.linebuf = ''
-
-   def write(self, buf):
-      for line in buf.rstrip().splitlines():
-         self.logger.log(self.log_level, line.rstrip())
