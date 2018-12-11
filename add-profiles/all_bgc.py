@@ -3,7 +3,6 @@
 import logging
 import os
 import sys
-import csv
 sys.path.append('..')
 from argoDatabase import argoDatabase, getOutput
 import multiprocessing as mp
@@ -41,16 +40,12 @@ if __name__ == '__main__':
                  testMode=False,
                  basinFilename=basinPath)
     allFiles = ad.get_file_names_to_add(OUTPUTDIR, dacs=dacs)
-
-    with open('deepPlatforms.csv', 'r') as f:
-        reader = csv.reader(f)
-        deepProfList = list(reader)
-        deepProfList = [x[0] for x in deepProfList]
     files = []
     for file in allFiles:
-        platform = file.split('/')[-3]
-        if platform in deepProfList:
+        fileName = file.split('/')[-1]
+        if fileName.startswith('M'):
             files.append(file)
+
     npes = 10
     try:
         npes
