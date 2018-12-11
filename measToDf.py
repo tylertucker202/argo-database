@@ -195,8 +195,11 @@ class measToDf(object):
         '''combins df1 into df2 for nan in df2'''
         df1 = df1.astype(float).replace(-999, np.NaN)
         df2 = df2.astype(float).replace(-999, np.NaN)
-        df1 = df1.set_index('pres')
-        df2 = df2.set_index('pres')
+        try:
+            df1 = df1.set_index('pres')
+            df2 = df2.set_index('pres')
+        except KeyError as err:
+            raise KeyError('missing pressure axis when merging bgc measurements')
         df = pd.concat( [df1, df2], axis=0, join='outer', sort='true')
         df = df.reset_index()
         
@@ -248,6 +251,8 @@ class measToDf(object):
         else:
             for idx in range(1, self.nProf):
                 profDf = self.make_profile_df(idx, self.bgcList, includeQC=False)
+                if not 'pres' in profDf.columns: # Ignore parameters with no pressure axis.
+                    continue
                 if set(profDf.columns) == {'pres', 'pres_qc'}:  #  Ignores items not in bgcList (core parameters)
                     continue
                 df = self.mergeDfs(df, profDf)

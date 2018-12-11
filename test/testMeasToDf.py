@@ -48,6 +48,7 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
+    '''
     def test_noisy_platform(self):
         #check platform with noisy bgc meas
         platform = ['3901498']
@@ -158,9 +159,10 @@ class measToDfTest(unittest.TestCase):
             dfBGC.dropna(axis=0, how='all', inplace=True)
             afterShape = dfBGC.shape[0]
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
+    '''
     def test_missing_pres_in_bgc(self):
         # this was failing when adding bgc. Now it works
-        profiles = ['6901659_1']
+        profiles = ['6901659_1', '6901472_500']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))

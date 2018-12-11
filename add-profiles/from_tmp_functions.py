@@ -6,6 +6,8 @@ import multiprocessing as mp
 import tempfile
 from numpy import array_split
 import shutil
+import logging
+from datetime import datetime, timedelta
 
 import warnings
 from numpy import warnings as npwarnings
@@ -78,6 +80,19 @@ def mp_create_dir_of_files(df, GDAC, ftpPath, npes=None):
             p.start()
         for p in processes:
             p.join()
+            
+def get_last_updated(filename='lastUpdated.txt'):
+    if not os.path.exists(filename):
+        print('{} does not exist. assuming yesterday'.format(filename))
+        return datetime.today() - timedelta(days=1)
+    with open(filename, 'r') as f:
+        dateStr = f.read()
+    date = datetime.strptime(dateStr, '%Y-%m-%d')
+    return date
+    
+def write_last_updated(date):
+    with open('lastUpdated.txt', 'w') as f:
+        f.write(date)    
 
 def clean_up_space(globalProfileIndex, mixedProfileIndex):
     #remove indexList
@@ -86,3 +101,17 @@ def clean_up_space(globalProfileIndex, mixedProfileIndex):
     #remove files in tmp
     fileName = os.path.join( os.getcwd(), 'tmp' )
     shutil.rmtree(fileName)
+    
+
+class StreamToLogger(object):
+   """
+   Fake file-like stream object that redirects writes to a logger instance.
+   """
+   def __init__(self, logger, log_level=logging.INFO):
+      self.logger = logger
+      self.log_level = log_level
+      self.linebuf = ''
+
+   def write(self, buf):
+      for line in buf.rstrip().splitlines():
+         self.logger.log(self.log_level, line.rstrip())

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import multiprocessing as mp
 from numpy import array_split
 from argoDatabase import argoDatabase
-from from_tmp_functions import download_todays_file, get_df_of_files_to_add, merge_dfs, mp_create_dir_of_files, clean_up_space
+from from_tmp_functions import download_todays_file, get_df_of_files_to_add, merge_dfs, mp_create_dir_of_files, clean_up_space, get_last_updated, write_last_updated, StreamToLogger
 
 import warnings
 from numpy import warnings as npwarnings
@@ -15,6 +15,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
 dbName = 'argo2'
+npes = mp.cpu_count()
 if __name__ == '__main__':
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGFILENAME = 'fromTmp.log'
@@ -27,11 +28,17 @@ if __name__ == '__main__':
     logging.basicConfig(format=FORMAT,
                         filename=LOGFILENAME,
                         level=logging.INFO)
+    #  Sets output stream to logger
+    stdout_logger = logging.getLogger('STDOUT')
+    sl = StreamToLogger(stdout_logger, logging.INFO)
+    sys.stdout = sl
+    stderr_logger = logging.getLogger('STDERR')
+    sl = StreamToLogger(stderr_logger, logging.ERROR)
+    sys.stderr = sl
     logging.warning('Starting add_from_tmp script')
     ftpPath = os.path.join(os.sep, 'ifremer', 'argo')
     GDAC = 'ftp.ifremer.fr'
     todayDate = datetime.today().strftime('%Y-%m-%d')
-    #globalProfileName = 'ar_index_global_prof.txt'  #  Use if going back more than a week
     globalProfileName = 'ar_index_this_week_prof.txt'
     mixedProfileName = 'argo_merge-profile_index.txt'
     globalProfileIndex = os.path.curdir \
@@ -44,14 +51,14 @@ if __name__ == '__main__':
     download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
     download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
     logging.warning('Generating dataframes')
-    minDate = datetime.today() - timedelta(days=1)
+    minDate = get_last_updated(filename='lastUpdated.txt')
     maxDate = datetime.today()
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
     dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
     df = merge_dfs(dfGlobal, dfMixed)
-    print(df.shape)
+    print(df.shape[0])
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
     mp_create_dir_of_files(df, GDAC, ftpPath)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
@@ -66,6 +73,7 @@ if __name__ == '__main__':
                       testMode=False,
                       basinFilename=basinPath)
     files = ad.get_file_names_to_add(OUTPUTDIR)
+
     try:
         npes
     except NameError:
@@ -76,6 +84,9 @@ if __name__ == '__main__':
         p.start()
     for p in processes:
         p.join()
+        
+    logging.warning('setting date updated to: {}'.format(todayDate))
+    write_last_updated(todayDate)
 
     logging.warning('Cleaning up space')
     clean_up_space(globalProfileIndex, mixedProfileIndex)
