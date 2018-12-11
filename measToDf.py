@@ -59,6 +59,7 @@ class measToDf(object):
         self.qcDeepThreshold = ['1', '2', '3']
         self.qcThreshold = qcThreshold
         self.nProf = nProf
+        self.invalidSet = [np.nan, 99999.0]
         
     @staticmethod
     def format_qc_array(array):
@@ -73,53 +74,65 @@ class measToDf(object):
                 raise NotImplementedError('NotImplemented Error while formatting qc')
         return data    
 
+    def format_adjusted(self, measStr, doc_key, idx):
+        df = pd.DataFrame()
+        try:
+            if isinstance(self.variables[measStr + '_ADJUSTED'][idx, :], np.ndarray):
+                df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :]
+        except KeyError:
+            logging.debug('adjusted value for {} does not exist'.format(measStr))
+            df[doc_key] = np.nan
+        except RuntimeWarning as err:
+            raise RuntimeWarning('measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(measStr, err.args))
+        else:  # sometimes a masked array is used
+            try:
+                df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :].data
+            except ValueError:
+                raise ValueError('Value error while formatting measurement {}: check data type'.format(measStr))
+        try:
+            df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :])
+        except KeyError:
+            raise KeyError('qc not found for {}'.format(measStr))
+        return df
+
+    def format_non_adjusted(self, measStr, doc_key, idx):
+        df = pd.DataFrame()
+        # get unadjusted value. Types vary from arrays to masked arrays.
+        if isinstance(self.variables[measStr][idx, :], np.ndarray):
+            df[doc_key] = self.variables[measStr][idx, :]
+        else:  # sometimes a masked array is used
+            try:
+                df[doc_key] = self.variables[measStr][idx, :].data
+            except ValueError:
+                ValueError('Check data type for measurement {}'.format(measStr))
+	        # Sometimes non-adjusted value is invalid.
+        try:
+            df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][idx, :])
+        except KeyError:
+            raise KeyError('qc not found for {}'.format(measStr))
+            return pd.DataFrame()
+        return df
+        
     def format_measurments(self, measStr, idx):
         """
         Combines a measurement's real time and adjusted values into a 1D dataframe.
         An adjusted value replaces each real-time value. 
         Also includes a QC procedure that removes all data that doesn't meet the qc threshhold.
         """
-        df = pd.DataFrame()
         adj = measStr.lower()
         doc_key = measStr.lower()
-
         if (self.profileDoc['DATA_MODE'] == 'D') or (self.profileDoc['DATA_MODE'] == 'A'):
             #use adjusted data
-            try:
-                if isinstance(self.variables[measStr + '_ADJUSTED'][idx, :], np.ndarray):
-                    df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :]
-            except KeyError:
-                logging.debug('adjusted value for {} does not exist'.format(measStr))
-                df[doc_key] = np.nan
-            except RuntimeWarning as err:
-                raise RuntimeWarning('measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(measStr, err.args))
-            else:  # sometimes a masked array is used
-                try:
-                    df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :].data
-                except ValueError:
-                    raise ValueError('Value error while formatting measurement {}: check data type'.format(measStr))
-            try:
-                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :])
-            except KeyError:
-                raise KeyError('qc not found for {}'.format(measStr))
+            df = self.format_adjusted(measStr, doc_key, idx)
+            #  Handles the case when adjusted field is masked.
+            if len(df[doc_key].unique()) == 1 and df[doc_key].unique() in self.invalidSet:
+                logging.debug('adjusted param is masked for meas: {}'.format(measStr))
+                df = self.format_non_adjusted(measStr, doc_key, idx)
         else:
-            # get unadjusted value. Types vary from arrays to masked arrays.
-            if isinstance(self.variables[measStr][idx, :], np.ndarray):
-                df[doc_key] = self.variables[measStr][idx, :]
-            else:  # sometimes a masked array is used
-                try:
-                    df[doc_key] = self.variables[measStr][idx, :].data
-                except ValueError:
-                    ValueError('Check data type for measurement {}'.format(measStr))
-	        # Sometimes non-adjusted value is invalid.
-            try:
-                df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][idx, :])
-            except KeyError:
-                raise KeyError('qc not found for {}'.format(measStr))
-                return pd.DataFrame()
+            df = self.format_non_adjusted(measStr, doc_key, idx)
         df.loc[df[doc_key] > 9999, adj] = np.NaN
         return df
-    
+
     def do_qc_on_meas(self, df, measStr):
         """
         QC procedure drops any row whos qc value does not equal '1'

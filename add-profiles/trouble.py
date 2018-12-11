@@ -15,7 +15,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo2'
+dbName = 'argo-trouble'
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

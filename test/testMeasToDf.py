@@ -48,7 +48,7 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
-    
+    '''
     def test_noisy_platform(self):
         #check platform with noisy bgc meas
         platform = ['3901498']
@@ -139,5 +139,40 @@ class measToDfTest(unittest.TestCase):
             afterShape = dfBGC.shape[0]
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
 
+    def test_missing_bgc(self):
+        #check platform with adjusted bgc parameterthat has been masked.
+        platform = ['1901499']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['platform'].isin(platform)].head()
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            df = pd.DataFrame(doc['bgcMeas'])
+            self.assertGreater(df.shape[0], 0, 'bgcMeas should have values')
+            dfBGC = df.drop(['pres', 'pres_qc'], axis=1)
+            dfBGC.replace(-999, np.nan, inplace=True)
+            beforeShape = dfBGC.shape[0]
+            dfBGC.dropna(axis=0, how='all', inplace=True)
+            afterShape = dfBGC.shape[0]
+            self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
+    '''
+    def test_missing_pres_in_bgc(self):
+        # check on missing doxy
+        profiles = ['6901659_1']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            lastPres = doc['measurements'][-1]['pres']
+            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
 if __name__ == '__main__':
     unittest.main()

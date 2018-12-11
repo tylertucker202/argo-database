@@ -15,7 +15,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo2'
+dbName = 'argo-deep'
 if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -47,14 +47,10 @@ if __name__ == '__main__':
         fileName = file.split('/')[-1]
         if fileName.startswith('M'):
             files.append(file)
-    pdb.set_trace()
-    
-    
-    npes = 10
     try:
         npes
     except NameError:
-        npes = mp.cpu_count() - 1
+        npes = mp.cpu_count() 
     fileArray = array_split(files, npes)
     processes = [mp.Process(target=ad.add_locally, args=(OUTPUTDIR, fileChunk)) for fileChunk in fileArray]
     for p in processes:

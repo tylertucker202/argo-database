@@ -208,11 +208,15 @@ class netCDFToDoc(measToDf):
         profile_id = self.profileId
         url = remotePath
         self.profileDoc['nc_url'] = url
-
         if any (k in self.bgcList for k in stationParametersInNc):
             self.profileDoc['containsBGC'] = 1
-            self.profileDoc['bgcMeas'] = self.createBGC()
-
+            try:
+                self.profileDoc['bgcMeas'] = self.createBGC()
+            except Exception as err:
+                logging.warning(self.profileId)
+                #pdb.set_trace()
+                raise KeyError('bgcMeas not created:{1}'.format(self.profileId, err.args))
+                
         """
         Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
