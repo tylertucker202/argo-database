@@ -22,7 +22,7 @@ class argoDatabase(object):
                  dbDumpThreshold=10000,
                  removeExisting=True, 
                  testMode=False,
-                 basinFilename='basinmask_01.nc', 
+                 basinFilename='../basinmask_01.nc', 
                  addToDb=True):
         logging.debug('initializing ArgoDatabase')
         self.collectionName = collectionName
@@ -37,9 +37,8 @@ class argoDatabase(object):
         self.addToDb = addToDb
         self.documents = []
         self.init_basin(basinFilename)
-
         
-    def init_basin(self, basinFilename='basinmask_01.nc'):
+    def init_basin(self, basinFilename):
         nc = Dataset(basinFilename, 'r')
     
         assert nc.variables['LONGITUDE'].mask == True

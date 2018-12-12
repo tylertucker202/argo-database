@@ -40,7 +40,7 @@ if __name__ == '__main__':
                       basinFilename=basinPath)
     
     files = ad.get_file_names_to_add(ncFileDir)
-    run_parallel_process(ad, files, npes)
+    run_parallel_process(ad, files, ncFileDir, npes)
     logging.warning('setting date updated to: {}'.format(tf.todayDate))
     tf.write_last_updated(tf.todayDate)
 

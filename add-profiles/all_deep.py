@@ -39,5 +39,5 @@ if __name__ == '__main__':
         if platform in deepProfList:
             files.append(file)
 
-    run_parallel_process(ad, files, npes)
+    run_parallel_process(ad, files, ncFileDir, npes)
     logging.warning('End of log file')

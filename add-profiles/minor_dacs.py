@@ -13,7 +13,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
 dbName = 'argo'
-npes = cpu_count()
+npes = 10
 if __name__ == '__main__':
     ncFileDir = getOutput()
     format_logger('minor.log', level=logging.WARNING)
@@ -28,5 +28,5 @@ if __name__ == '__main__':
                       testMode=False)
     
     files = ad.get_file_names_to_add(ncFileDir, dacs)
-    run_parallel_process(ad, files, npes)
+    run_parallel_process(ad, files, ncFileDir, npes)
     logging.warning('End of log file')

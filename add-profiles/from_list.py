@@ -37,7 +37,7 @@ if __name__ == '__main__':
                       testMode=False,
                       basinFilename=basinPath)
     files = ad.get_file_names_to_add(ncFileDir, howToAdd='profiles')
-    run_parallel_process(ad, files, npes)
+    run_parallel_process(ad, files, ncFileDir, npes)
 
     logging.warning('Cleaning up space')
     tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex)

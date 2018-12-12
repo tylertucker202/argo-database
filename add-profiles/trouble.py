@@ -14,7 +14,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
 dbName = 'argo-trouble'
-npes = cpu_count()
+npes = 3
 if __name__ == '__main__':
     ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     format_logger('trouble.log', level=logging.INFO)
@@ -28,5 +28,5 @@ if __name__ == '__main__':
                       testMode=False)
     
     files = ad.get_file_names_to_add(ncFileDir)
-    run_parallel_process(ad, files, npes)
+    run_parallel_process(ad, files, ncFileDir, npes)
     logging.warning('End of log file')

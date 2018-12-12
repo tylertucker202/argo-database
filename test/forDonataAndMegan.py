@@ -15,9 +15,9 @@ if __name__ == '__main__':
     df = ad.create_df_of_files(files)
     df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
     df = df[ df['_id'].isin(profiles)]
-    print(df)
+    #print(df)
     files = df.file.tolist()
     ad.add_locally(OUTPUT_DIR, files)
     
     for doc in ad.documents:
-        print(doc)
+        print('a doc!')
