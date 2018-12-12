@@ -234,7 +234,10 @@ class measToDf(object):
 
     @staticmethod
     def formatBgcDf(df):
-        df = df.astype(float).replace(-999, np.NaN)
+        try:
+            df = df.astype(float).replace(-999, np.NaN)
+        except ValueError as err:
+            raise ValueError('invalid values in bgc measurements {}'.format(err))
         df.dropna(axis=0, how='all', inplace=True)
         df.dropna(axis=1, how='all', inplace=True)
         df.fillna(-999, inplace=True)

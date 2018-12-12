@@ -48,7 +48,6 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
-    
     def test_noisy_platform(self):
         #  check platform with noisy bgc meas
         platform = ['3901498']
@@ -160,10 +159,25 @@ class measToDfTest(unittest.TestCase):
             dfBGC.dropna(axis=0, how='all', inplace=True)
             afterShape = dfBGC.shape[0]
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
-    
+
     def test_missing_pres_in_bgc(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
         profiles = ['6901659_1', '6901473_500', '6902547_1', '6901657_1']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            df = pd.DataFrame( doc['bgcMeas'])
+            self.assertGreater(df.shape[0], 0, 'should contain bgcMeas')
+    
+    def test_float_conversion_in_bgc(self):
+        #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
+        profiles = ['4901167_122']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))

@@ -109,6 +109,39 @@ class netCDFToDoc(measToDf):
             deepFloat = False
         return deepFloat
 
+    def addBGC(self):
+        self.profileDoc['containsBGC'] = 1
+        try:
+            self.profileDoc['bgcMeas'] = self.createBGC()
+        except ValueError as err:
+            raise ValueError('bgc not created:{1}'.format(self.profileId, err))
+        except KeyError as err:
+            raise ValueError('bgc not created:{1}'.format(self.profileId, err))
+        except UnboundLocalError as err:
+            raise UnboundLocalError('bgc not created:{1}'.format(self.profileId, err))
+        except AttributeError as err:
+            raise AttributeError('bgc:{1}'.format(self.profileId, err))
+        except Exception as err:
+            raise UnboundLocalError('bgc have unknown error {1}'.format(self.profileId, err))
+
+    def createMeasurementsDf(self):
+        try:
+            if self.deepFloat:
+                df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
+            else:
+                df = self.make_profile_df(self.idx, self.coreList, includeQC=True)
+        except ValueError as err:
+            raise ValueError('measurements not created:{1}'.format(self.profileId, err))
+        except KeyError as err:
+            raise ValueError('measurements not created:{1}'.format(self.profileId, err))
+        except UnboundLocalError as err:
+            raise UnboundLocalError('measurements not created:{1}'.format(self.profileId, err))
+        except AttributeError as err:
+            raise AttributeError('measurements:{1}'.format(self.profileId, err))
+        except Exception as err:
+            raise UnboundLocalError('measurements have unknown error {1}'.format(self.profileId, err))
+        return df
+
     def make_profile_dict(self, dacName, refDate, remotePath):
         """
         Takes a profile measurement and formats it into a dictionary object.
@@ -125,21 +158,7 @@ class netCDFToDoc(measToDf):
         self.add_string_values('VERTICAL_SAMPLING_SCHEME')
         
         self.deepFloat = self.check_if_deep_profile()
-        try:
-            if self.deepFloat:
-                profileDf = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
-            else:
-                profileDf = self.make_profile_df(self.idx, self.coreList, includeQC=True)
-        except ValueError as err:
-            raise ValueError('measurements not created:{1}'.format(self.profileId, err.args))
-        except KeyError as err:
-            raise ValueError('measurements not created:{1}'.format(self.profileId, err.args))
-        except UnboundLocalError as err:
-            raise UnboundLocalError('measurements not created:{1}'.format(self.profileId, err.args))
-        except AttributeError as err:
-            raise AttributeError('measurements:{1}'.format(self.profileId, err.args))
-        except Exception as err:
-            raise UnboundLocalError('measurements have unknown error {1}'.format(self.profileId, err.args))
+        profileDf = self.createMeasurementsDf()
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         
         #self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
@@ -185,13 +204,13 @@ class netCDFToDoc(measToDf):
                 positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64).item()
             else:
                 positionQC = -999
-                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileId, err.args))
+                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileId, err))
         except ValueError as err:
             positionQC = -999
-            logging.warning('Profile:{0} positionQc value error {1}. Filling with -999'.format(self.profileId, err.args))
+            logging.warning('Profile:{0} positionQc value error {1}. Filling with -999'.format(self.profileId, err))
         except Exception as err:
             positionQC = -999
-            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err.args))
+            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err))
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')
 
@@ -209,14 +228,8 @@ class netCDFToDoc(measToDf):
         url = remotePath
         self.profileDoc['nc_url'] = url
         if any (k in self.bgcList for k in stationParametersInNc):
-            self.profileDoc['containsBGC'] = 1
-            try:
-                self.profileDoc['bgcMeas'] = self.createBGC()
-            except Exception as err:
-                logging.warning(self.profileId)
-                #pdb.set_trace()
-                raise KeyError('bgcMeas not created:{1}'.format(self.profileId, err.args))
-                
+            self.addBGC()
+
         """
         Normally, the floats take measurements on the ascent. 
         In the event that the float takes measurements on the descent, the
