@@ -6,7 +6,7 @@ Created on Sun Feb  4 15:46:14 2018
 """
 import logging
 import numpy as np
-from datetime import timedelta
+from datetime import datetime, timedelta
 from measToDf import measToDf
 import warnings
 import pdb
@@ -77,7 +77,7 @@ class netCDFToDoc(measToDf):
         except:
             logging.debug('error when adding {0} to document.'
                           ' Not going to add item to document'.format(valueName))
-    
+
     def add_max_min_pres(self, df, param, maxBoolean):
         if not param in df.columns:
             return
@@ -98,14 +98,15 @@ class netCDFToDoc(measToDf):
             self.profileDoc[paramName] = presValue
         except:
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
-    
+
     def check_if_deep_profile(self):
         try:
-            if self.profileDoc['WMO_INST_TYPE'] in self.deepFloatWMO:
+            maxPres = self.format_measurments('PRES', 0).pres.max()
+            if maxPres >= 2500:
                 deepFloat = True
             else:
                 deepFloat = False
-        except NameError:
+        except Exception:
             deepFloat = False
         return deepFloat
 
@@ -164,7 +165,6 @@ class netCDFToDoc(measToDf):
         #self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
         self.profileDoc['station_parameters'] = profileDf.columns.tolist()
         
-        
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
         self.add_max_min_pres(profileDf, 'temp', maxBoolean=False)
         self.add_max_min_pres(profileDf, 'psal', maxBoolean=True)
@@ -177,8 +177,8 @@ class netCDFToDoc(measToDf):
             self.profileDoc['date'] = refDate
         else:
             date = refDate + timedelta(self.variables['JULD'][self.idx].item())
-            self.profileDoc['date'] = date            
-        
+            self.profileDoc['date'] = date
+        self.profileDoc['date_added'] = datetime.today()
         try:
             dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
             self.profileDoc['date_qc'] = dateQC

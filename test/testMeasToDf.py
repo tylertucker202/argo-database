@@ -48,6 +48,7 @@ class measToDfTest(unittest.TestCase):
 
     def tearDown(self):
         return
+
     def test_noisy_platform(self):
         #  check platform with noisy bgc meas
         platform = ['3901498']
@@ -101,22 +102,6 @@ class measToDfTest(unittest.TestCase):
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
         self.assertEqual(len(self.ad.documents), 0, "profile 6900287_8 should not be added")
-    
-    def test_deep(self):
-        #  Check that deep profiles are added
-        profiles = ['6901762_46', '6901762_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        for doc in self.ad.documents:
-            lastPres = doc['measurements'][-1]['pres']
-            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
-    
 
     def test_big_bgc(self):
         #  check platform with large bgc measurements. Merge should be less than 5000 rows.
@@ -140,7 +125,7 @@ class measToDfTest(unittest.TestCase):
             self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
 
     def test_missing_bgc(self):
-        #  check platform with adjusted bgc parameterthat has been masked.
+        #  check platform with adjusted bgc parameter that has been masked.
         platform = ['1901499']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -189,5 +174,27 @@ class measToDfTest(unittest.TestCase):
         for doc in self.ad.documents:
             df = pd.DataFrame( doc['bgcMeas'])
             self.assertGreater(df.shape[0], 0, 'should contain bgcMeas')
+
+    def test_deep(self):
+        #  Check that deep profiles are added
+        profiles = ['6901762_46', '6901762_8', '5905235_5']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            df = pd.DataFrame(doc['measurements'])
+            lastPres = df['pres'].max()
+            
+            
+            qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
+            self.assertTrue('pres_qc' in qcColNames, 'missing pressure qc')
+            self.assertTrue('temp_qc' in qcColNames, 'missing temp qc')
+            self.assertTrue('psal_qc' in qcColNames, 'missing psal qc')
+            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
 if __name__ == '__main__':
     unittest.main()

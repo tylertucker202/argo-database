@@ -114,7 +114,7 @@ class measToDf(object):
             raise KeyError('qc not found for {}'.format(measStr))
             return pd.DataFrame()
         return df
-        
+
     def format_measurments(self, measStr, idx):
         """
         Combines a measurement's real time and adjusted values into a 1D dataframe.
@@ -148,7 +148,7 @@ class measToDf(object):
         if df.empty:
             return pd.DataFrame()
         return df
-    
+
     def do_qc_on_deep_meas(self, df, measStr):
         """
         QC procedure drops any row whos qc value does not equal '1'
@@ -157,7 +157,11 @@ class measToDf(object):
             dfShallow = df[ df['pres'] <= 2000]
             dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
             dfDeep = df[ df['pres'] > 2000]
-            dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold)]
+            if measStr == 'pres':
+                pdb.set_trace()
+                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcThreshold)]
+            else:
+                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold)]
             df = pd.concat([dfShallow, dfDeep], axis=0 )
         except KeyError:
             raise KeyError('measurement: {0} has no qc.'
@@ -287,6 +291,8 @@ class measToDf(object):
         df = pd.concat([pres, df], axis=1)  # join pressure axis
         qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
         if includeQC:
+            df = self.drop_nan_from_df(df)
+        else:
             df = self.drop_nan_from_df(df)
             df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
         df.fillna(-999, inplace=True) # API needs all measurements to be a number

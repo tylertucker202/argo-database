@@ -13,7 +13,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo'
+dbName = 'argo-bgc'
 npes = cpu_count()
 if __name__ == '__main__':
     format_logger('bgc.log', level=logging.DEBUG)
