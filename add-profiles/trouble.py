@@ -13,7 +13,7 @@ from addFunctions import format_logger, run_parallel_process
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
-dbName = 'argo-trouble'
+dbName = 'argo'
 npes = 3
 if __name__ == '__main__':
     ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')

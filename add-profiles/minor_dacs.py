@@ -13,7 +13,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
 dbName = 'argo'
-npes = 10
+npes = cpu_count()
 if __name__ == '__main__':
     ncFileDir = getOutput()
     format_logger('minor.log', level=logging.WARNING)

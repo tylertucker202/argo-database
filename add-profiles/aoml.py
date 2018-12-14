@@ -13,7 +13,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
 dbName = 'argo'
-npes = 10
+npes = cpu_count()
 if __name__ == '__main__':
     format_logger('aoml.log', level=logging.WARNING)
     logging.warning('Start of log file')
