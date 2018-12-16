@@ -14,7 +14,7 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
 dbName = 'argo'
-npes = 3
+npes = 1
 if __name__ == '__main__':
     ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     format_logger('trouble.log', level=logging.INFO)

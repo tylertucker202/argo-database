@@ -110,10 +110,10 @@ class netCDFToDoc(measToDf):
             deepFloat = False
         return deepFloat
 
-    def addBGC(self):
+    def add_BGC(self):
         self.profileDoc['containsBGC'] = 1
         try:
-            self.profileDoc['bgcMeas'] = self.createBGC()
+            self.profileDoc['bgcMeas'] = self.create_BGC()
         except ValueError as err:
             raise ValueError('bgc not created:{1}'.format(self.profileId, err))
         except KeyError as err:
@@ -228,7 +228,7 @@ class netCDFToDoc(measToDf):
         url = remotePath
         self.profileDoc['nc_url'] = url
         if any (k in self.bgcList for k in stationParametersInNc):
-            self.addBGC()
+            self.add_BGC()
 
         """
         Normally, the floats take measurements on the ascent. 

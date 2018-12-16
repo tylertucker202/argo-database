@@ -82,7 +82,7 @@ class netCDFToDocTest(unittest.TestCase):
 
     def tearDown(self):
         return
-    
+
     def test_document_creation(self):
         self.ad.addToDb = False
         self.ad.testMode = True
@@ -179,7 +179,7 @@ class netCDFToDocTest(unittest.TestCase):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             self.assertTrue(True)
-    
+            
     def test_deep(self):
         platform = ['5905164', '5905234']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
@@ -190,7 +190,7 @@ class netCDFToDocTest(unittest.TestCase):
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
-        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should not be added")
+        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should be added")
     
 if __name__ == '__main__':
     unittest.main()

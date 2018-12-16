@@ -42,10 +42,7 @@ class measToDf(object):
                          'UP_RADIANCE',
                          'DOWNWELLING_PAR']
 
-        self.bgcList =   ['PRES',
-                          'TEMP',
-                          'PSAL',
-                         'DOXY',
+        self.bgcList =   ['DOXY',
                          'CHLA',
                          'CDOM',
                          'NITRATE',
@@ -158,8 +155,7 @@ class measToDf(object):
             dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
             dfDeep = df[ df['pres'] > 2000]
             if measStr == 'pres':
-                pdb.set_trace()
-                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcThreshold)]
+                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin([self.qcThreshold])]
             else:
                 dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold)]
             df = pd.concat([dfShallow, dfDeep], axis=0 )
@@ -250,16 +246,16 @@ class measToDf(object):
         return df
         
     
-    def createBGC(self):
+    def create_BGC(self):
         ''' BGC measurements are found in several indexes. Here we loop through
         each N_PROF and merge using the mergeDFs method.'''
-        df = self.make_profile_df(self.idx, self.bgcList, includeQC=False)
+        df = self.make_profile_df(self.idx, self.measList, includeQC=False) # note we add pres temp and psal
         if self.nProf == 1:
             df = self.formatBgcDf(df)
             return df.astype(np.float64).to_dict(orient='records')
         else:
             for idx in range(1, self.nProf):
-                profDf = self.make_profile_df(idx, self.bgcList, includeQC=False)
+                profDf = self.make_profile_df(idx, self.measList, includeQC=False)
                 if not 'pres' in profDf.columns: # Ignore parameters with no pressure axis.
                     continue
                 if set(profDf.columns) == {'pres', 'pres_qc'}:  #  Ignores items not in bgcList (core parameters)
