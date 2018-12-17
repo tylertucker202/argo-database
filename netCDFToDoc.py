@@ -111,7 +111,7 @@ class netCDFToDoc(measToDf):
         return deepFloat
 
     def add_BGC(self):
-        self.profileDoc['containsBGC'] = 1
+        self.profileDoc['containsBGC'] = True
         try:
             self.profileDoc['bgcMeas'] = self.create_BGC()
         except ValueError as err:
@@ -128,6 +128,7 @@ class netCDFToDoc(measToDf):
     def createMeasurementsDf(self):
         try:
             if self.deepFloat:
+                self.profileDoc['isDeep'] = self.deepFloat
                 df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
             else:
                 df = self.make_profile_df(self.idx, self.coreList, includeQC=True)

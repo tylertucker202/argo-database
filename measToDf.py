@@ -55,6 +55,8 @@ class measToDf(object):
                          'UP_RADIANCE',
                          'DOWNWELLING_PAR']
 
+
+        self.qcDeepPresThreshold = ['1', '2']
         self.qcDeepThreshold = ['1', '2', '3']
         self.qcThreshold = qcThreshold
         self.nProf = nProf
@@ -155,9 +157,9 @@ class measToDf(object):
             dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
             dfDeep = df[ df['pres'] > 2000]
             if measStr == 'pres':
-                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin([self.qcThreshold])]
+                dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepPresThreshold) ]
             else:
-                dfDeep = dfDeep[dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold)]
+                dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold) ]
             df = pd.concat([dfShallow, dfDeep], axis=0 )
         except KeyError:
             raise KeyError('measurement: {0} has no qc.'
@@ -193,7 +195,7 @@ class measToDf(object):
         return df
 
     @staticmethod
-    def mergeDfs(df1, df2):
+    def merge_dfs(df1, df2):
         '''combins df1 into df2 for nan in df2'''
         df1 = df1.astype(float).replace(-999, np.NaN)
         df2 = df2.astype(float).replace(-999, np.NaN)
@@ -215,25 +217,7 @@ class measToDf(object):
         return df
 
     @staticmethod
-    def mergeDfsOriginal(df1, df2):
-        '''combins df1 into df2 for nan in df2'''
-        df1 = df1.astype(float).replace(-999, np.NaN)
-        df2 = df2.astype(float).replace(-999, np.NaN)
-        df1 = df1.set_index('pres')
-        df2 = df2.set_index('pres')
-        #df2 = df2[ df2['pres_qc'] != '4']
-        df = df2.combine_first(df1)
-        df = df.reset_index()
-        df.dropna(axis=0, how='all', inplace=True)
-        df.dropna(axis=1, how='all', inplace=True)
-        #reformat
-        df.fillna(-999, inplace=True)
-        qcCol = [x for x in df.columns if x.endswith('_qc')]
-        df[qcCol] = df[qcCol].astype(int).astype(str)
-        return df
-
-    @staticmethod
-    def formatBgcDf(df):
+    def format_bgc_df(df):
         try:
             df = df.astype(float).replace(-999, np.NaN)
         except ValueError as err:
@@ -248,10 +232,10 @@ class measToDf(object):
     
     def create_BGC(self):
         ''' BGC measurements are found in several indexes. Here we loop through
-        each N_PROF and merge using the mergeDFs method.'''
+        each N_PROF and merge using the merge_dfs method.'''
         df = self.make_profile_df(self.idx, self.measList, includeQC=False) # note we add pres temp and psal
         if self.nProf == 1:
-            df = self.formatBgcDf(df)
+            df = self.format_bgc_df(df)
             return df.astype(np.float64).to_dict(orient='records')
         else:
             for idx in range(1, self.nProf):
@@ -263,8 +247,8 @@ class measToDf(object):
                 if df.empty:
                     df = profDf
                 else:
-                    df = self.mergeDfs(df, profDf)
-            df = self.formatBgcDf(df)
+                    df = self.merge_dfs(df, profDf)
+            df = self.format_bgc_df(df)
             return df.astype(np.float64).to_dict(orient='records')
             
     def make_deep_profile_df(self, idx, measList, includeQC=True):

@@ -81,6 +81,7 @@ class argoDatabase(object):
             coll.create_index([('dac', pymongo.DESCENDING)])
             coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
             coll.create_index([('containsBGC', pymongo.DESCENDING)])
+            coll.create_index([('isDeep', pymongo.DESCENDING)])
             #coll.create_index([('BASIN', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
