@@ -185,15 +185,15 @@ class measToDfTest(unittest.TestCase):
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
+        self.assertTrue(len(self.ad.documents) > 0, 'should have deep meas')
         for doc in self.ad.documents:
             df = pd.DataFrame(doc['measurements'])
             lastPres = df['pres'].max()
-            
-            
             qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
+            self.assertTrue(doc['isDeep'], 'isDeep field should have been added')
             self.assertTrue('pres_qc' in qcColNames, 'missing pressure qc')
             self.assertTrue('temp_qc' in qcColNames, 'missing temp qc')
             self.assertTrue('psal_qc' in qcColNames, 'missing psal qc')
-            #self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
+            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
 if __name__ == '__main__':
     unittest.main()
