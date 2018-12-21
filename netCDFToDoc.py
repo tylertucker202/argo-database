@@ -113,7 +113,6 @@ class netCDFToDoc(measToDf):
         return deepFloat
 
     def add_BGC(self):
-        self.profileDoc['containsBGC'] = True
         try:
             self.profileDoc['bgcMeas'] = self.create_BGC()
         except ValueError as err:
@@ -126,6 +125,16 @@ class netCDFToDoc(measToDf):
             raise AttributeError('bgc:{1}'.format(self.profileId, err))
         except Exception as err:
             raise UnboundLocalError('bgc have unknown error {1}'.format(self.profileId, err))
+        bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
+        #  Strip numbers
+        bgcMeasKeys = [''.join(i for i in s if not i.isdigit()) for s in bgcMeasKeys]
+        bgcKeys = [s.lower() for s in self.bgcList]
+        if bool(set(bgcMeasKeys) & set(bgcKeys)):
+            self.profileDoc['containsBGC'] = True
+        else:
+            del self.profileDoc['bgcMeas']
+            logging.warning('Profile: {} contains poor quality bgc data. not going to include table')
+            
 
     def createMeasurementsDf(self):
         try:

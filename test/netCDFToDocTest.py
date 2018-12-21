@@ -106,26 +106,6 @@ class netCDFToDocTest(unittest.TestCase):
             for key, itemType in self.requiredKeys:
                 self.assertIn(key, docKeys, 'missing key: {}'.format(key))
                 self.assertIsInstance(doc[key], itemType)
-            
-    def test_bgc(self):
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        profiles = ['5904663_1', '5904663_67', '5903260_219', '5903260_1']
-        df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = False
-        self.ad.removeExisting = True
-        self.ad.replaceProfile=True
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-
-        coll = self.ad.create_collection()
-        for _id in profiles:
-            doc = coll.find_one({'_id': _id})
-            self.assertIsInstance(doc, dict, 'doc should exist')
-            self.assertIsInstance(doc['containsBGC'], int, '_id: {} should have bgc'.format(_id))
-            self.assertIsInstance(doc['bgcMeas'], list)
-            self.assertIsInstance(doc['bgcMeas'][0], dict)
 
     def test_optional_keys(self):
         #Used to find out why some fields are missing
@@ -179,31 +159,6 @@ class netCDFToDocTest(unittest.TestCase):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             self.assertTrue(True)
-
-    def test_deep(self):
-        platform = ['5905164', '5905234']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['platform'].isin(platform)]
-        self.ad.testMode = True
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should be added")
-
-    def test_non_deep(self):
-        platform = ['5904398']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['platform'].isin(platform)]
-        self.ad.testMode = True
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        doc = self.ad.documents[0]
-        self.assertFalse('isDeep' in doc.keys(), 'should not have isDeep key')
 
 if __name__ == '__main__':
     unittest.main()
