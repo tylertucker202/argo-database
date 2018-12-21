@@ -133,7 +133,7 @@ class netCDFToDoc(measToDf):
             self.profileDoc['containsBGC'] = True
         else:
             del self.profileDoc['bgcMeas']
-            logging.warning('Profile: {} contains poor quality bgc data. not going to include table')
+            logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileId))
             
 
     def createMeasurementsDf(self):
@@ -253,5 +253,5 @@ class netCDFToDoc(measToDf):
             direction = self.variables['DIRECTION'][self.idx].astype(str).item()
             if direction == 'D':
                 self.profileId += 'D'
-            self.profileDoc['DIRECTION'] = 'D'
+            self.profileDoc['DIRECTION'] = direction
             self.profileDoc['_id'] = self.profileId

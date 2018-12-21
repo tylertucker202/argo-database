@@ -82,7 +82,7 @@ class netCDFToDocTest(unittest.TestCase):
 
     def tearDown(self):
         return
-
+    
     def test_document_creation(self):
         self.ad.addToDb = False
         self.ad.testMode = True
@@ -159,6 +159,25 @@ class netCDFToDocTest(unittest.TestCase):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             self.assertTrue(True)
+
+    def test_ascending_profiles(self):
+        #profile should be acending
+        profiles = [ '2902534_142']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.addToDb=True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        coll = self.ad.create_collection()
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            self.assertTrue('DIRECTION' not in doc.keys(), 'should be acending')
 
 if __name__ == '__main__':
     unittest.main()
