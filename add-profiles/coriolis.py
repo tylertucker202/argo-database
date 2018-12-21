@@ -12,7 +12,7 @@ from addFunctions import format_logger, run_parallel_process
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo'
+dbName = 'argo2'
 npes = cpu_count()
 if __name__ == '__main__':
     format_logger('coriolis.log', level=logging.WARNING)

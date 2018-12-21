@@ -179,7 +179,7 @@ class netCDFToDocTest(unittest.TestCase):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             self.assertTrue(True)
-            
+
     def test_deep(self):
         platform = ['5905164', '5905234']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
@@ -191,6 +191,19 @@ class netCDFToDocTest(unittest.TestCase):
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
         self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should be added")
-    
+
+    def test_non_deep(self):
+        platform = ['5904398']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['platform'].isin(platform)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        doc = self.ad.documents[0]
+        self.assertFalse('isDeep' in doc.keys(), 'should not have isDeep key')
+
 if __name__ == '__main__':
     unittest.main()

@@ -156,7 +156,7 @@ class measToDf(object):
             dfShallow = df[ df['pres'] <= 2000]
             dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
             dfDeep = df[ df['pres'] > 2000]
-            if measStr == 'pres':
+            if measStr == 'pres' or measStr == 'temp':
                 dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepPresThreshold) ]
             else:
                 dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold) ]

@@ -101,7 +101,9 @@ class netCDFToDoc(measToDf):
 
     def check_if_deep_profile(self):
         try:
-            maxPres = self.format_measurments('PRES', 0).pres.max()
+            df = self.format_measurments('PRES', 0)
+            df = self.do_qc_on_deep_meas(df, 'pres')
+            maxPres = df.pres.max()
             if maxPres >= 2500:
                 deepFloat = True
             else:
@@ -128,6 +130,7 @@ class netCDFToDoc(measToDf):
     def createMeasurementsDf(self):
         try:
             if self.deepFloat:
+                #  self.profile_id = self.profile_id.strip('D') # D postfix should be used for direction only.
                 self.profileDoc['isDeep'] = self.deepFloat
                 df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
             else:
@@ -158,7 +161,6 @@ class netCDFToDoc(measToDf):
         self.add_string_values('PI_NAME')
         self.add_string_values('WMO_INST_TYPE')
         self.add_string_values('VERTICAL_SAMPLING_SCHEME')
-        
         self.deepFloat = self.check_if_deep_profile()
         profileDf = self.createMeasurementsDf()
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
@@ -225,7 +227,6 @@ class netCDFToDoc(measToDf):
         
         stationParametersInNc = [item for sublist in self.stationParameters for item in sublist]
         self.profileDoc['station_parameters_in_nc'] = stationParametersInNc
-        profile_id = self.profileId
         url = remotePath
         self.profileDoc['nc_url'] = url
         if any (k in self.bgcList for k in stationParametersInNc):
@@ -242,6 +243,6 @@ class netCDFToDoc(measToDf):
         else:
             direction = self.variables['DIRECTION'][self.idx].astype(str).item()
             if direction == 'D':
-                profile_id += 'D'
+                self.profileId += 'D'
             self.profileDoc['DIRECTION'] = 'D'
-            self.profileDoc['_id'] = profile_id
+            self.profileDoc['_id'] = self.profileId

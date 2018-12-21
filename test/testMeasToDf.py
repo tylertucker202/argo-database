@@ -189,7 +189,8 @@ class measToDfTest(unittest.TestCase):
         for doc in self.ad.documents:
             df = pd.DataFrame(doc['measurements'])
             lastPres = df['pres'].max()
-            qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
+            qcColNames = [k for k in df.columns.tolist() if '_qc' in k]
+            
             self.assertTrue(doc['isDeep'], 'isDeep field should have been added')
             self.assertTrue('pres_qc' in qcColNames, 'missing pressure qc')
             self.assertTrue('temp_qc' in qcColNames, 'missing temp qc')
