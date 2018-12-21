@@ -151,6 +151,7 @@ def get_last_updated(filename='lastUpdated.txt'):
         return datetime.today() - timedelta(days=1)
     with open(filename, 'r') as f:
         dateStr = f.read()
+    dateStr = dateStr.strip('\n')
     date = datetime.strptime(dateStr, '%Y-%m-%d')
     return date
     
