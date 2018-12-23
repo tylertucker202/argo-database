@@ -177,7 +177,29 @@ class netCDFToDocTest(unittest.TestCase):
         coll = self.ad.create_collection()
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
-            self.assertTrue('DIRECTION' not in doc.keys(), 'should be acending')
+            self.assertTrue(doc['DIRECTION']!='D', 'should be acending')
+            
+    ''' TODO: FIND A DECENDING FLOAT TO CHECK
+    def test_decending_profiles(self):
+        #profile should be decending
+        profiles = [ '6901762_46']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.addToDb=True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        coll = self.ad.create_collection()
+        pdb.set_trace()
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            self.assertTrue(doc['DIRECTION']=='D', 'should be decending')
+    '''
 
 if __name__ == '__main__':
     unittest.main()

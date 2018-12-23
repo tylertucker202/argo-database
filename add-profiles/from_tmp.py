@@ -13,7 +13,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo'
+dbName = 'argo2'
 npes = mp.cpu_count()
 minDate = tf.get_last_updated(filename='lastUpdated.txt')
 maxDate = datetime.today()

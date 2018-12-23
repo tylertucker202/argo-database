@@ -155,14 +155,14 @@ def get_last_updated(filename='lastUpdated.txt'):
     date = datetime.strptime(dateStr, '%Y-%m-%d')
     return date
     
-def write_last_updated(date):
-    with open('lastUpdated.txt', 'w') as f:
+def write_last_updated(date, filename='lastUpdated.txt'):
+    with open(filename, 'w') as f:
         f.write(date)    
 
-def clean_up_space(globalProfileIndex, mixedProfileIndex):
+def clean_up_space(globalProfileIndex, mixedProfileIndex, tmpDir='tmp'):
     #remove indexList
     os.remove(globalProfileIndex)
     os.remove(mixedProfileIndex)
     #remove files in tmp
-    fileName = os.path.join( os.getcwd(), 'tmp' )
+    fileName = os.path.join( os.getcwd(), tmpDir )
     shutil.rmtree(fileName)
