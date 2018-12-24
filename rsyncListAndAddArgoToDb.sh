@@ -25,7 +25,7 @@ case $HOSTNAME in
 		;;
 esac
 
-QUEUEDIR=$ARGODIR'queued-files/'
+QUEUEDIR=$ARGODIR'/../queued-files/'
 OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 
 echo 'Starting rsync: writing to '$FTPDIR
