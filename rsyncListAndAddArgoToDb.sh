@@ -16,7 +16,7 @@ case $HOSTNAME in
   (kadavu.ucsd.edu) 
 		echo "this is kadavu"
 		FTPDIR='/home/tylertucker/ifremer/'
-		ARGODIR='/home/tylertucker/argo-database/'
+		ARGODIR='/home/tylertucker/Desktop/argo-database/'
 		;;
 		(*) 
         	echo "this lab 416"
