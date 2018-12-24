@@ -11,21 +11,21 @@ case $HOSTNAME in
   (carby) 
 		echo "this is carby"
                 FTPDIR='/storage/ifremer/'
-		ARGODIR='/home/tyler/Desktop/argo-database/'
+		ARGODIR='/home/tyler/Desktop/argo-database/add-profiles'
 		;;
   (kadavu.ucsd.edu) 
 		echo "this is kadavu"
 		FTPDIR='/home/tylertucker/ifremer/'
-		ARGODIR='/home/tylertucker/Desktop/argo-database/'
+		ARGODIR='/home/tylertucker/Desktop/argo-database/add-profiles'
 		;;
 		(*) 
         	echo "this lab 416"
 		FTPDIR='/home/gstudent4/Desktop/ifremer/'
-		ARGODIR='/home/gstudent4/Desktop/argo-database/'
+		ARGODIR='/home/gstudent4/Desktop/argo-database/add-profiles'
 		;;
 esac
 
-QUEUEDIR=$ARGODIR'queuedFiles/'
+QUEUEDIR=$ARGODIR'/../queued-files/'
 OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 
 echo 'Starting rsync: writing to '$FTPDIR
