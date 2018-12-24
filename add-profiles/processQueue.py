@@ -9,7 +9,7 @@ import logging
 import pdb
 from multiprocessing import cpu_count
 
-
+dbName = 'argo2' 
 argoBaseDir = os.path.join(os.getcwd(), os.pardir)
 queueDir = os.path.join(argoBaseDir, 'queued-files')
 complDir =  os.path.join(argoBaseDir, 'completed-queues')
@@ -31,7 +31,6 @@ def get_content(file):
 if __name__ == '__main__':
     format_logger('processQueue.log', level=logging.WARNING)
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    dbName = 'argo' 
     ncFileDir = getOutput()
     ad = argoDatabase(dbName,
                       'profiles',
@@ -44,7 +43,6 @@ if __name__ == '__main__':
     #  collect queued files and process them
     for file in glob.glob(os.path.join(queueDir, '*.txt')):
         content = get_content(file)
-        pdb.set_trace()
         if len(content) == 0:
             new_file_location = os.path.join(complDir,file.split('/')[-1])
             logging.debug('moving file to {}'.format(new_file_location))
