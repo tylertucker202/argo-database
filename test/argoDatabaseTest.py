@@ -11,38 +11,13 @@ import glob
 import pdb
 import sys
 import numpy as np
+import re
 sys.path.append('..')
 from argoDatabase import argoDatabase
 import unittest
+from argoDBClass import argoDBClass
 
-class argoDatabaseTest(unittest.TestCase):
-
-    def setUp(self):
-        self.DATADIR = os.path.join(os.getcwd(), 'test-files')
-        self.dbName = 'argo-test'
-        self.collectionName = 'profiles'
-        self.verificationErrors = []
-        self.basinFilename = './../basinmask_01.nc'
-        self.replaceProfile=False
-        self.qcThreshold='1'
-        self.dbDumpThreshold=1000
-        self.removeExisting=False
-        self.testMode=True
-        self.basinFilename=self.basinFilename
-        self.ad = argoDatabase(self.dbName,
-                          self.collectionName,
-                          self.replaceProfile,
-                          self.qcThreshold,
-                          self.dbDumpThreshold,
-                          self.removeExisting,
-                          self.testMode,
-                          self.basinFilename)
-        files = self.ad.get_file_names_to_add(self.DATADIR)
-        singleFile = [files[0]]
-        self.ad.add_locally(os.path.curdir, singleFile)
-
-    def tearDown(self):
-        return
+class argoDatabaseTest(argoDBClass):
 
     def test_init(self):
         self.ad = argoDatabase(self.dbName,
@@ -84,13 +59,13 @@ class argoDatabaseTest(unittest.TestCase):
 
     def test_create_collection(self):
         coll = self.ad.create_collection()
-        collIndexes = ['_id_', 'date_-1', 'platform_number_-1', 'cycle_number_-1', 'dac_-1', 'geoLocation_2dsphere', 'containsBGC_-1']
+        collIndexes = ['_id_', 'date_-1', 'platform_number_-1', 'cycle_number_-1', 'dac_-1', 'geoLocation_2dsphere']
         self.assertEqual(coll.name, 'profiles')
         for key in collIndexes:
             self.assertIn(key, sorted(list(coll.index_information())))
     
     def test_get_file_names_to_add(self):
-        files = self.ad.get_file_names_to_add(self.DATADIR)
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         self.assertIsInstance(files, list)
         self.assertGreater(len(files), 0)
         
@@ -101,7 +76,7 @@ class argoDatabaseTest(unittest.TestCase):
             self.assertIn(col, columns)
 
         includeDacs = ['csio', 'kordi']
-        files2 = self.ad.get_file_names_to_add(self.DATADIR, includeDacs)
+        files2 = self.ad.get_file_names_to_add(self.OUTPUTDIR, includeDacs)
         dfFiles2 = self.ad.create_df_of_files(files2)
         dfFiles2['dac'] = dfFiles2['file'].apply(lambda x: x.split('/')[-4])
         dacs = dfFiles2.dac.unique().tolist()
@@ -111,8 +86,8 @@ class argoDatabaseTest(unittest.TestCase):
         
     def test_remove_duplicate_if_mixed(self):
         dupFiles = []
-        dupFiles += glob.glob(os.path.join(self.DATADIR, '**', '**', 'profiles', '*.nc'))
-        files = self.ad.get_file_names_to_add(self.DATADIR)
+        dupFiles += glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*.nc'))
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         
         self.assertNotEqual(len(files), len(dupFiles))
     
@@ -128,7 +103,29 @@ class argoDatabaseTest(unittest.TestCase):
         return
     
     def test_remove_profiles(self):
-        return
+        profiles = ['6901762_46', '6901762_8']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.addToDb=True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        #create collection and create custom key.
+        coll = self.ad.create_collection()
+        myKey = 'notUpdated'
+        for _id in profiles:
+            coll.find_one_and_update({"_id": _id}, {'$set': {myKey: True}})
+        self.ad.documents = []
+        # new doc should replace old one, removing myKey from document
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            self.assertTrue(myKey not in doc.keys(), 'document was not replaced with new one')
 
     def test_format_param(self):
         return

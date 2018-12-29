@@ -22,7 +22,7 @@ class argoDatabase(object):
                  dbDumpThreshold=10000,
                  removeExisting=True, 
                  testMode=False,
-                 basinFilename='../basinmask_01.nc', 
+                 basinFilename='./basinmask_01.nc', 
                  addToDb=True):
         logging.debug('initializing ArgoDatabase')
         self.collectionName = collectionName
@@ -80,8 +80,8 @@ class argoDatabase(object):
             coll.create_index([('cycle_number', pymongo.DESCENDING)])
             coll.create_index([('dac', pymongo.DESCENDING)])
             coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
-            coll.create_index([('containsBGC', pymongo.DESCENDING)])
-            coll.create_index([('isDeep', pymongo.DESCENDING)])
+            #coll.create_index([('containsBGC', pymongo.DESCENDING)])
+            #coll.create_index([('isDeep', pymongo.DESCENDING)])
             #coll.create_index([('BASIN', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
@@ -176,11 +176,10 @@ class argoDatabase(object):
         #remove all profiles at once
         logging.debug('removing profiles before reintroducing')
         logging.debug('number of profiles to be deleted: {}'.format(len(idList)))
-        countBefore = coll.find({}).count()
+        countBefore = coll.count_documents({})
         coll.delete_many({'_id': {'$in': idList}})
-        countAfter = coll.find({}).count()
+        countAfter = coll.count_documents({})
         delta = countBefore - countAfter
-        coll.find({}).count()
         logging.debug('number of profiles removed: {}'.format(delta))
 
     @staticmethod

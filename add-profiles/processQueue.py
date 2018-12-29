@@ -51,8 +51,7 @@ if __name__ == '__main__':
 
         try:
             logging.warning('adding {} files'.format(len(content)))
-            #run_parallel_process(ad, content, ncFileDir, npes)
-            pdb.set_trace()
+            #run_parallel_process(ad, content, ncFileDir, npes)\
             #  move qued file to competed directory upon sucessfull completion
             new_file_location = os.path.join(complDir,file.split('/')[-1])
             logging.debug('moving file to {}'.format(new_file_location))

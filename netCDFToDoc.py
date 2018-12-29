@@ -167,6 +167,7 @@ class netCDFToDoc(measToDf):
         except KeyError:
             self.add_string_values('INST_REFERENCE')
         self.add_string_values('DATA_MODE')
+        self.add_string_values('DATA_CENTRE')
         self.add_string_values('PI_NAME')
         self.add_string_values('WMO_INST_TYPE')
         self.add_string_values('VERTICAL_SAMPLING_SCHEME')

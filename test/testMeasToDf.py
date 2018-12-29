@@ -16,37 +16,12 @@ import unittest
 import warnings
 import pandas as pd
 from numpy import warnings as npwarnings
+from argoDBClass import argoDBClass
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-class measToDfTest(unittest.TestCase):
-
-    def setUp(self):
-        self.OUTPUTDIR = os.path.join(os.getcwd(), 'test-files')
-        self.dbName = 'argo-test'
-        self.collectionName = 'profiles'
-        self.verificationErrors = []
-        self.basinFilename = './../basinmask_01.nc'
-        self.replaceProfile=False
-        self.qcThreshold='1'
-        self.dbDumpThreshold=1000
-        self.removeExisting=False
-        self.testMode=True
-        self.addToDb=True
-        self.basinFilename=self.basinFilename
-        self.ad = argoDatabase(self.dbName,
-                          self.collectionName,
-                          self.replaceProfile,
-                          self.qcThreshold,
-                          self.dbDumpThreshold,
-                          self.removeExisting,
-                          self.testMode,
-                          self.basinFilename,
-                          self.addToDb)                
-
-    def tearDown(self):
-        return
+class measToDfTest(argoDBClass):
 
     def test_noisy_platform(self):
         #  check platform with noisy bgc meas
@@ -76,27 +51,5 @@ class measToDfTest(unittest.TestCase):
         self.ad.add_locally(self.OUTPUTDIR, files)
         self.assertEqual(len(self.ad.documents), 0, "profile 6900287_8 should not be added")
 
-    def test_deep(self):
-        #  Check that deep profiles are added
-        profiles = ['6901762_46', '6901762_8', '5905235_5']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        self.assertTrue(len(self.ad.documents) > 0, 'should have deep meas')
-        for doc in self.ad.documents:
-            df = pd.DataFrame(doc['measurements'])
-            lastPres = df['pres'].max()
-            qcColNames = [k for k in df.columns.tolist() if '_qc' in k]
-            
-            self.assertTrue(doc['isDeep'], 'isDeep field should have been added')
-            self.assertTrue('pres_qc' in qcColNames, 'missing pressure qc')
-            self.assertTrue('temp_qc' in qcColNames, 'missing temp qc')
-            self.assertTrue('psal_qc' in qcColNames, 'missing psal qc')
-            self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
 if __name__ == '__main__':
     unittest.main()
