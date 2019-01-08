@@ -77,11 +77,13 @@ class argoDatabase(object):
         try:
             coll.create_index([('date', pymongo.DESCENDING)])
             coll.create_index([('platform_number', pymongo.DESCENDING)])
-            coll.create_index([('cycle_number', pymongo.DESCENDING)])
+            #coll.create_index([('cycle_number', pymongo.DESCENDING)])
             coll.create_index([('dac', pymongo.DESCENDING)])
             coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
-            #coll.create_index([('containsBGC', pymongo.DESCENDING)])
-            #coll.create_index([('isDeep', pymongo.DESCENDING)])
+
+            # these are needed for db overview
+            coll.create_index([('containsBGC', pymongo.DESCENDING)])
+            coll.create_index([('isDeep', pymongo.DESCENDING)])
             #coll.create_index([('BASIN', pymongo.DESCENDING)])
         except:
             logging.warning('not able to get collections or set indexes')
@@ -175,12 +177,7 @@ class argoDatabase(object):
             idList.append(profileName)
         #remove all profiles at once
         logging.debug('removing profiles before reintroducing')
-        logging.debug('number of profiles to be deleted: {}'.format(len(idList)))
-        countBefore = coll.count_documents({})
         coll.delete_many({'_id': {'$in': idList}})
-        countAfter = coll.count_documents({})
-        delta = countBefore - countAfter
-        logging.debug('number of profiles removed: {}'.format(delta))
 
     @staticmethod
     def format_param(param):
@@ -213,9 +210,6 @@ class argoDatabase(object):
             stationParameters.append(dimStatParam)
         return stationParameters
         
-        
-        
-
     def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf):
         """
         Retrieves some meta information and counts number of profile measurements.
@@ -232,13 +226,8 @@ class argoDatabase(object):
         platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
         
         stationParameters = self.getStationParameters(variables['STATION_PARAMETERS'])
-        refDateArray = variables['REFERENCE_DATE_TIME'][:]
-        refStr = ''.join([x.astype(str) for x in refDateArray])
-        refDate = datetime.strptime(refStr, '%Y%m%d%H%M%S')
-        idx = 0 #stometimes there are two profiles. The second profile is ignored.
-        qcThreshold='1'
         try:
-            p2D = netCDFToDoc(variables, dacName, refDate, remotePath, stationParameters, platformNumber, idx, qcThreshold, nProf)
+            p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, nProf)
             doc = p2D.get_profile_doc()
             return doc
         except AttributeError as err:

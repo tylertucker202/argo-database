@@ -59,9 +59,6 @@ class testTmpFunctions(unittest.TestCase):
         #df = tf.get_df_from_dates_updated(minDate, maxDate)
 
         
-    def test_clean_up_space(self):
-        return
-        
 
 if __name__ == '__main__':
     unittest.main()

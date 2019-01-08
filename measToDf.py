@@ -14,9 +14,9 @@ import pdb
 class measToDf(object):
     def __init__(self, variables,
                  stationParameters,
+                 nProf,
                  idx=0,
-                 qcThreshold='1',
-                 nProf=1):
+                 qcThreshold='1'):
         logging.debug('initializing measToDf')
         self.stationParameters = stationParameters
         self.variables = variables
@@ -54,7 +54,6 @@ class measToDf(object):
                          'DOWN_IRRADIANCE',
                          'UP_RADIANCE',
                          'DOWNWELLING_PAR']
-
 
         self.qcDeepPresThreshold = ['1', '2']
         self.qcDeepThreshold = ['1', '2', '3']

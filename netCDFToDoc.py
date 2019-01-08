@@ -18,31 +18,22 @@ class netCDFToDoc(measToDf):
 
     def __init__(self, variables,
                  dacName,
-                 refDate,
                  remotePath,
                  stationParameters,
                  platformNumber,
-                 idx=0,
-                 qcThreshold='1',
-                 nProf=1):
+                 nProf):
         logging.debug('initializing netCDFToDoc')
-    
-        measToDf.__init__(self, variables,
-                             stationParameters,
-                             idx,
-                             qcThreshold,
-                             nProf)
+        measToDf.__init__(self, variables, stationParameters, nProf)
         self.platformNumber = platformNumber
-        self.cycleNumber = int(self.variables['CYCLE_NUMBER'][idx].astype(str))
+        self.cycleNumber = int(self.variables['CYCLE_NUMBER'][self.idx].astype(str))
         self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
         self.profileDoc = dict()
         self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
         # populate profileDoc
-        self.make_profile_dict(dacName, refDate, remotePath)
+        self.make_profile_dict(dacName, remotePath)
     
     def get_profile_doc(self):
         return self.profileDoc
-
 
     def add_string_values(self, valueName):
         """
@@ -65,7 +56,6 @@ class netCDFToDoc(measToDf):
                 self.profileDoc['PLATFORM_TYPE'] = value
             else:
                 self.profileDoc[valueName] = value
-
         except KeyError:
             if valueName == 'PLATFORM_TYPE':
                 instRefExists = 'INST_REFERENCE' in self.variables.keys()
@@ -99,92 +89,10 @@ class netCDFToDoc(measToDf):
         except:
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
 
-    def check_if_deep_profile(self):
-        try:
-            df = self.format_measurments('PRES', 0)
-            df = self.do_qc_on_deep_meas(df, 'pres')
-            maxPres = df.pres.max()
-            if maxPres >= 2500:
-                deepFloat = True
-            else:
-                deepFloat = False
-        except Exception:
-            deepFloat = False
-        return deepFloat
-
-    def add_BGC(self):
-        try:
-            self.profileDoc['bgcMeas'] = self.create_BGC()
-        except ValueError as err:
-            raise ValueError('bgc not created:{1}'.format(self.profileId, err))
-        except KeyError as err:
-            raise ValueError('bgc not created:{1}'.format(self.profileId, err))
-        except UnboundLocalError as err:
-            raise UnboundLocalError('bgc not created:{1}'.format(self.profileId, err))
-        except AttributeError as err:
-            raise AttributeError('bgc:{1}'.format(self.profileId, err))
-        except Exception as err:
-            raise UnboundLocalError('bgc have unknown error {1}'.format(self.profileId, err))
-        bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
-        #  Strip numbers
-        bgcMeasKeys = [''.join(i for i in s if not i.isdigit()) for s in bgcMeasKeys]
-        bgcKeys = [s.lower() for s in self.bgcList]
-        if bool(set(bgcMeasKeys) & set(bgcKeys)):
-            self.profileDoc['containsBGC'] = True
-        else:
-            del self.profileDoc['bgcMeas']
-            logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileId))
-            
-
-    def createMeasurementsDf(self):
-        try:
-            if self.deepFloat:
-                #  self.profile_id = self.profile_id.strip('D') # D postfix should be used for direction only.
-                self.profileDoc['isDeep'] = self.deepFloat
-                df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
-            else:
-                df = self.make_profile_df(self.idx, self.coreList, includeQC=True)
-        except ValueError as err:
-            raise ValueError('measurements not created:{1}'.format(self.profileId, err))
-        except KeyError as err:
-            raise ValueError('measurements not created:{1}'.format(self.profileId, err))
-        except UnboundLocalError as err:
-            raise UnboundLocalError('measurements not created:{1}'.format(self.profileId, err))
-        except AttributeError as err:
-            raise AttributeError('measurements:{1}'.format(self.profileId, err))
-        except Exception as err:
-            raise UnboundLocalError('measurements have unknown error {1}'.format(self.profileId, err))
-        return df
-
-    def make_profile_dict(self, dacName, refDate, remotePath):
-        """
-        Takes a profile measurement and formats it into a dictionary object.
-        """
-        self.add_string_values('POSITIONING_SYSTEM')
-        # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
-        try:
-            self.add_string_values('PLATFORM_TYPE')
-        except KeyError:
-            self.add_string_values('INST_REFERENCE')
-        self.add_string_values('DATA_MODE')
-        self.add_string_values('DATA_CENTRE')
-        self.add_string_values('PI_NAME')
-        self.add_string_values('WMO_INST_TYPE')
-        self.add_string_values('VERTICAL_SAMPLING_SCHEME')
-        self.deepFloat = self.check_if_deep_profile()
-        profileDf = self.createMeasurementsDf()
-        self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
-        
-        #self.profileDoc['STATION_PARAMETERS_inMongoDB'] = profileDf.columns.tolist()
-        self.profileDoc['station_parameters'] = profileDf.columns.tolist()
-        
-        self.add_max_min_pres(profileDf, 'temp', maxBoolean=True)
-        self.add_max_min_pres(profileDf, 'temp', maxBoolean=False)
-        self.add_max_min_pres(profileDf, 'psal', maxBoolean=True)
-        self.add_max_min_pres(profileDf, 'psal', maxBoolean=False)
-        
-        maxPres = profileDf.pres.max()
-        self.profileDoc['max_pres'] = np.float64(maxPres)
+    def add_date(self):
+        refDateArray = self.variables['REFERENCE_DATE_TIME'][:]
+        refStr = ''.join([x.astype(str) for x in refDateArray])
+        refDate = datetime.strptime(refStr, '%Y%m%d%H%M%S')
         if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
             logging.warning('Profile:{0} has unknown date. filling with refDate {1}'.format(self.profileId, refDate))
             self.profileDoc['date'] = refDate
@@ -202,14 +110,8 @@ class netCDFToDoc(measToDf):
             else:
                 logging.warning('error with date_qc. filling with -999.')
                 self.profileDoc['date_qc'] = -999
-        
-        phi = self.variables['LATITUDE'][self.idx].item()
-        lam = self.variables['LONGITUDE'][self.idx].item()
-        if isinstance(phi, np.ma.core.MaskedConstant) or isinstance(lam, np.ma.core.MaskedConstant):
-            phi, lam = 0.0, 0.0
-            logging.warning('Profile:{0} has unknown lat-lon.'
-                          ' Filling with 0, 0'.format(self.profileId))
 
+    def add_position_qc(self):
         try:
             positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64).item()
         except AttributeError as err:
@@ -226,13 +128,106 @@ class netCDFToDoc(measToDf):
             logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err))
         if positionQC == 4:
             raise ValueError('position_qc is a 4. Not going to add.')
-
         self.profileDoc['position_qc'] = positionQC
+
+    def add_lat_lon(self):
+        lat = self.variables['LATITUDE'][self.idx].item()
+        lon = self.variables['LONGITUDE'][self.idx].item()
+        if isinstance(lat, np.ma.core.MaskedConstant) or isinstance(lon, np.ma.core.MaskedConstant):
+            lat, lon = 0.0, 0.0
+            logging.warning('Profile:{0} has unknown lat-lon.'
+                          ' Filling with 0, 0'.format(self.profileId))
+        self.profileDoc['lat'] = lat
+        self.profileDoc['lon'] = lon
+        self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lon, lat]}
+
+    def check_if_deep_profile(self):
+        try:
+            df = self.format_measurments('PRES', 0)
+            df = self.do_qc_on_deep_meas(df, 'pres')
+            maxPres = df.pres.max()
+            if maxPres >= 2500:
+                deepFloat = True
+            else:
+                deepFloat = False
+        except Exception:
+            deepFloat = False
+        return deepFloat
+
+    def add_BGC(self):
+        try:
+            self.profileDoc['bgcMeas'] = self.create_BGC()
+        except ValueError as err:
+            raise ValueError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
+        except KeyError as err:
+            raise ValueError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
+        except UnboundLocalError as err:
+            raise UnboundLocalError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
+        except AttributeError as err:
+            raise AttributeError('Profile {0} bgc:{1}'.format(self.profileId, err))
+        except Exception as err:
+            raise UnboundLocalError('Profile {0} bgc have unknown error {1}'.format(self.profileId, err))
+        bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
+        #  Strip numbers
+        bgcMeasKeys = [''.join(i for i in s if not i.isdigit()) for s in bgcMeasKeys]
+        bgcKeys = [s.lower() for s in self.bgcList]
+        if bool(set(bgcMeasKeys) & set(bgcKeys)):
+            self.profileDoc['containsBGC'] = True
+        else:
+            del self.profileDoc['bgcMeas']
+            logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileId))
+
+    def create_measurements_df(self):
+        try:
+            if self.deepFloat:
+                #  self.profile_id = self.profile_id.strip('D') # D postfix should be used for direction only.
+                self.profileDoc['isDeep'] = self.deepFloat
+                df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
+            else:
+                df = self.make_profile_df(self.idx, self.coreList, includeQC=True)
+        except ValueError as err:
+            raise ValueError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        except KeyError as err:
+            raise KeyError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        except UnboundLocalError as err:
+            raise UnboundLocalError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        except AttributeError as err:
+            raise AttributeError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        except Exception as err:
+            raise UnboundLocalError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        return df
+
+    def make_profile_dict(self, dacName, remotePath):
+        """
+        Takes a profile measurement and formats it into a dictionary object.
+        """
+        stringValues = ['POSITIONING_SYSTEM', 'DATA_MODE', 'DATA_CENTRE', 'PI_NAME', 'WMO_INST_TYPE', 'VERTICAL_SAMPLING_SCHEME']
+        for string in stringValues:
+            self.add_string_values(string)
+        # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
+        try:
+            self.add_string_values('PLATFORM_TYPE')
+        except KeyError:
+            self.add_string_values('INST_REFERENCE')
+
+        self.deepFloat = self.check_if_deep_profile()
+        profileDf = self.create_measurements_df()
+        self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
+        self.profileDoc['station_parameters'] = profileDf.columns.tolist()
+
+        maxMinPresArray = [['temp', True] , ['temp', False], ['psal', True], ['psal', False]]
+        for paramBool in maxMinPresArray:
+            self.add_max_min_pres(profileDf, param=paramBool[0], maxBoolean=paramBool[1])
+
+        maxPres = profileDf.pres.max()
+        self.profileDoc['max_pres'] = np.float64(maxPres)
+
+        self.add_date()
+        self.add_lat_lon()
+        self.add_position_qc()
+
         self.profileDoc['cycle_number'] = self.cycleNumber
-        self.profileDoc['lat'] = phi
-        self.profileDoc['lon'] = lam
         self.profileDoc['dac'] = dacName
-        self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lam, phi]}
         self.profileDoc['platform_number'] = self.platformNumber
         
         stationParametersInNc = [item for sublist in self.stationParameters for item in sublist]
