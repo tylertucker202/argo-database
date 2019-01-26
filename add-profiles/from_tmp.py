@@ -13,7 +13,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo2'
+dbName = 'argo-tmp'
 npes = mp.cpu_count()
 minDate = tf.get_last_updated(filename='lastUpdated.txt')
 maxDate = datetime.today()
@@ -40,10 +40,10 @@ if __name__ == '__main__':
                       basinFilename=basinPath)
     
     files = ad.get_file_names_to_add(ncFileDir)
-    run_parallel_process(ad, files, ncFileDir, npes)
+    run_parallel_process(ad, files, ncFileDir, 1)
     logging.warning('setting date updated to: {}'.format(tf.todayDate))
     tf.write_last_updated(tf.todayDate)
 
     logging.warning('Cleaning up space')
-    tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex)
+    #tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex)
     logging.warning('End of log file')

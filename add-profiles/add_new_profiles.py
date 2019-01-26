@@ -21,10 +21,10 @@ if __name__ == '__main__':
 
     ncFileDir = 'tmp'
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    format_logger('daterange.log', level=logging.WARNING)
+    format_logger('add_new_profiles.log', level=logging.WARNING)
     logging.warning('Starting add_from_daterange script')
     df = tf.get_df_from_dates(minDate, maxDate)
-    print(df.shape)
+    print(df.shape[0])
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
     tf.mp_create_dir_of_files(df)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))

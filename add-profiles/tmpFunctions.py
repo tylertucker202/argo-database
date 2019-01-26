@@ -1,14 +1,15 @@
 import os
 from ftplib import FTP
+import wget
 import pandas as pd
 import re
 import logging
+import pdb
 import multiprocessing as mp
 import tempfile
 from numpy import array_split
 import shutil
 from datetime import datetime, timedelta
-
 import warnings
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
@@ -77,11 +78,10 @@ def get_df_from_dates_updated(minDate, maxDate):
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
-    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
-    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate, dateCol='date_update')
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date_update')
     df = merge_dfs(dfGlobal, dfMixed)
     return df
-
 
 def get_df_from_dates(minDate, maxDate):
     download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
@@ -89,12 +89,12 @@ def get_df_from_dates(minDate, maxDate):
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
-    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate)
-    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate)
+    dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate, dateCol='date')
+    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date')
     df = merge_dfs(dfGlobal, dfMixed)
-    df = df[(df.date >= minDate) & (df.date <= maxDate)]
+    return df
 
-def get_df_of_files_to_add(filename, minDate, maxDate):
+def get_df_of_files_to_add(filename, minDate, maxDate, dateCol='date_update'):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
     df = pd.DataFrame()
     for chunk in dfChunk:
@@ -106,7 +106,7 @@ def get_df_of_files_to_add(filename, minDate, maxDate):
         chunk.dropna(axis=0, how='any', inplace=True)
         chunk['date_update'] = pd.to_datetime(chunk['date_update'].astype(int), format='%Y%m%d%H%M%S')
         chunk['date'] = pd.to_datetime(chunk['date'].astype(int), format='%Y%m%d%H%M%S')
-        chunk = chunk[(chunk['date_update'] >= minDate) & (chunk['date_update'] <= maxDate)]
+        chunk = chunk[(chunk[dateCol] >= minDate) & (chunk[dateCol] <= maxDate)]
         df = pd.concat([df, chunk])
     return df
 
@@ -131,15 +131,40 @@ def create_dir_of_files(df, GDAC, ftpPath):
                 continue
             with open(fileName, "wb") as f:
                 ftp.retrbinary("RETR " + row.file, f.write)
+                
+def wget_create_dir_of_files(df, GDAC, ftpPath):
+    urlRoot = 'ftp://' + GDAC + ftpPath + '/dac/'
+    dfDud = pd.DataFrame()
+    counter = 0
+    for idx, row in df.iterrows():
+        counter += 1
+        if counter % 1000 == 0:
+            logging.warning('downloading {} percent complete'.format(counter * 100 / df.shape[0]))
+        fileName = os.path.join( os.getcwd(), 'tmp' , row.file )
+        url = urlRoot + '/' + row.file
+        if not os.path.exists(os.path.dirname(fileName)):
+            os.makedirs(os.path.dirname(fileName))
+        if os.path.exists(fileName):
+            continue
+        try:
+            wget.download(url, fileName)
+        except:
+            logging.warning('url failed to dl: {}'.format(url))
+            dfDud.append(row)
+        
+        if not dfDud.empty:
+            wget_create_dir_of_files(dfDud, GDAC, ftpPath)
+        
 
 def mp_create_dir_of_files(df, GDAC=GDAC, ftpPath=ftpPath, npes=None):
     if npes is None:
         npes = mp.cpu_count()
     if npes is 1:
-        create_dir_of_files(df, GDAC, ftpPath)
+        wget_create_dir_of_files(df, GDAC, ftpPath)
     else:
         dfArray = array_split(df, npes)
-        processes = [mp.Process(target=create_dir_of_files, args=(chunk, GDAC, ftpPath)) for chunk in dfArray]
+        #processes = [mp.Process(target=create_dir_of_files, args=(chunk, GDAC, ftpPath)) for chunk in dfArray]
+        processes = [mp.Process(target=wget_create_dir_of_files, args=(chunk, GDAC, ftpPath)) for chunk in dfArray]
         for p in processes:
             p.start()
         for p in processes:
@@ -159,10 +184,12 @@ def write_last_updated(date, filename='lastUpdated.txt'):
     with open(filename, 'w') as f:
         f.write(date)    
 
-def clean_up_space(globalProfileIndex, mixedProfileIndex, tmpDir='tmp'):
+def clean_up_space(globalProfileIndex=None, mixedProfileIndex=None, tmpDir='tmp'):
     #remove indexList
-    os.remove(globalProfileIndex)
-    os.remove(mixedProfileIndex)
+    if not globalProfileIndex==None:
+        os.remove(globalProfileIndex)
+    if not mixedProfileIndex==None:
+        os.remove(mixedProfileIndex)
     #remove files in tmp
     fileName = os.path.join( os.getcwd(), tmpDir )
     shutil.rmtree(fileName)
