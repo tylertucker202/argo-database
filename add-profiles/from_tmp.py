@@ -15,8 +15,14 @@ npwarnings.filterwarnings('ignore')
 
 dbName = 'argo-tmp'
 npes = mp.cpu_count()
-minDate = tf.get_last_updated(filename='lastUpdated.txt')
-maxDate = datetime.today()
+
+if len(sys.argv) == 3:
+    startDate = datetime.strptime(sys.argv[1], '%Y-%m-%d')
+    endDate = datetime.strptime(sys.argv[2], '%Y-%m-%d')
+else:
+    minDate = tf.get_last_updated(filename='lastUpdated.txt')
+    maxDate = datetime.today()
+
 if __name__ == '__main__':
     ncFileDir = 'tmp'
     
