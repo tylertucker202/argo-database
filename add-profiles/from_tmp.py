@@ -13,12 +13,12 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo-tmp'
+dbName = 'argo2'
 npes = mp.cpu_count()
 
 if len(sys.argv) == 3:
-    startDate = datetime.strptime(sys.argv[1], '%Y-%m-%d')
-    endDate = datetime.strptime(sys.argv[2], '%Y-%m-%d')
+    minDate = datetime.strptime(sys.argv[1], '%Y-%m-%d')
+    maxDate = datetime.strptime(sys.argv[2], '%Y-%m-%d')
 else:
     minDate = tf.get_last_updated(filename='lastUpdated.txt')
     maxDate = datetime.today()
