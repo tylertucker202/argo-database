@@ -135,7 +135,11 @@ def create_dir_of_files(df, GDAC, ftpPath):
 def rsync_create_dir_of_files(df, GDAC, ftpPath):
     tmpFileName = 'tmp-daily-files.txt'
     df['file'].to_csv(tmpFileName, index=None)
-    os.system('rsync -arvzhim --files-from=' + tmpFileName + ' vdmzrs.ifremer.fr::argo /tmp/ > tmp-rsync.txt')
+    tmpDir = os.path.join(os.getcwd(), 'tmp/')
+    rsyncCommand = 'rsync -arvzhim --files-from=' + \
+                   tmpFileName + ' vdmzrs.ifremer.fr::argo' + \
+                   tmpDir + ' > tmp-rsync.txt'
+    os.system(rsyncCommand)
     os.remove(tmpFileName)
                 
 def wget_create_dir_of_files(df, GDAC, ftpPath):

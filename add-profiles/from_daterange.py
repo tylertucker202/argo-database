@@ -8,6 +8,7 @@ from argoDatabase import argoDatabase
 import tmpFunctions as tf
 from addFunctions import format_logger, run_parallel_process
 import warnings
+import pdb
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
