@@ -3,6 +3,7 @@ import sys
 sys.path.append('..')
 import logging
 from datetime import datetime
+import multiprocessing as mp
 from argoDatabase import argoDatabase
 import tmpFunctions as tf
 from addFunctions import format_logger, run_parallel_process
