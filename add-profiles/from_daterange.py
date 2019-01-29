@@ -12,10 +12,15 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-minDate = tf.get_last_updated(filename='lastUpdated.txt')
-maxDate = datetime.today()
-dbName = 'argo'
-npes = 4
+dbName = 'argo2'
+npes = mp.cpu_count()
+
+if len(sys.argv) == 3:
+    minDate = datetime.strptime(sys.argv[1], '%Y-%m-%d')
+    maxDate = datetime.strptime(sys.argv[2], '%Y-%m-%d')
+else:
+    minDate = tf.get_last_updated(filename='lastUpdated.txt')
+    maxDate = datetime.today()
 
 if __name__ == '__main__':
 
@@ -26,7 +31,7 @@ if __name__ == '__main__':
     df = tf.get_df_from_dates(minDate, maxDate)
     print(df.shape)
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    tf.mp_create_dir_of_files(df)
+    tf.rsync_create_dir_of_files(df, tf.GDAC, tf.FTP)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
     ad = argoDatabase(dbName,
                       'profiles',

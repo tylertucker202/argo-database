@@ -132,6 +132,12 @@ def create_dir_of_files(df, GDAC, ftpPath):
             with open(fileName, "wb") as f:
                 ftp.retrbinary("RETR " + row.file, f.write)
                 
+def rsync_create_dir_of_files(df, GDAC, ftpPath):
+    tmpFileName = 'tmp-daily-files.txt'
+    df['file'].to_csv(tmpFileName, index=None)
+    os.system('rsync -arvzhim --files-from=' + tmpFileName + ' vdmzrs.ifremer.fr::argo /tmp/ > tmp-rsync.txt')
+    os.remove(tmpFileName)
+                
 def wget_create_dir_of_files(df, GDAC, ftpPath):
     urlRoot = 'ftp://' + GDAC + ftpPath + '/dac/'
     dfDud = pd.DataFrame()

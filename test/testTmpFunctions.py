@@ -83,6 +83,7 @@ class testTmpFunctions(unittest.TestCase):
         self.assertTrue(mDate in uniqueDates, 'one date should be minDate')
         self.assertTrue(mxDate in uniqueDates, 'one date should be maxDate')
         tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex, tmpDir)
+
     '''
     def test_create_dir_of_files(self):
         filename = os.path.join(os.path.curdir, 'ar_index_this_week_prof-test.txt')
@@ -110,11 +111,23 @@ class testTmpFunctions(unittest.TestCase):
             filePath = os.path.join(tmpDir, file)
             self.assertTrue(os.path.exists(filePath), 'File was not added')
     
+    def test_rsync_create_dir_of_files(self):
+        filename = os.path.join(os.path.curdir, 'ar_index_this_week_prof-test.txt')
+        minDate = datetime.strptime('2019-01-20', '%Y-%m-%d')
+        maxDate = datetime.strptime('2019-01-21', '%Y-%m-%d')
+        df = tf.get_df_of_files_to_add(filename, minDate, maxDate, dateCol='date')
+        tf.rsync_create_dir_of_files(df.head(5), tf.GDAC, tf.ftpPath)
+        tmpDir = os.path.join(os.getcwd(), 'tmp')
+        self.assertTrue(os.path.exists(tmpDir), 'tmp dir not created')
+        
+        for file in df.head(5).file:
+            filePath = os.path.join(tmpDir, file)
+            self.assertTrue(os.path.exists(filePath), 'File was not added')
+    
     
     def test_timeout_errors(self):
-        tmpDir = os.path.join(os.getcwd(), 'tmp')
         ftpStart = datetime.today()
-        for idx in range(100):
+        for idx in range(10):
             self.test_create_dir_of_files()
         ftpEnd = datetime.today()
         ftpDuration = ftpEnd - ftpStart
@@ -122,11 +135,19 @@ class testTmpFunctions(unittest.TestCase):
         tf.clean_up_space()
         
         wgetStart = datetime.today()
-        for idx in range(100):
+        for idx in range(10):
             self.test_wget_create_dir_of_files()
         wgetEnd = datetime.today()
         wgetDuration = wgetEnd - wgetStart
         print('wget took {} seconds'.format(wgetDuration.total_seconds()))
+        tf.clean_up_space()
+        
+        rsyncStart = datetime.today()
+        for idx in range(10):
+            self.test_wget_create_dir_of_files()
+        rsyncEnd = datetime.today()
+        rsyncDuration = rsyncEnd - rsyncStart
+        print('rsync took {} seconds'.format(rsyncDuration.total_seconds()))
         tf.clean_up_space()
     
     

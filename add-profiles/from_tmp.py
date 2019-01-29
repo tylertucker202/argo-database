@@ -33,7 +33,7 @@ if __name__ == '__main__':
     df = tf.get_df_from_dates_updated(minDate, maxDate)
     print(df.shape[0])
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    tf.mp_create_dir_of_files(df)
+    tf.rsync_create_dir_of_files(df, tf.GDAC, tf.FTP)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     ad = argoDatabase(dbName,
