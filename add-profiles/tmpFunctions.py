@@ -194,12 +194,8 @@ def write_last_updated(date, filename='lastUpdated.txt'):
     with open(filename, 'w') as f:
         f.write(date)    
 
-def clean_up_space(globalProfileIndex=None, mixedProfileIndex=None, tmpDir='tmp'):
+def clean_up_space(globalProfileIndex='argo_merge-profile_index*.txt', mixedProfileIndex='ar_index_this_week_prof-*.txt', tmpDir='tmp/'):
     #remove indexList
-    if not globalProfileIndex==None:
-        os.remove(globalProfileIndex)
-    if not mixedProfileIndex==None:
-        os.remove(mixedProfileIndex)
-    #remove files in tmp
-    fileName = os.path.join( os.getcwd(), tmpDir )
-    shutil.rmtree(fileName)
+    os.system('rm '+ globalProfileIndex)
+    os.system('rm '+ mixedProfileIndex)
+    os.system('rm -r '+ tmpDir)

@@ -40,5 +40,5 @@ if __name__ == '__main__':
     run_parallel_process(ad, files, ncFileDir, npes)
 
     logging.warning('Cleaning up space')
-    tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex)
+    tf.clean_up_space()
     logging.warning('End of log file')

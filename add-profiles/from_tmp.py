@@ -52,5 +52,5 @@ if __name__ == '__main__':
     tf.write_last_updated(tf.todayDate)
 
     logging.warning('Cleaning up space')
-    tf.clean_up_space(tf.globalProfileIndex, tf.mixedProfileIndex)
+    tf.clean_up_space()
     logging.warning('End of log file')
