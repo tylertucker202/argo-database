@@ -24,21 +24,11 @@ npwarnings.filterwarnings('ignore')
 
 class deepTest(argoDBClass):
 
-    def test_deep(self):
-        platform = ['5905164', '5905234']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['platform'].isin(platform)]
-        self.ad.testMode = True
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should be added")
 
     def test_deep_profiles(self):
         #  Check that deep profiles are added
-        profiles = ['6901762_46', '6901762_8', '5905235_5']
+        profiles = ['6901762_46', '6901762_8', '5905235_5', '4902325_16']
+        #profiles = ['4902325_16']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
@@ -58,6 +48,19 @@ class deepTest(argoDBClass):
             self.assertTrue('temp_qc' in qcColNames, 'missing temp qc')
             self.assertTrue('psal_qc' in qcColNames, 'missing psal qc')
             self.assertGreater(lastPres, 2000, 'profile should be deeper than 2000 dbar')
+
+
+    def test_deep(self):
+        platform = ['5905164', '5905234']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['platform'].isin(platform)]
+        self.ad.testMode = True
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        self.assertEqual(len(self.ad.documents), 8, "8 deep profiles should be added")
 
     def test_non_deep(self):
         platform = ['5904398']

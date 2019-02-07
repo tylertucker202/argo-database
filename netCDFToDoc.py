@@ -195,6 +195,8 @@ class netCDFToDoc(measToDf):
             raise AttributeError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
         except Exception as err:
             raise UnboundLocalError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+        if df.empty:
+            raise ValueError('Profile {0} not created: No good measurements'.format(self.profileId))
         return df
 
     def make_profile_dict(self, dacName, remotePath):

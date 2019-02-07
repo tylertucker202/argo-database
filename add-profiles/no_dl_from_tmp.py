@@ -14,34 +14,21 @@ warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
 dbName = 'argo2'
-#npes = mp.cpu_count()
 npes = 1
-
-if len(sys.argv) == 3:
-    minDate = datetime.strptime(sys.argv[1], '%Y-%m-%d')
-    maxDate = datetime.strptime(sys.argv[2], '%Y-%m-%d')
-else:
-    minDate = tf.get_last_updated(filename='lastUpdated.txt')
-    maxDate = datetime.today()
 
 if __name__ == '__main__':
     ncFileDir = 'tmp'
     
-    format_logger('tmp.log', level=logging.WARNING)
+    format_logger('no_dl_tmp.log', level=logging.WARNING)
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
     logging.warning('Start of log file')
-    logging.warning('Downloading Profile Indexes')
-    df = tf.get_df_from_dates_updated(minDate, maxDate)
-    print(df.shape[0])
-    logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    tf.rsync_create_dir_of_files(df, tf.GDAC, tf.FTP)
-    logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
+    logging.warning('Going to add to db: {}'.format(dbName))
 
     ad = argoDatabase(dbName,
                       'profiles',
                       replaceProfile=True,
                       qcThreshold='1', 
-                      dbDumpThreshold=1000,
+                      dbDumpThreshold=250,
                       removeExisting=False,
                       testMode=False,
                       basinFilename=basinPath)

@@ -164,8 +164,6 @@ class measToDf(object):
             raise KeyError('measurement: {0} has no qc.'
                       ' returning empty dataframe'.format(measStr))
             return pd.DataFrame()
-        if df.empty:
-            return pd.DataFrame()
         return df
 
     def drop_nan_from_df(self, df):

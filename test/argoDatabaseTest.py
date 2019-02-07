@@ -59,7 +59,7 @@ class argoDatabaseTest(argoDBClass):
 
     def test_create_collection(self):
         coll = self.ad.create_collection()
-        collIndexes = ['_id_', 'date_-1', 'platform_number_-1', 'cycle_number_-1', 'dac_-1', 'geoLocation_2dsphere']
+        collIndexes = ['_id_', 'date_-1', 'platform_number_-1', 'dac_-1', 'geoLocation_2dsphere']
         self.assertEqual(coll.name, 'profiles')
         for key in collIndexes:
             self.assertIn(key, sorted(list(coll.index_information())))

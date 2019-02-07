@@ -137,7 +137,7 @@ def rsync_create_dir_of_files(df, GDAC, ftpPath):
     df['file'].to_csv(tmpFileName, index=None)
     tmpDir = os.path.join(os.getcwd(), 'tmp/')
     rsyncCommand = 'rsync -arvzhim --files-from=' + \
-                   tmpFileName + ' vdmzrs.ifremer.fr::argo' + \
+                   tmpFileName + ' vdmzrs.ifremer.fr::argo ' + \
                    tmpDir + ' > tmp-rsync.txt'
     os.system(rsyncCommand)
     os.remove(tmpFileName)
