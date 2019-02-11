@@ -37,6 +37,7 @@ class argoDatabase(object):
         self.testMode = testMode # used for testing documents outside database
         self.addToDb = addToDb
         self.documents = []
+        self.removeAddedFileNames=True
         
         self.init_basin(basinFilename)
         
