@@ -18,6 +18,8 @@ import unittest
 from argoDBClass import argoDBClass
 
 class argoDatabaseTest(argoDBClass):
+    
+    
 
     def test_init(self):
         self.ad = argoDatabase(self.dbName,
@@ -27,7 +29,9 @@ class argoDatabaseTest(argoDBClass):
                           self.dbDumpThreshold,
                           self.removeExisting,
                           self.testMode,
-                          self.basinFilename)
+                          self.basinFilename, 
+                          self.addToDb, 
+                          self.removeAddedFileNames)
         self.assertEqual(self.ad.dbName, self.dbName)
         self.assertEqual(self.ad.home_dir, os.getcwd())
         self.assertEqual(self.ad.replaceProfile, self.replaceProfile)
@@ -37,6 +41,7 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(self.ad.removeExisting, self.removeExisting)
         self.assertEqual(self.ad.testMode, self.testMode)
         self.assertEqual(self.ad.documents, [])
+        self.assertEqual(self.ad.removeAddedFileNames, self.removeAddedFileNames)
         self.assertIsInstance(self.ad.basin, np.ma.core.MaskedArray)
         self.assertIsInstance(self.ad.basin[0], np.int32)
         self.assertEqual(self.ad.basin.shape, (41088,))
@@ -99,7 +104,7 @@ class argoDatabaseTest(argoDBClass):
         for platform in duplicatePlatforms:
             self.assertNotIn(platform, ndPlatform)
             
-    def test_all_locally(self):
+    def test_add_locally(self):
         return
     
     def test_remove_profiles(self):

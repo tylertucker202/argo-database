@@ -37,7 +37,7 @@ class argoDatabase(object):
         self.testMode = testMode # used for testing documents outside database
         self.addToDb = addToDb
         self.documents = []
-        self.removeAddedFileNames=True
+        self.removeAddedFileNames=removeAddedFileNames
         
         self.init_basin(basinFilename)
         
@@ -172,10 +172,9 @@ class argoDatabase(object):
             if len(documents) >= self.dbDumpThreshold and self.addToDb:
                 logging.warning( 'adding {} profiles to database'.format( len(documents) ) )
                 self.add_many_profiles(documents, fileName, coll)
+                documents = []
                 if self.removeAddedFileNames:
                     delete_list_of_files(completedFileNames)
-                    
-                documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
         if len(documents) == 1 and self.addToDb:
             self.add_single_profile(documents[0], fileName, coll)

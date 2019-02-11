@@ -27,6 +27,7 @@ class argoDBClass(unittest.TestCase):
         self.removeExisting=False
         self.testMode=True
         self.addToDb=True
+        self.removeAddedFileNames = False
         self.ad = argoDatabase(self.dbName,
                           self.collectionName,
                           self.replaceProfile,
@@ -35,7 +36,8 @@ class argoDBClass(unittest.TestCase):
                           self.removeExisting,
                           self.testMode,
                           self.basinFilename,
-                          self.addToDb)
+                          self.addToDb, 
+                          self.removeAddedFileNames)
 
         self.optionalKeys = \
                 [['POSITIONING_SYSTEM',str],
