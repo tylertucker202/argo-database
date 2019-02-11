@@ -146,6 +146,7 @@ class argoDatabase(object):
         counter = 0
         completedFileNames = []
         for fileName in files:
+	    counter+=1
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
             

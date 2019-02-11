@@ -28,12 +28,12 @@ if __name__ == '__main__':
                       'profiles',
                       replaceProfile=True,
                       qcThreshold='1', 
-                      dbDumpThreshold=250,
+                      dbDumpThreshold=1000,
                       removeExisting=False,
                       testMode=False,
                       basinFilename=basinPath, 
                       addToDb=True,
-                      removeAddedFileNames)
+                      removeAddedFileNames=True)
     
     files = ad.get_file_names_to_add(ncFileDir)
     run_parallel_process(ad, files, ncFileDir, npes)
