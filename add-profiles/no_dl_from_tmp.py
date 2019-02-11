@@ -31,7 +31,9 @@ if __name__ == '__main__':
                       dbDumpThreshold=250,
                       removeExisting=False,
                       testMode=False,
-                      basinFilename=basinPath)
+                      basinFilename=basinPath, 
+                      addToDb=True,
+                      removeAddedFileNames)
     
     files = ad.get_file_names_to_add(ncFileDir)
     run_parallel_process(ad, files, ncFileDir, npes)

@@ -23,7 +23,8 @@ class argoDatabase(object):
                  removeExisting=True, 
                  testMode=False,
                  basinFilename='./basinmask_01.nc', 
-                 addToDb=True):
+                 addToDb=True, 
+                 removeAddedFileNames=False):
         logging.debug('initializing ArgoDatabase')
         self.collectionName = collectionName
         self.dbName = dbName
@@ -36,6 +37,7 @@ class argoDatabase(object):
         self.testMode = testMode # used for testing documents outside database
         self.addToDb = addToDb
         self.documents = []
+        
         self.init_basin(basinFilename)
         
     def init_basin(self, basinFilename):
@@ -97,7 +99,12 @@ class argoDatabase(object):
         df['profile'] = df['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
         df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
         df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
-        return df        
+        return df   
+
+    @staticmethod
+    def delete_list_of_files(files):
+        for file in files:
+            os.remove(file)
     
     def remove_duplicate_if_mixed(self, files):
         '''remove platforms from core that exist in mixed df'''
@@ -137,6 +144,7 @@ class argoDatabase(object):
         logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
         counter = 0
+        completedFileNames = []
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
@@ -157,10 +165,14 @@ class argoDatabase(object):
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf)
             if isinstance(doc, dict):
                 doc = self.add_basin(doc, fileName)
+                completedFileNames.append(fileName)
                 self.documents.append(doc)
             if len(documents) >= self.dbDumpThreshold and self.addToDb:
-                logging.warning('adding {} profiles to database'.format(self.dbDumpThreshold))
+                logging.warning( 'adding {} profiles to database'.format( len(documents) ) )
                 self.add_many_profiles(documents, fileName, coll)
+                if self.removeAddedFileNames:
+                    delete_list_of_files(completedFileNames)
+                    
                 documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
         if len(documents) == 1 and self.addToDb:
