@@ -131,13 +131,18 @@ class argoDatabase(object):
             coll = self.create_collection()
 
         if self.removeExisting and self.addToDb: # Removes profiles on list before adding list
+            logging.warning('removing existing profiles before adding files')
             self.remove_profiles(files, coll)
 
         logging.warning('Attempting to add: {}'.format(len(files)))
         documents = []
+        counter = 0
         for fileName in files:
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
+            
+            if counter % 3000 == 0:
+                logging.warning('{} percent through files'.format(100 * counter / len(files)) )
             
             try:
                 root_grp = Dataset(fileName, "r", format="NETCDF4")
@@ -152,11 +157,9 @@ class argoDatabase(object):
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf)
             if isinstance(doc, dict):
                 doc = self.add_basin(doc, fileName)
-                documents.append(doc)
-                if self.testMode:
-                    self.documents.append(doc)
+                self.documents.append(doc)
             if len(documents) >= self.dbDumpThreshold and self.addToDb:
-                logging.debug('dumping data to database')
+                logging.warning('adding {} profiles to database'.format(self.dbDumpThreshold))
                 self.add_many_profiles(documents, fileName, coll)
                 documents = []
         logging.debug('all files have been read. dumping remaining documents to database')
