@@ -31,7 +31,6 @@ class bgcTest(argoDBClass):
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         profiles = ['5904663_1', '5904663_67', '5903260_219', '5903260_1']
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = False
         self.ad.removeExisting = True
         self.ad.replaceProfile=True
         files = df.file.tolist()
@@ -53,7 +52,6 @@ class bgcTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -74,7 +72,6 @@ class bgcTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -95,7 +92,6 @@ class bgcTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -110,7 +106,6 @@ class bgcTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -124,7 +119,6 @@ class bgcTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)

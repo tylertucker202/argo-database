@@ -29,8 +29,7 @@ if __name__ == '__main__':
                       replaceProfile=True,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=False,
-                      testMode=False,
+                      removeExisting=False
                       basinFilename=basinPath, 
                       addToDb=True,
                       removeAddedFileNames=True)

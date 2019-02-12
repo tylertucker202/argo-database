@@ -1,15 +1,11 @@
 import os
 import sys
 import pdb
-import re
 sys.path.append('..')
 from argoDatabase import argoDatabase
 import unittest
 from datetime import datetime
-import pandas as pd
 from numpy import float64
-import warnings
-from numpy import warnings as npwarnings
 
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 
@@ -25,7 +21,6 @@ class argoDBClass(unittest.TestCase):
         self.qcThreshold='1'
         self.dbDumpThreshold=1000
         self.removeExisting=False
-        self.testMode=True
         self.addToDb=True
         self.removeAddedFileNames = False
         self.ad = argoDatabase(self.dbName,
@@ -34,7 +29,6 @@ class argoDBClass(unittest.TestCase):
                           self.qcThreshold,
                           self.dbDumpThreshold,
                           self.removeExisting,
-                          self.testMode,
                           self.basinFilename,
                           self.addToDb, 
                           self.removeAddedFileNames)

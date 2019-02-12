@@ -25,7 +25,7 @@ if __name__ == '__main__':
     logging.warning('Downloading Profile Indexes')
     df = tf.get_df_from_platform_list(platformList)
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    tf.mp_create_dir_of_files(df)
+    tf.create_dir_of_files(df, tf.GDAC, tf.FTP, tf.tmpDir)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
 
     ad = argoDatabase(dbName,
@@ -33,8 +33,7 @@ if __name__ == '__main__':
                       replaceProfile=True,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=True,
-                      testMode=False,
+                      removeExisting=True
                       basinFilename=basinPath)
     files = ad.get_file_names_to_add(ncFileDir, howToAdd='profiles')
     run_parallel_process(ad, files, ncFileDir, npes)

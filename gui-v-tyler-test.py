@@ -36,8 +36,7 @@ if __name__ == '__main__':
                       replaceProfile=False,
                       qcThreshold='1', 
                       dbDumpThreshold=10000,
-                      removeExisting=True,
-                      testMode=True)
+                      removeExisting=True)
     logging.info('adding files using argoDatabase')
     ad.add_locally(OUTPUTDIR, howToAdd='profiles')
     logging.info('finished adding files using argoDatabase')

@@ -30,7 +30,6 @@ class measToDfTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -45,7 +44,6 @@ class measToDfTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)

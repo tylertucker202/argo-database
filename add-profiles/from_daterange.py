@@ -33,15 +33,14 @@ if __name__ == '__main__':
     df = tf.get_df_from_dates(minDate, maxDate)
     print(df.shape)
     logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
-    tf.rsync_create_dir_of_files(df, tf.GDAC, tf.FTP)
+    tf.create_dir_of_files(df, tf.GDAC, tf.FTP, tf.tmpDir)
     logging.warning('Download complete. Now going to add to db: {}'.format(dbName))
     ad = argoDatabase(dbName,
                       'profiles',
                       replaceProfile=True,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=False,
-                      testMode=False,
+                      removeExisting=False
                       basinFilename=basinPath)
     files = ad.get_file_names_to_add(ncFileDir)
     run_parallel_process(ad, files, ncFileDir, npes)

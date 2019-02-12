@@ -9,6 +9,7 @@ from netCDFToDocTest import netCDFToDocTest
 from testMeasToDf import measToDfTest
 from deepTest import deepTest
 from bgcTest import bgcTest
+#from testTmpFunctions import testTmpFunctions
 import warnings
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.

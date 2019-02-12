@@ -24,8 +24,7 @@ if __name__ == '__main__':
                       replaceProfile=False,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=True,
-                      testMode=False)
+                      removeExisting=True)
     
     files = ad.get_file_names_to_add(ncFileDir)
     run_parallel_process(ad, files, ncFileDir, npes)

@@ -18,8 +18,6 @@ import unittest
 from argoDBClass import argoDBClass
 
 class argoDatabaseTest(argoDBClass):
-    
-    
 
     def test_init(self):
         self.ad = argoDatabase(self.dbName,
@@ -28,7 +26,6 @@ class argoDatabaseTest(argoDBClass):
                           self.qcThreshold,
                           self.dbDumpThreshold,
                           self.removeExisting,
-                          self.testMode,
                           self.basinFilename, 
                           self.addToDb, 
                           self.removeAddedFileNames)
@@ -39,7 +36,6 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(self.ad.qcThreshold, self.qcThreshold)
         self.assertEqual(self.ad.dbDumpThreshold, self.dbDumpThreshold)
         self.assertEqual(self.ad.removeExisting, self.removeExisting)
-        self.assertEqual(self.ad.testMode, self.testMode)
         self.assertEqual(self.ad.documents, [])
         self.assertEqual(self.ad.removeAddedFileNames, self.removeAddedFileNames)
         self.assertIsInstance(self.ad.basin, np.ma.core.MaskedArray)
@@ -56,10 +52,8 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(self.ad.get_basin(0, 0), 1)
         self.assertEqual(self.ad.get_basin(30, 0), 3)
         self.assertEqual(self.ad.get_basin(-30, 90), 11)
-        
         doc = {'lat':lat, 'lon':lon}
         self.assertEqual(self.ad.add_basin(doc, '')['BASIN'], 10)
-        
         self.assertEqual(self.ad.add_basin({'lat':np.NaN, 'lon':0}, '')['BASIN'], -999)
 
     def test_create_collection(self):
@@ -68,7 +62,7 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(coll.name, 'profiles')
         for key in collIndexes:
             self.assertIn(key, sorted(list(coll.index_information())))
-    
+
     def test_get_file_names_to_add(self):
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         self.assertIsInstance(files, list)
@@ -104,9 +98,6 @@ class argoDatabaseTest(argoDBClass):
         for platform in duplicatePlatforms:
             self.assertNotIn(platform, ndPlatform)
             
-    def test_add_locally(self):
-        return
-    
     def test_remove_profiles(self):
         profiles = ['6901762_46', '6901762_8']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
@@ -117,7 +108,7 @@ class argoDatabaseTest(argoDBClass):
         
         self.ad.removeExisting = True
         self.ad.replaceProfile=True
-        self.addToDb=True
+        self.ad.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
         #create collection and create custom key.
@@ -128,9 +119,28 @@ class argoDatabaseTest(argoDBClass):
         self.ad.documents = []
         # new doc should replace old one, removing myKey from document
         self.ad.add_locally(self.OUTPUTDIR, files)
+        
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
+            self.assertTrue(isinstance(doc, dict), 'doc was not found')
             self.assertTrue(myKey not in doc.keys(), 'document was not replaced with new one')
+            doc = None
+    
+    def test_dump_threshold(self):
+        profiles = ['6901762_46', '6901762_8']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.ad.addToDb=True
+        self.ad.dbDumpThreshold = 2
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        docLength = len(self.ad.documents)
+        self.assertEqual(docLength, 0, 'documents should have been reinitialized: doc length: {}'.format(docLength))
 
     def test_format_param(self):
         return

@@ -8,7 +8,6 @@ import pdb
 import multiprocessing as mp
 import tempfile
 from numpy import array_split
-import shutil
 from datetime import datetime, timedelta
 import warnings
 from numpy import warnings as npwarnings
@@ -20,30 +19,17 @@ npwarnings.filterwarnings('ignore')
 todayDate = datetime.today().strftime('%Y-%m-%d')
 globalProfileName = 'ar_index_this_week_prof.txt'
 mixedProfileName = 'argo_merge-profile_index.txt'
-globalProfileIndex = os.path.curdir \
-                   + os.sep + globalProfileName[:-4] \
+globalProfileIndex = globalProfileName[:-4] \
                    + '-' + todayDate + '.txt'
-mixedProfileIndex = os.path.curdir \
-                   + os.sep + mixedProfileName[:-4] \
+mixedProfileIndex = mixedProfileName[:-4] \
                    + '-' + todayDate + '.txt'
-ftpPath = os.path.join(os.sep, 'ifremer', 'argo')
+ftpPath = os.path.join('ifremer', 'argo')
 GDAC = 'ftp.ifremer.fr'
-
-def profiles_from_ftp(conn, filename):
-    """Create an Argo profile object from a remote FTP file
-    """
-    conn.cwd(os.path.dirname(filename))
-    with tempfile.NamedTemporaryFile(mode='w+b', dir=None, delete=True) as tmp:
-        conn.retrbinary('RETR %s' % os.path.basename(filename), tmp.write)
-        tmp.file.flush()
-    return tmp
-
+tmpDir = os.path.join(os.getcwd(), 'tmp/')
+         
 def download_todays_file(GDAC, ftpPath, profileIndex, profileText):
-    with FTP(GDAC) as ftp:
-        ftp.login()
-        ftp.cwd(ftpPath)
-        with open(profileIndex, "wb") as f:
-            ftp.retrbinary("RETR " + profileText, f.write)
+    url = 'ftp:/' + '/' + GDAC + '/' + ftpPath + '/' + profileText
+    wget.download(url, profileIndex)
 
 def get_df_of_files_to_add_from_platform_list(filename, platformList):
     dfChunk = pd.read_csv(filename, sep=',', chunksize=100000, header=8)
@@ -116,69 +102,15 @@ def merge_dfs(dfCore, dfMixed):
     dfTruncCore = dfCore[ ~dfCore['platform'].isin(rmPlat)]
     df = pd.concat([dfMixed, dfTruncCore], axis=0, sort=False)
     return df
-
-def create_dir_of_files(df, GDAC, ftpPath):
-    with FTP(GDAC, timeout=10) as ftp:
-        ftp.set_pasv(True)
-        ftp.login()
-        dacPath = os.path.join(ftpPath, 'dac')
-        ftp.cwd(dacPath)
-        for idx, row in df.iterrows():
-            fileName = os.path.join( os.getcwd(), 'tmp' , row.file )
-            if not os.path.exists(os.path.dirname(fileName)):
-                os.makedirs(os.path.dirname(fileName))
-            if os.path.exists(fileName):
-                continue
-            with open(fileName, "wb") as f:
-                ftp.retrbinary("RETR " + row.file, f.write)
                 
-def rsync_create_dir_of_files(df, GDAC, ftpPath):
+def create_dir_of_files(df, GDAC, ftpPath, tmpDir):
     tmpFileName = 'tmp-daily-files.txt'
     df['file'].to_csv(tmpFileName, index=None)
-    tmpDir = os.path.join(os.getcwd(), 'tmp/')
     rsyncCommand = 'rsync -arvzhim --files-from=' + \
                    tmpFileName + ' vdmzrs.ifremer.fr::argo ' + \
                    tmpDir + ' > tmp-rsync.txt'
     os.system(rsyncCommand)
     os.remove(tmpFileName)
-                
-def wget_create_dir_of_files(df, GDAC, ftpPath):
-    urlRoot = 'ftp://' + GDAC + ftpPath + '/dac/'
-    dfDud = pd.DataFrame()
-    counter = 0
-    for idx, row in df.iterrows():
-        counter += 1
-        if counter % 1000 == 0:
-            logging.warning('downloading {} percent complete'.format(counter * 100 / df.shape[0]))
-        fileName = os.path.join( os.getcwd(), 'tmp' , row.file )
-        url = urlRoot + '/' + row.file
-        if not os.path.exists(os.path.dirname(fileName)):
-            os.makedirs(os.path.dirname(fileName))
-        if os.path.exists(fileName):
-            continue
-        try:
-            wget.download(url, fileName)
-        except:
-            logging.warning('url failed to dl: {}'.format(url))
-            dfDud.append(row)
-        
-        if not dfDud.empty:
-            wget_create_dir_of_files(dfDud, GDAC, ftpPath)
-        
-
-def mp_create_dir_of_files(df, GDAC=GDAC, ftpPath=ftpPath, npes=None):
-    if npes is None:
-        npes = mp.cpu_count()
-    if npes is 1:
-        wget_create_dir_of_files(df, GDAC, ftpPath)
-    else:
-        dfArray = array_split(df, npes)
-        #processes = [mp.Process(target=create_dir_of_files, args=(chunk, GDAC, ftpPath)) for chunk in dfArray]
-        processes = [mp.Process(target=wget_create_dir_of_files, args=(chunk, GDAC, ftpPath)) for chunk in dfArray]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
             
 def get_last_updated(filename='lastUpdated.txt'):
     if not os.path.exists(filename):

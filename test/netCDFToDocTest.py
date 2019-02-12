@@ -27,7 +27,6 @@ class netCDFToDocTest(argoDBClass):
     
     def test_document_creation(self):
         self.ad.addToDb = False
-        self.ad.testMode = True
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
 
         self.ad.add_locally(self.OUTPUTDIR, [files[0]])
@@ -37,7 +36,6 @@ class netCDFToDocTest(argoDBClass):
         
     def test_required_keys(self):
         self.ad.addToDb = False
-        self.ad.testMode = True
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
 
         self.ad.add_locally(self.OUTPUTDIR, random.sample(files, 20))
@@ -56,7 +54,6 @@ class netCDFToDocTest(argoDBClass):
         df = self.ad.create_df_of_files(files)
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
-        self.ad.testMode = True
         self.ad.addToDb = False
         files = df.file.tolist()
         

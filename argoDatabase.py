@@ -19,9 +19,8 @@ class argoDatabase(object):
                  collectionName='profiles', 
                  replaceProfile=False,
                  qcThreshold='1', 
-                 dbDumpThreshold=10000,
-                 removeExisting=True, 
-                 testMode=False,
+                 dbDumpThreshold=1000,
+                 removeExisting=True,
                  basinFilename='./basinmask_01.nc', 
                  addToDb=True, 
                  removeAddedFileNames=False):
@@ -34,8 +33,7 @@ class argoDatabase(object):
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
         self.removeExisting = removeExisting
-        self.testMode = testMode # used for testing documents outside database
-        self.addToDb = addToDb
+        self.addToDb = addToDb # used for testing
         self.documents = []
         self.removeAddedFileNames=removeAddedFileNames
         
