@@ -103,7 +103,10 @@ class argoDatabase(object):
     @staticmethod
     def delete_list_of_files(files):
         for file in files:
-            os.remove(file)
+            try:
+                os.remove(file)
+            except Exception as err:
+                pass
     
     def remove_duplicate_if_mixed(self, files):
         '''remove platforms from core that exist in mixed df'''

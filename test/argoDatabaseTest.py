@@ -141,6 +141,23 @@ class argoDatabaseTest(argoDBClass):
         self.ad.add_locally(self.OUTPUTDIR, files)
         docLength = len(self.ad.documents)
         self.assertEqual(docLength, 0, 'documents should have been reinitialized: doc length: {}'.format(docLength))
+        
+    def test_delete_list_of_files(self):
+        profiles = ['6901762_46.nc', '6901762_8.nc']
+        dummyDir = 'dummyTmp'
+        os.mkdir('dummyTmp')
+        files = []
+        # create files
+        for profile in profiles:
+            file = os.path.join(os.getcwd(), dummyDir, profile)
+            files.append(file)
+            cmd = 'touch ' + file
+            os.system(cmd)
+            self.assertTrue(os.path.exists(file), 'file should have been created')
+        # remove files
+        self.ad.delete_list_of_files(files)
+        for file in files:
+            self.assertFalse(os.path.exists(file), 'path should have been deleted')
 
     def test_format_param(self):
         return
