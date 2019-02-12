@@ -143,7 +143,6 @@ class argoDatabase(object):
             self.remove_profiles(files, coll)
 
         logging.warning('Attempting to add: {}'.format(len(files)))
-        documents = []
         counter = 0
         completedFileNames = []
         for fileName in files:
@@ -169,17 +168,17 @@ class argoDatabase(object):
                 doc = self.add_basin(doc, fileName)
                 completedFileNames.append(fileName)
                 self.documents.append(doc)
-            if len(documents) >= self.dbDumpThreshold and self.addToDb:
-                logging.warning( 'adding {} profiles to database'.format( len(documents) ) )
-                self.add_many_profiles(documents, fileName, coll)
-                documents = []
+            if len(self.documents) >= self.dbDumpThreshold and self.addToDb:
+                logging.warning( 'adding {} profiles to database'.format( len(self.documents) ) )
+                self.add_many_profiles(self.documents, fileName, coll)
+                self.documents = []
                 if self.removeAddedFileNames:
-                    delete_list_of_files(completedFileNames)
+                    self.delete_list_of_files(completedFileNames)
         logging.debug('all files have been read. dumping remaining documents to database')
-        if len(documents) == 1 and self.addToDb:
-            self.add_single_profile(documents[0], fileName, coll)
-        elif len(documents) > 1 and self.addToDb:
-            self.add_many_profiles(documents, fileName, coll)
+        if len(self.documents) == 1 and self.addToDb:
+            self.add_single_profile(self.documents[0], fileName, coll)
+        elif len(self.documents) > 1 and self.addToDb:
+            self.add_many_profiles(self.documents, fileName, coll)
         
     def remove_profiles(self, files, coll):
         #get profile ids
