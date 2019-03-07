@@ -145,7 +145,8 @@ class argoDatabaseTest(argoDBClass):
     def test_delete_list_of_files(self):
         profiles = ['6901762_46.nc', '6901762_8.nc']
         dummyDir = 'dummyTmp'
-        os.mkdir('dummyTmp')
+        if not os.path.exists(dummyDir):
+            os.mkdir(dummyDir)
         files = []
         # create files
         for profile in profiles:
