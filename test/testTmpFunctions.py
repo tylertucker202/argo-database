@@ -10,7 +10,7 @@ import os
 import sys
 import pdb
 sys.path.append('..')
-sys.path.append('../add-profiles')
+sys.path.append('./../add-profiles')
 import unittest
 from datetime import datetime, timedelta
 import warnings
@@ -50,7 +50,8 @@ class testTmpFunctions(unittest.TestCase):
         self.assertTrue(os.path.exists(tf.mixedProfileIndex), 'mixed profile file not created')        
 
         tmpDir = os.path.join(os.getcwd(), 'tmp')
-        os.mkdir( tmpDir )
+        if not os.path.exists(tmpDir):
+            os.mkdir( tmpDir )
         self.assertTrue(os.path.exists(tmpDir), 'tmp dir not created')
         tf.clean_up_space()
 

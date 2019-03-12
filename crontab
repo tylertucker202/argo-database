@@ -1,0 +1,3 @@
+# m h  dom mon dow   command
+* * * * * root cd /usr/src/argo-database/test && echo 'doin da test' >> ./../cron.log 2>&1
+#* * * * * root cd /usr/src/argo-database/test && /opt/conda/bin/python testTmpFunctions.py >> ./../cron.log 2>&1
