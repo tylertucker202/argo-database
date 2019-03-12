@@ -26,3 +26,4 @@ tmp/
 add-profiles/tmp
 add-profiles/*.txt
 *.xlsx
+*.bak
