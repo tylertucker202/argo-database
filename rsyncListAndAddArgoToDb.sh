@@ -18,6 +18,11 @@ case $HOSTNAME in
 		FTPDIR='/home/tylertucker/ifremer/'
 		ARGODIR='/home/tylertucker/Desktop/argo-database/add-profiles'
 		;;
+  (atoc02.colorado.edu)
+  		echo "this is kadavu"
+		FTPDIR='/data/argovis/ifremer/'
+		ARGODIR='/home/argovis/argo-database/add-profiles'
+		;;
 		(*) 
         	echo "this lab 416"
 		FTPDIR='/home/gstudent4/Desktop/ifremer/'
