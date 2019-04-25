@@ -1,4 +1,5 @@
 import os
+from glob import glob
 from ftplib import FTP
 import wget
 import pandas as pd
@@ -129,9 +130,9 @@ def write_last_updated(date, filename='lastUpdated.txt'):
 def clean_up_space(globalProfileIndex='argo_merge-profile_index*.txt', mixedProfileIndex='ar_index_this_week_prof-*.txt', tmpDir='tmp/'):
     #remove indexList
     files = [ globalProfileIndex, mixedProfileIndex ]
-        
+    files = [ os.path.join(os.getcwd(), f) for f in files ]
     for file in files:
-        if os.path.exists(file):
+        if len(glob(file)) >= 1:
             os.system('rm ' + file)
 
     if os.path.exists(tmpDir):
