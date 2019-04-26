@@ -29,6 +29,7 @@ class argoDatabaseTest(argoDBClass):
                           self.basinFilename, 
                           self.addToDb, 
                           self.removeAddedFileNames)
+        self.assertTrue(os.path.exists(self.OUTPUTDIR), 'check output directory {}'.format(self.OUTPUTDIR))
         self.assertEqual(self.ad.dbName, self.dbName)
         self.assertEqual(self.ad.home_dir, os.getcwd())
         self.assertEqual(self.ad.replaceProfile, self.replaceProfile)
