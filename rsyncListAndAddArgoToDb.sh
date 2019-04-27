@@ -19,9 +19,9 @@ case $HOSTNAME in
 		ARGODIR='/home/tylertucker/Desktop/argo-database/add-profiles'
 		;;
   (atoc02.colorado.edu)
-  		echo "this is kadavu"
+  		echo "this is atoc"
 		FTPDIR='/data/argovis/ifremer/'
-		ARGODIR='/home/argovis/argo-database/add-profiles'
+		ARGODIR='/data/argovis/argo-database/add-profiles'
 		;;
 		(*) 
         	echo "this lab 416"
