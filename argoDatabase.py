@@ -55,7 +55,7 @@ class argoDatabase(object):
            Ex.:
            basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
         """   
-        return int(griddata(self.coords, self.basin, (lon, lat), method='nearest'))
+        return int(griddata(self.coords, self.basin, (lat, lon), method='nearest'))
     
     def add_basin(self, doc, fileName):
         try:
