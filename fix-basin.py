@@ -10,7 +10,7 @@ FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=FORMAT,
                     filename='fix-basin.log',
                     level=logging.DEBUG)  
-
+logging.debug('starting script')
 nc = Dataset('basinmask_01.nc', 'r')
 assert nc.variables['LONGITUDE'].mask == True
 assert nc.variables['LATITUDE'].mask == True
@@ -22,7 +22,7 @@ coords = np.stack([nc.variables['LATITUDE'][bdx[0]],
 
 dbUrl = 'mongodb://localhost:27017/'
 client = pymongo.MongoClient(dbUrl)
-db = client['argo-trouble']
+db = client['argo2']
 coll = db['profiles']
 
 cursor = coll.find()
