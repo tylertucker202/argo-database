@@ -14,8 +14,6 @@ from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
-
-
 todayDate = datetime.today().strftime('%Y-%m-%d')
 globalProfileName = 'ar_index_this_week_prof.txt'
 mixedProfileName = 'argo_merge-profile_index.txt'
