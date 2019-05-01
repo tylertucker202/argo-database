@@ -40,7 +40,7 @@ if __name__ == '__main__':
                       replaceProfile=True,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=False
+                      removeExisting=False,
                       basinFilename=basinPath)
     files = ad.get_file_names_to_add(ncFileDir)
     run_parallel_process(ad, files, ncFileDir, npes)
