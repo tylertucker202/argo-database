@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
 import os
@@ -13,7 +12,7 @@ from addFunctions import format_logger, run_parallel_process
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
-dbName = 'argo-trouble'
+dbName = 'argo-express-test'
 npes = 4
 if __name__ == '__main__':
     ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')

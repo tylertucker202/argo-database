@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 17 06:48:17 2018
@@ -51,8 +50,8 @@ class argoDatabaseTest(argoDBClass):
         lon = -178.5
         self.assertEqual(self.ad.get_basin(lat, lon), 10)
         self.assertEqual(self.ad.get_basin(0, 0), 1)
-        self.assertEqual(self.ad.get_basin(30, 0), 3)
-        self.assertEqual(self.ad.get_basin(-30, 90), 11)
+        self.assertEqual(self.ad.get_basin(30, 0), 4)
+        self.assertEqual(self.ad.get_basin(-30, 90), 3)
         doc = {'lat':lat, 'lon':lon}
         self.assertEqual(self.ad.add_basin(doc, '')['BASIN'], 10)
         self.assertEqual(self.ad.add_basin({'lat':np.NaN, 'lon':0}, '')['BASIN'], -999)
