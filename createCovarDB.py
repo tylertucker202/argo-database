@@ -20,10 +20,10 @@ def get_feature_collection(file):
         featureColl = json.loads(featureColl)
     return featureColl
 
-def create_collection(collName):
+def create_collection(collName, dbName):
     dbUrl = 'mongodb://localhost:27017/'
     client = pymongo.MongoClient(dbUrl)
-    db = client['argo2']
+    db = client[dbName]
     coll = db[collName]
     return coll
 
@@ -36,9 +36,11 @@ def format_features(features):
         formattedFeatures.append(doc)
     return formattedFeatures
 
-def create_covar_docs(localDir):
+def create_covar_docs(localDir, forTest):
     files = glob.glob(os.path.join(localDir, '*.js'))
     docs = []
+    if forTest:
+        files = files[0:10]
     for file in files:
         doc = {}
         lat = float(file.strip('.js').split('_')[-3])
@@ -52,8 +54,7 @@ def create_covar_docs(localDir):
         docs.append(doc)
     return docs
 
-def add_docs_to_database(collName, docs):
-    coll = create_collection(collName)
+def add_docs_to_database(docs, coll):
     coll.drop()    
     for doc in docs:
         try:
@@ -63,13 +64,28 @@ def add_docs_to_database(collName, docs):
             doc    
     coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
 
-localDir = './60_day'
-collName = 'shortCovars'
-docs = create_covar_docs(localDir)
-add_docs_to_database(collName, docs)
+def main_add(localDir, collName, dbName, forTest=False):
+    coll = create_collection(collName, dbName)
+    coll.drop()
+    docs = create_covar_docs(localDir, forTest)
+    if not forTest:
+        add_docs_to_database(docs, coll)
+    else:
+        add_docs_to_database(docs, coll)
+if __name__ == '__main__':
 
-localDir = './140_day'
-collName = 'longCovars'
-docs = create_covar_docs(localDir)
-add_docs_to_database(collName, docs)
+    dbName = 'argo2'
+    sLocalDir = './60_day'
+    sCollName = 'shortCovars'
+    lLocalDir = './140_day'
+    lCollName = 'longCovars'
+
+    main_add(sLocalDir, sCollName, dbName)
+    main_add(lLocalDir, lCollName, dbName)
+
+    # add for testing purposes
+    testDbName = 'argo-express-test'
+    main_add(sLocalDir, sCollName, testDbName, forTest=True)
+    main_add(lLocalDir, lCollName, testDbName, forTest=True)
+
         
