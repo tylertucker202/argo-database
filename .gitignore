@@ -27,3 +27,6 @@ add-profiles/tmp
 add-profiles/*.txt
 *.xlsx
 *.bak
+*.nc
+*.mat
+gridding/KuuselaResults/*
