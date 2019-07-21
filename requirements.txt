@@ -5,3 +5,5 @@ python-dateutil==2.7.5
 scipy==1.1.0
 netCDF4==1.4.2
 wget==3.2
+xarray==0.12.0
+

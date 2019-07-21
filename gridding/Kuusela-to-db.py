@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import xarray as xr
 import pymongo
 import pdb
 from datetime import datetime, timedelta
@@ -71,7 +70,7 @@ def make_docs(files, dataVal='predGrid'):
     return docs
 
 if __name__ == '__main__':
-    path = os.path.join('./home', 'KuuselaResults', 'anom*')
+    path = os.path.join('KuuselaResults', 'anom*')
 
     anomMats = glob.glob(path)
     print(len(anomMats))
