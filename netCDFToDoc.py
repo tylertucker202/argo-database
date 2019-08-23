@@ -132,7 +132,7 @@ class netCDFToDoc(measToDf):
         lat = self.variables['LATITUDE'][self.idx].item()
         lon = self.variables['LONGITUDE'][self.idx].item()
         if isinstance(lat, np.ma.core.MaskedConstant) or isinstance(lon, np.ma.core.MaskedConstant):
-            lat, lon = 0.0, 0.0
+            lat, lon = -89.0, 0.0
             logging.warning('Profile:{0} has unknown lat-lon.'
                           ' Filling with 0, 0'.format(self.profileId))
         self.profileDoc['lat'] = lat
