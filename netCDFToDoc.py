@@ -124,7 +124,7 @@ class netCDFToDoc(measToDf):
         except Exception as err:
             positionQC = -999
             logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err))
-        if positionQC == 4:
+        if positionQC in [3, 4]:
             raise ValueError('position_qc is a 4. Not going to add.')
         self.profileDoc['position_qc'] = positionQC
 
