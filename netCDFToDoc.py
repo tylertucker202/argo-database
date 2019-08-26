@@ -100,7 +100,6 @@ class netCDFToDoc(measToDf):
         self.profileDoc['date_added'] = datetime.today()
         try:
             dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
-            self.profileDoc['date_qc'] = dateQC
         except AttributeError:
             if isinstance(self.variables['JULD_QC'][self.idx], np.ma.core.MaskedConstant):
                 dateQC = np.float64(self.variables['JULD_QC'][self.idx].item())
@@ -108,6 +107,10 @@ class netCDFToDoc(measToDf):
             else:
                 logging.warning('error with date_qc. filling with -999.')
                 self.profileDoc['date_qc'] = -999
+        if dateQC in [3, 4]:
+            raise ValueError('date_qc is a 3 or 4. Not going to add.')
+        else:
+            self.profileDoc['date_qc'] = dateQC
 
     def add_position_qc(self):
         try:
@@ -125,8 +128,9 @@ class netCDFToDoc(measToDf):
             positionQC = -999
             logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err))
         if positionQC in [3, 4]:
-            raise ValueError('position_qc is a 4. Not going to add.')
-        self.profileDoc['position_qc'] = positionQC
+            raise ValueError('position_qc is a 3 or 4. Not going to add.')
+        else:
+            self.profileDoc['position_qc'] = positionQC
 
     def add_lat_lon(self):
         lat = self.variables['LATITUDE'][self.idx].item()
