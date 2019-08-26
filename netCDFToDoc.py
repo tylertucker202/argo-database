@@ -98,6 +98,8 @@ class netCDFToDoc(measToDf):
             date = refDate + timedelta(self.variables['JULD'][self.idx].item())
             self.profileDoc['date'] = date
         self.profileDoc['date_added'] = datetime.today()
+
+    def add_date_qc(self):
         try:
             dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
         except AttributeError:
@@ -227,8 +229,12 @@ class netCDFToDoc(measToDf):
         self.profileDoc['max_pres'] = np.float64(maxPres)
 
         self.add_date()
+        self.add_date_qc()
         self.add_lat_lon()
         self.add_position_qc()
+
+        #todo: check if date_qc and position_qc are missing. Raise error if so.
+        
 
         self.profileDoc['cycle_number'] = self.cycleNumber
         self.profileDoc['dac'] = dacName
