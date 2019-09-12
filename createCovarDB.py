@@ -36,17 +36,19 @@ def format_features(features):
         formattedFeatures.append(doc)
     return formattedFeatures
 
-def create_covar_docs(localDir, forTest):
+def create_covar_docs(localDir, forcastDays, forTest):
     files = glob.glob(os.path.join(localDir, '*.js'))
     docs = []
     if forTest:
         files = files[0:10]
     for file in files:
         doc = {}
+        
         lat = float(file.strip('.js').split('_')[-3])
         lng = float(file.strip('.js').split('_')[-1])
-        _id = str(lng)+'_'+ str(lat)
+        _id = str(lng)+'_'+ str(lat) + '_' + str(forcastDays)
         doc['_id'] = _id
+        doc['forcastDays'] = float(forcastDays)
         doc['geoLocation'] = {'type': 'Point', 'coordinates': [lng, lat]}
         featureColl = get_feature_collection(file)
         features = format_features(featureColl['features'])
@@ -55,37 +57,38 @@ def create_covar_docs(localDir, forTest):
     return docs
 
 def add_docs_to_database(docs, coll):
-    coll.drop()    
     for doc in docs:
         try:
             coll.insert(doc)
-        except:
+        except Exception as err:
             pdb.set_trace()
             doc    
     coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
 
-def main_add(localDir, collName, dbName, forTest=False):
-    coll = create_collection(collName, dbName)
-    coll.drop()
-    docs = create_covar_docs(localDir, forTest)
+def main_add(localDir, coll, forcastDays, forTest=False):
+    docs = create_covar_docs(localDir, forcastDays, forTest)
+    print('number of docs: {}'.format(len(docs)))
     if not forTest:
         add_docs_to_database(docs, coll)
     else:
         add_docs_to_database(docs, coll)
+
 if __name__ == '__main__':
 
     dbName = 'argo2'
     sLocalDir = './60_day'
-    sCollName = 'shortCovars'
+    collName = 'covars'
     lLocalDir = './140_day'
-    lCollName = 'longCovars'
-
-    main_add(sLocalDir, sCollName, dbName)
-    main_add(lLocalDir, lCollName, dbName)
+    coll = create_collection(collName, dbName)
+    coll.drop()
+    main_add(sLocalDir, coll, forcastDays=60)
+    main_add(lLocalDir, coll, forcastDays=140)
 
     # add for testing purposes
     testDbName = 'argo-express-test'
-    main_add(sLocalDir, sCollName, testDbName, forTest=True)
-    main_add(lLocalDir, lCollName, testDbName, forTest=True)
+    testColl = create_collection(collName, testDbName)
+    testColl.drop()
+    main_add(sLocalDir, testColl, forcastDays=60, forTest=True)
+    main_add(lLocalDir, testColl, forcastDays=140, forTest=True)
 
         
