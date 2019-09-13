@@ -142,7 +142,7 @@ class measToDf(object):
         except KeyError:
             raise KeyError('measurement: {0} has no qc.'
                       ' returning empty dataframe'.format(measStr))
-            return pd.DataFrame()
+            pass
         if df.empty:
             return pd.DataFrame()
         return df
