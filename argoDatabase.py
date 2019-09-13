@@ -314,5 +314,5 @@ def getOutput():
         OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
     else:
         print('pc not found. assuming default')
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
+        OUTPUT_DIR = os.path.join('/data/argovis/storage', 'ifremer')
     return OUTPUT_DIR

@@ -26,7 +26,8 @@ if __name__ == '__main__':
                       replaceProfile=True,
                       qcThreshold='1', 
                       dbDumpThreshold=1000,
-                      removeExisting=True)
+                      removeExisting=True
+                      basinFilename='../basinmask_01.nc')
     allFiles = ad.get_file_names_to_add(ncFileDir, dacs=dacs)
     files = []
     for file in allFiles:

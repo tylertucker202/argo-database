@@ -28,6 +28,7 @@ case $HOSTNAME in
 		FTPDIR='/home/gstudent4/Desktop/ifremer/'
 		ARGODIR='/home/gstudent4/Desktop/argo-database/add-profiles'
 		;;
+
 esac
 
 QUEUEDIR=$ARGODIR'/../queued-files/'
