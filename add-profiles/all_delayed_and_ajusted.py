@@ -20,8 +20,8 @@ if __name__ == '__main__':
     format_logger('delayed-adjusted.log', level=logging.DEBUG)
     logging.warning('Start of log file')
     dacs = ['aoml', 'coriolis', 'nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
-    #ncFileDir = getOutput()
-    ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
+    ncFileDir = getOutput()
+    #ncFileDir = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     ad = argoDatabase(dbName, 'profiles',
                       replaceProfile=True,
                       qcThreshold='1', 
