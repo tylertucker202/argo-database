@@ -20,7 +20,7 @@ case $HOSTNAME in
 		;;
   (atoc02.colorado.edu)
   		echo "this is atoc"
-		FTPDIR='/data/argovis/ifremer/'
+		FTPDIR='/data/argovis/storage/ifremer/'
 		ARGODIR='/data/argovis/argo-database/add-profiles'
 		;;
 		(*) 
