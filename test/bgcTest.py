@@ -75,14 +75,7 @@ class bgcTest(argoDBClass):
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
         for doc in self.ad.documents:
-            df = pd.DataFrame(doc['bgcMeas'])
-            self.assertGreater(df.shape[0], 0, 'bgcMeas should have values')
-            dfBGC = df.drop(['pres', 'pres_qc'], axis=1)
-            dfBGC.replace(-999, np.nan, inplace=True)
-            beforeShape = dfBGC.shape[0]
-            dfBGC.dropna(axis=0, how='all', inplace=True)
-            afterShape = dfBGC.shape[0]
-            self.assertEqual(beforeShape, afterShape, 'There shall be no empty bgcMeas fields')
+            self.assertFalse('bgcMeas' in doc.keys(), 'there should not be any bgcMeas')
 
     def test_missing_pres_in_bgc(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)

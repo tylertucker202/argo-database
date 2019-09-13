@@ -47,7 +47,7 @@ def create_covar_docs(localDir, forcastDays, forTest):
         lat = float(file.strip('.js').split('_')[-3])
         lng = float(file.strip('.js').split('_')[-1])
         _id = str(lng)+'_'+ str(lat) + '_' + str(forcastDays)
-        doc['_id'] = _id
+        doc['_id'] = _idgi
         doc['forcastDays'] = float(forcastDays)
         doc['geoLocation'] = {'type': 'Point', 'coordinates': [lng, lat]}
         featureColl = get_feature_collection(file)

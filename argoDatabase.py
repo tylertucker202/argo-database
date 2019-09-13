@@ -98,6 +98,7 @@ class argoDatabase(object):
         df['profile'] = df['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
         df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
         df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
+        df['dac'] = df['file'].apply(lambda x: x.split('/')[-4])
         return df   
 
     @staticmethod

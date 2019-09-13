@@ -75,28 +75,6 @@ class netCDFToDocTest(argoDBClass):
 
                 #self.assertIn(key, doc.keys(), 'profile: {0} missing key: {1}'.format(key, doc['_id']))
                 #self.assertIsInstance(item, itemType)
-                
-    def test_check_profiles(self):
-        
-        #5904663_68 is missing position. Position qc should be a 9.
-        #2903207_72 was reported to be missing pos sys, but it has it here.
-        #5903593, 5904663 are reported to be missing bgc data.
-        profiles = [ '5904663_68', '2903207_72', '5904663_97', '2900784_297', '2901182_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['_id'].isin(profiles)]
-        files = df.file.tolist()
-        
-        self.ad.removeExisting = True
-        self.ad.replaceProfile=True
-        self.addToDb=True
-        self.ad.add_locally(self.OUTPUTDIR, files)
-
-        coll = self.ad.create_collection()
-        for _id in profiles:
-            doc = coll.find_one({'_id': _id})
-            self.assertTrue(True)
 
     def test_ascending_profiles(self):
         #profile should be acending
@@ -119,7 +97,7 @@ class netCDFToDocTest(argoDBClass):
             
     ''' TODO: FIND A DECENDING FLOAT TO CHECK
     def test_decending_profiles(self):
-        #profile should be decending
+        profile should be decending
         profiles = [ '6901762_46']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         df = self.ad.create_df_of_files(files)
@@ -139,5 +117,48 @@ class netCDFToDocTest(argoDBClass):
             self.assertTrue(doc['DIRECTION']=='D', 'should be decending')
     '''
 
+    def test_check_profiles(self):
+        
+        #5904663_68 is missing position. Position qc should be a 9.
+        #2903207_72 was reported to be missing pos sys, but it has it here.
+        #5903593, 5904663 are reported to be missing bgc data.
+        profiles = [ '5904663_68', '2903207_72', '5904663_97', '2900784_297', '2901182_8', '6901676_30']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.addToDb=True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        coll = self.ad.create_collection()
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            self.assertTrue(True) # just checks if these dont crash routine
+
+    def test_check_masked_adjusted_profiles(self):
+        '''
+        profiles that have been adjusteded can have masked values. in this case, masked values are filled with NaN.
+        '''
+        profiles = ['6901676_30']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.addToDb=True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        coll = self.ad.create_collection()
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            keys = doc['measurements'][0].keys()
+            self.assertFalse('psal' in keys, 'psal should have been removed from _id {}'.format(_id))
 if __name__ == '__main__':
     unittest.main()

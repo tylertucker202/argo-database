@@ -211,12 +211,14 @@ class netCDFToDoc(measToDf):
         for string in stringValues:
             self.add_string_values(string)
         # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
+
         try:
             self.add_string_values('PLATFORM_TYPE')
         except KeyError:
             self.add_string_values('INST_REFERENCE')
 
         self.deepFloat = self.check_if_deep_profile()
+        self.data_mode = self.profileDoc['DATA_MODE'] # need to set data mode before creating profileDf
         profileDf = self.create_measurements_df()
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         self.profileDoc['station_parameters'] = profileDf.columns.tolist()

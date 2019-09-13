@@ -20,6 +20,7 @@ class measToDf(object):
         self.stationParameters = stationParameters
         self.variables = variables
         self.idx = idx
+        self.data_mode = ''
         self.coreList = ['TEMP',
                          'PRES',
                          'PSAL',
@@ -120,13 +121,13 @@ class measToDf(object):
         """
         adj = measStr.lower()
         doc_key = measStr.lower()
-        if (self.profileDoc['DATA_MODE'] == 'D') or (self.profileDoc['DATA_MODE'] == 'A'):
+        if (self.data_mode == 'D') or (self.data_mode == 'A'):
             #use adjusted data
             df = self.format_adjusted(measStr, doc_key, idx)
-            #  Handles the case when adjusted field is masked.
+            #  Handles the case when adjusted field is masked. uses adjusted QC and keeps unadjusted data.
             if len(df[doc_key].unique()) == 1 and df[doc_key].unique() in self.invalidSet:
-                logging.debug('adjusted param is masked for meas: {}'.format(measStr))
-                df = self.format_non_adjusted(measStr, doc_key, idx)
+                logging.debug('adjusted param is masked for meas: {}. filling with -999'.format(measStr))
+                df[doc_key] = np.NaN
         else:
             df = self.format_non_adjusted(measStr, doc_key, idx)
         df.loc[df[doc_key] > 9999, adj] = np.NaN

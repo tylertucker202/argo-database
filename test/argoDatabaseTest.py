@@ -69,7 +69,7 @@ class argoDatabaseTest(argoDBClass):
         self.assertGreater(len(files), 0)
         
         dfFiles = self.ad.create_df_of_files(files)
-        columns = ['file', 'filename', 'profile', 'prefix', 'platform']
+        columns = ['file', 'filename', 'profile', 'prefix', 'platform', 'dac']
         self.assertEqual(len(columns), dfFiles.shape[1])
         for col in dfFiles.columns.tolist():
             self.assertIn(col, columns)
