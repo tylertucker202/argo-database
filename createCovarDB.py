@@ -78,9 +78,10 @@ def main_add(localDir, coll, forcastDays, dLat=2, dLong=2, forTest=False, revers
 if __name__ == '__main__':
 
     dbName = 'argo2'
-    covarBase = '/data/argovis/covarMatricies'
+    covarBase = '/usr/src/covarMatricies'
     sLocalDir = os.path.join(covarBase,'60_day')
     collName = 'covars'
+    pdb.set_trace()
     lLocalDir = os.path.join(covarBase,'140_day')
     coll = create_collection(collName, dbName)
     coll.drop()
