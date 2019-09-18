@@ -55,7 +55,7 @@ def insert_pres_time_grid(tempAnom, coll, dataVal='ARGO_TEMPERATURE_ANOMALY', in
             if insertOne: # Use for testing
                 return
 
-def create_collection(dbName='argo2', collectionName='rgTempAnom'):
+def create_collection(dbName='argo', collectionName='rgTempAnom'):
     dbUrl = 'mongodb://localhost:27017/'
     client = pymongo.MongoClient(dbUrl)
     db = client[dbName]

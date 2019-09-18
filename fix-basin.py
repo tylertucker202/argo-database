@@ -22,7 +22,7 @@ coords = np.stack([nc.variables['LATITUDE'][bdx[0]],
 
 dbUrl = 'mongodb://localhost:27017/'
 client = pymongo.MongoClient(dbUrl)
-db = client['argo2']
+db = client['argo']
 coll = db['profiles']
 
 cursor = coll.find()

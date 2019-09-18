@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
-from addFunctions import format_logger, run_parallel_process
-from argoDatabase import argoDatabase, getOutput
+from addFunctions import format_logger, run_parallel_process, getMirrorDir
+from argoDatabase import argoDatabase
 import os
 import glob
 import re
@@ -9,7 +9,7 @@ import logging
 import pdb
 from multiprocessing import cpu_count
 
-dbName = 'argo2' 
+dbName = 'argo' 
 argoBaseDir = os.path.join(os.getcwd(), os.pardir)
 queueDir = os.path.join(argoBaseDir, 'queued-files')
 complDir =  os.path.join(argoBaseDir, 'completed-queues')
@@ -31,7 +31,7 @@ def get_content(file):
 if __name__ == '__main__':
     format_logger('processQueue.log', level=logging.WARNING)
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    ncFileDir = getOutput()
+    ncFileDir = getMirrorDir()
     ad = argoDatabase(dbName,
                       'profiles',
                       replaceProfile=True,

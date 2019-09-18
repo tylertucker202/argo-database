@@ -14,7 +14,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo2'
+dbName = 'argo'
 npes = mp.cpu_count()
 
 if len(sys.argv) == 3:

@@ -14,6 +14,7 @@ class measToDf(object):
     def __init__(self, variables,
                  stationParameters,
                  nProf,
+                 profileID,
                  idx=0,
                  qcThreshold='1'):
         logging.debug('initializing measToDf')
@@ -60,6 +61,7 @@ class measToDf(object):
         self.qcThreshold = qcThreshold
         self.nProf = nProf
         self.invalidSet = [np.nan, 99999.0]
+        self.profileID = profileID
         
     @staticmethod
     def format_qc_array(array):
@@ -70,8 +72,8 @@ class measToDf(object):
             data = array.data
             try:
                 data = np.array([x.astype(str) for x in data])
-            except NotImplementedError:
-                raise NotImplementedError('NotImplemented Error while formatting qc')
+            except Exception as err:
+                raise Exception('Error while formatting qc: {}'.format(err))
         return data    
 
     def format_adjusted(self, measStr, doc_key, idx):
@@ -80,7 +82,7 @@ class measToDf(object):
             if isinstance(self.variables[measStr + '_ADJUSTED'][idx, :], np.ndarray):
                 df[doc_key] = self.variables[measStr + '_ADJUSTED'][idx, :]
         except KeyError:
-            logging.debug('adjusted value for {} does not exist'.format(measStr))
+            logging.debug('adjusted value for {} does not exist. notify dacs.'.format(measStr))
             df[doc_key] = np.nan
         except RuntimeWarning as err:
             raise RuntimeWarning('measStr: {1} runtime warning when getting adjusted value. Reason: {2}'.format(measStr, err.args))
@@ -92,7 +94,7 @@ class measToDf(object):
         try:
             df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_ADJUSTED_QC'][idx, :])
         except KeyError:
-            raise KeyError('qc not found for {}'.format(measStr))
+            raise KeyError('qc not found for {}. notify dacs'.format(measStr))
         return df
 
     def format_non_adjusted(self, measStr, doc_key, idx):
@@ -110,7 +112,6 @@ class measToDf(object):
             df[doc_key+'_qc'] = self.format_qc_array(self.variables[measStr + '_QC'][idx, :])
         except KeyError:
             raise KeyError('qc not found for {}'.format(measStr))
-            return pd.DataFrame()
         return df
 
     def format_measurments(self, measStr, idx):
@@ -118,17 +119,50 @@ class measToDf(object):
         Combines a measurement's real time and adjusted values into a 1D dataframe.
         An adjusted value replaces each real-time value. 
         Also includes a QC procedure that removes all data that doesn't meet the qc threshhold.
+
+        Delayed mode and Adjusted use adjusted measurements and QC
         """
         adj = measStr.lower()
         doc_key = measStr.lower()
-        if (self.data_mode == 'D') or (self.data_mode == 'A'):
+        if (self.data_mode == 'D') or (self.data_mode == 'A'): # both A and D mode use adjusted data only
             #use adjusted data
             df = self.format_adjusted(measStr, doc_key, idx)
             #  Handles the case when adjusted field is masked. uses adjusted QC and keeps unadjusted data.
             if len(df[doc_key].unique()) == 1 and df[doc_key].unique() in self.invalidSet:
                 logging.debug('adjusted param is masked for meas: {}. filling with -999'.format(measStr))
                 df[doc_key] = np.NaN
+                if any( df[doc_key + '_qc'].isin({'1', '2'}) ):
+                    raise ValueError('adjusted param qc is not 3, 4, or masked for masked meas {}. notify dac.'.format(measStr))
         else:
+            df = self.format_non_adjusted(measStr, doc_key, idx)
+        df.loc[df[doc_key] > 9999, adj] = np.NaN
+        return df
+
+    def format_measurments_bak(self, measStr, idx):
+        """
+        Combines a measurement's real time and adjusted values into a 1D dataframe.
+        An adjusted value replaces each real-time value. 
+        Also includes a QC procedure that removes all data that doesn't meet the qc threshhold.
+
+        Delayed mode uses adjusted QC values
+        Adjusted merges adjusted if it exists.
+
+        CURRENTLY NOT IN USE
+        """
+        adj = measStr.lower()
+        doc_key = measStr.lower()
+        if (self.data_mode == 'D'): #  use adjusted data only
+            df = self.format_adjusted(measStr, doc_key, idx)
+            if len(df[doc_key].unique()) == 1 and df[doc_key].unique() in self.invalidSet:
+                logging.debug('adjusted param is masked for meas: {}. filling with nan'.format(measStr))
+                df[doc_key] = np.NaN
+                if any( df[doc_key + '_qc'].isin({'1', '2'}) ):
+                    raise ValueError('adjusted param qc is not 3, 4, or masked for masked meas {}. notify dac.'.format(measStr))
+        elif (self.data_mode == 'A'): #  replace with adjusted if present
+            df = self.format_adjusted(measStr, doc_key, idx)
+            dfNonAdj = self.format_non_adjusted(measStr, doc_key, idx)
+            df = df.combine_first(dfNonAdj)
+        else: #  don't use adjusted
             df = self.format_non_adjusted(measStr, doc_key, idx)
         df.loc[df[doc_key] > 9999, adj] = np.NaN
         return df
@@ -140,9 +174,7 @@ class measToDf(object):
         try:
             df = df[df[measStr+'_qc'] == self.qcThreshold]
         except KeyError:
-            raise KeyError('measurement: {0} has no qc.'
-                      ' returning empty dataframe'.format(measStr))
-            pass
+            raise KeyError('measurement: {0} has no qc.'.format(measStr))
         if df.empty:
             return pd.DataFrame()
         return df
@@ -161,15 +193,13 @@ class measToDf(object):
                 dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold) ]
             df = pd.concat([dfShallow, dfDeep], axis=0 )
         except KeyError:
-            raise KeyError('measurement: {0} has no qc.'
-                      ' returning empty dataframe'.format(measStr))
-            return pd.DataFrame()
+            raise KeyError('measurement: {0} has no qc.'.format(measStr))
         return df
 
     def drop_nan_from_df(self, df):
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
         if not 'pres_qc' in df.columns:
-            raise ValueError('bad pressure qc.'.format(self.platformNumber))
+            raise ValueError('bad pressure qc.')
         df = df[df['pres_qc'] != np.NaN]
         df.dropna(axis=0, how='all', inplace=True)
         # Drops the values where pressure isn't reported
@@ -193,23 +223,23 @@ class measToDf(object):
 
     @staticmethod
     def merge_dfs(df1, df2):
-        '''combins df1 into df2 for nan in df2'''
+        '''combins BGC dfs. df1 into df2 for nan in df2'''
         df1 = df1.astype(float).replace(-999, np.NaN)
         df2 = df2.astype(float).replace(-999, np.NaN)
         try:
             df1 = df1.set_index('pres')
             df2 = df2.set_index('pres')
-        except KeyError as err:
-            raise KeyError('missing pressure axis when merging bgc measurements')
+        except KeyError:
+            raise KeyError('missing pressure axis when merging bgc measurements. notify dacs')
         df = pd.concat( [df1, df2], axis=0, join='outer', sort='true')
         df = df.reset_index()
         
         checkNanColumns = [x for x in df.columns if not x.endswith('_qc') and x != 'pres']
         df.dropna(axis=0, how='all', subset=checkNanColumns, inplace=True)
         df.dropna(axis=1, how='all', inplace=True)
-        #reformat
         df.fillna(-999, inplace=True)
         qcCol = [x for x in df.columns if x.endswith('_qc')]
+
         df[qcCol] = df[qcCol].astype(int).astype(str)
         return df
 

@@ -13,7 +13,7 @@ from numpy import warnings as npwarnings
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
 
-dbName = 'argo2'
+dbName = 'argo'
 #npes = mp.cpu_count()
 npes = 1
 

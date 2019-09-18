@@ -21,10 +21,10 @@ class netCDFToDoc(measToDf):
                  platformNumber,
                  nProf):
         logging.debug('initializing netCDFToDoc')
-        measToDf.__init__(self, variables, stationParameters, nProf)
         self.platformNumber = platformNumber
-        self.cycleNumber = int(self.variables['CYCLE_NUMBER'][self.idx].astype(str))
-        self.profileId = self.platformNumber + '_' + str(self.cycleNumber)
+        self.cycleNumber = int(variables['CYCLE_NUMBER'][0].astype(str))
+        profileID = self.platformNumber + '_' + str(self.cycleNumber)
+        measToDf.__init__(self, variables, stationParameters, nProf, profileID)
         self.profileDoc = dict()
         self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
         # populate profileDoc
@@ -42,7 +42,7 @@ class netCDFToDoc(measToDf):
             if isinstance(self.variables[valueName][self.idx], np.ma.core.MaskedConstant):
                 value = self.variables[valueName][self.idx].astype(str).item()
                 logging.debug('Profile:{0} has unknown {1}.'
-                          ' Not going to add item to document'.format(self.profileId, valueName))
+                          ' Not going to add item to document'.format(self.profileID, valueName))
             else:
                 if valueName == 'DATA_MODE':
                     value = self.variables[valueName][self.idx].astype(str).item()
@@ -85,14 +85,14 @@ class netCDFToDoc(measToDf):
             paramName = 'pres_' + maxMin + '_for_' + param.upper()
             self.profileDoc[paramName] = presValue
         except:
-            logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileId))
+            logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileID))
 
     def add_date(self):
         refDateArray = self.variables['REFERENCE_DATE_TIME'][:]
         refStr = ''.join([x.astype(str) for x in refDateArray])
         refDate = datetime.strptime(refStr, '%Y%m%d%H%M%S')
         if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
-            logging.warning('Profile:{0} has unknown date. filling with refDate {1}'.format(self.profileId, refDate))
+            logging.warning('Profile:{0} has unknown date. filling with refDate {1}'.format(self.profileID, refDate))
             self.profileDoc['date'] = refDate
         else:
             date = refDate + timedelta(self.variables['JULD'][self.idx].item())
@@ -122,13 +122,10 @@ class netCDFToDoc(measToDf):
                 positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64).item()
             else:
                 positionQC = -999
-                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileId, err))
-        except ValueError as err:
-            positionQC = -999
-            logging.warning('Profile:{0} positionQc value error {1}. Filling with -999'.format(self.profileId, err))
+                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileID, err))
         except Exception as err:
             positionQC = -999
-            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileId, err))
+            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileID, err))
         if positionQC in [3, 4]:
             raise ValueError('position_qc is a 3 or 4. Not going to add.')
         else:
@@ -140,7 +137,7 @@ class netCDFToDoc(measToDf):
         if isinstance(lat, np.ma.core.MaskedConstant) or isinstance(lon, np.ma.core.MaskedConstant):
             lat, lon = -89.0, 0.0
             logging.warning('Profile:{0} has unknown lat-lon.'
-                          ' Filling with 0, 0'.format(self.profileId))
+                          ' Filling with 0, 0'.format(self.profileID))
         self.profileDoc['lat'] = lat
         self.profileDoc['lon'] = lon
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lon, lat]}
@@ -161,16 +158,8 @@ class netCDFToDoc(measToDf):
     def add_BGC(self):
         try:
             self.profileDoc['bgcMeas'] = self.create_BGC()
-        except ValueError as err:
-            raise ValueError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
-        except KeyError as err:
-            raise ValueError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
-        except UnboundLocalError as err:
-            raise UnboundLocalError('Profile {0} bgc not created:{1}'.format(self.profileId, err))
-        except AttributeError as err:
-            raise AttributeError('Profile {0} bgc:{1}'.format(self.profileId, err))
         except Exception as err:
-            raise UnboundLocalError('Profile {0} bgc have unknown error {1}'.format(self.profileId, err))
+            raise Exception('Profile {0} bgc not created:{1}'.format(self.profileID, err))
         bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
         #  Strip numbers
         bgcMeasKeys = [''.join(i for i in s if not i.isdigit()) for s in bgcMeasKeys]
@@ -179,7 +168,7 @@ class netCDFToDoc(measToDf):
             self.profileDoc['containsBGC'] = True
         else:
             del self.profileDoc['bgcMeas']
-            logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileId))
+            logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileID))
 
     def create_measurements_df(self):
         try:
@@ -189,18 +178,10 @@ class netCDFToDoc(measToDf):
                 df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
             else:
                 df = self.make_profile_df(self.idx, self.coreList, includeQC=True)
-        except ValueError as err:
-            raise ValueError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
-        except KeyError as err:
-            raise KeyError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
-        except UnboundLocalError as err:
-            raise UnboundLocalError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
-        except AttributeError as err:
-            raise AttributeError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
         except Exception as err:
-            raise UnboundLocalError('Profile {0} measurements not created: {1}'.format(self.profileId, err))
+            raise Exception('Profile {0} measurements not created: {1}'.format(self.profileID, err))
         if df.empty:
-            raise ValueError('Profile {0} not created: No good measurements'.format(self.profileId))
+            raise ValueError('Profile {0} not created: No good measurements'.format(self.profileID))
         return df
 
     def make_profile_dict(self, dacName, remotePath):
@@ -260,6 +241,6 @@ class netCDFToDoc(measToDf):
         else:
             direction = self.variables['DIRECTION'][self.idx].astype(str).item()
             if direction == 'D':
-                self.profileId += 'D'
+                self.profileID += 'D'
             self.profileDoc['DIRECTION'] = direction
-            self.profileDoc['_id'] = self.profileId
+            self.profileDoc['_id'] = self.profileID

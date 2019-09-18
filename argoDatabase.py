@@ -21,9 +21,10 @@ class argoDatabase(object):
                  qcThreshold='1', 
                  dbDumpThreshold=1000,
                  removeExisting=True,
-                 basinFilename='./basinmask_01.nc', 
+                 basinFilename='../basinmask_01.nc', 
                  addToDb=True, 
-                 removeAddedFileNames=False):
+                 removeAddedFileNames=False, 
+                 adjustedOnly=False):
         logging.debug('initializing ArgoDatabase')
         self.collectionName = collectionName
         self.dbName = dbName
@@ -36,6 +37,7 @@ class argoDatabase(object):
         self.addToDb = addToDb # used for testing
         self.documents = []
         self.removeAddedFileNames=removeAddedFileNames
+        self.adjustedOnly = adjustedOnly
         
         self.init_basin(basinFilename)
         
@@ -107,6 +109,7 @@ class argoDatabase(object):
             try:
                 os.remove(file)
             except Exception as err:
+                logging.warning('error when removing files: {}'.format(err))
                 pass
     
     def remove_duplicate_if_mixed(self, files):
@@ -135,8 +138,8 @@ class argoDatabase(object):
         files = self.remove_duplicate_if_mixed(files)
         return files        
 
-    def add_locally(self, localDir, files):
-        
+    def add_locally(self, localDir, files, threadN=1):
+        nFiles = len(files)
         if self.addToDb:
             coll = self.create_collection()
 
@@ -144,43 +147,47 @@ class argoDatabase(object):
             logging.warning('removing existing profiles before adding files')
             self.remove_profiles(files, coll)
 
-        logging.warning('Attempting to add: {}'.format(len(files)))
-        counter = 0
+        logging.warning('Attempting to add: {}'.format(nFiles))
         completedFileNames = []
-        for fileName in files:
-            counter+=1
+        for idx, fileName in enumerate(files):
             logging.info('on file: {0}'.format(fileName))
             dacName = fileName.split('/')[-4]
             
-            if counter % 3000 == 0:
-                logging.warning('{} percent through files'.format(100 * counter / len(files)) )
-            
+            if idx % 3000 == 0:
+                percDone = 100 * idx / nFiles
+                logging.warning('{0} percent through files for thread: {1}'.format(percDone, threadN ))
             try:
                 root_grp = Dataset(fileName, "r", format="NETCDF4")
+                
             except OSError as err:
                 logging.warning('File not read: {}'.format(err))
                 continue
             remotePath = self.url + os.path.relpath(fileName, localDir)
             variables = root_grp.variables
+            data_mode = variables['DATA_MODE'][0].astype(str).item()
+            if self.adjustedOnly & (data_mode == 'A'):
+                continue
             
             #current method of creating dac
             nProf = root_grp.dimensions['N_PROF'].size
-            doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf)
+            doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf, data_mode)
             if isinstance(doc, dict):
                 doc = self.add_basin(doc, fileName)
                 completedFileNames.append(fileName)
                 self.documents.append(doc)
             if len(self.documents) >= self.dbDumpThreshold and self.addToDb:
                 logging.warning( 'adding {} profiles to database'.format( len(self.documents) ) )
-                self.add_many_profiles(self.documents, fileName, coll)
+                self.add_many_profiles(self.documents, coll)
                 self.documents = []
                 if self.removeAddedFileNames:
                     self.delete_list_of_files(completedFileNames)
-        logging.debug('all files have been read. dumping remaining documents to database')
+        percDone = 100 * idx / nFiles
+        logging.warning( '{0} percent through files for thread: {1}'.format(percDone, threadN ) )
+        logging.warning('all files have been read. dumping remaining documents to database')
         if len(self.documents) == 1 and self.addToDb:
-            self.add_single_profile(self.documents[0], fileName, coll)
+            self.add_single_profile(self.documents[0], coll)
         elif len(self.documents) > 1 and self.addToDb:
-            self.add_many_profiles(self.documents, fileName, coll)
+            self.add_many_profiles(self.documents, coll)
         
     def remove_profiles(self, files, coll):
         #get profile ids
@@ -207,11 +214,8 @@ class argoDatabase(object):
         elif type(param) == np.ma.core.MaskedArray:
             try:
                 formatted_param = ''.join([(x.astype(str)) for x in param.data])
-            except NotImplementedError:
-                logging.debug('NotImplementedError param is not expected type')
-            except AttributeError:  # sometimes platform_num is an array...
-                logging.debug('attribute error: param is not expected type')
-                logging.debug('type: {}'.format(type(param)))
+            except Exception as err:
+                logging.debug('exception: param is not expected type')
             except:
                 logging.debug('type: {}'.format(type(param)))
         else:
@@ -227,7 +231,7 @@ class argoDatabase(object):
             stationParameters.append(dimStatParam)
         return stationParameters
         
-    def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf):
+    def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf, data_mode):
         """
         Retrieves some meta information and counts number of profile measurements.
         Sometimes a profile will contain more than one measurement in variables field.
@@ -247,25 +251,19 @@ class argoDatabase(object):
             p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, nProf)
             doc = p2D.get_profile_doc()
             return doc
-        except AttributeError as err:
-            logging.warning('Profile: {0} enountered AttributeError: {1}'.format(fileName.split('/')[-1], err.args))
-        except TypeError as err:
-            logging.warning('Profile: {0} enountered TypeError: {1}'.format(fileName.split('/')[-1], err.args))
-        except ValueError as err:
-            logging.warning('Profile: {0} enountered ValueError: {1}'.format(fileName.split('/')[-1], err.args))
-        except UnboundLocalError as err:
+        except Exception as err:
             if 'no valid measurements.' in err.args[0]:
                 logging.warning('Profile: {0} has no valid measurements. not going to add'.format(fileName.split('/')[-1]))
             else:
-                logging.warning('Profile: {0} encountered UnboundLocalError: {1}'.format(fileName.split('/')[-1], err.args))
+                logging.warning('Profile: {0} encountered error: {1}'.format(fileName.split('/')[-1], err.args))
 
-    def add_single_profile(self, doc, file_name, coll, attempt=0):
+    def add_single_profile(self, doc, coll, attempt=0):
         if self.replaceProfile:
             try:
                 coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
-                                'for filename : {0}'.format(doc['_id'], file_name))
+                                'for _id : {0}'.format(doc['_id']))
             except bson.errors.InvalidDocument as err:
                 logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
             except TypeError:
@@ -277,13 +275,13 @@ class argoDatabase(object):
                 logging.error('duplicate key: {0}'.format(doc['_id']))
             except pymongo.errors.WriteError:
                 logging.warning('check the following id '
-                                'for filename : {0}'.format(doc['_id'], file_name))
+                                'for _id : {0}'.format(doc['_id']))
             except bson.errors.InvalidDocument as err:
                 logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
             except TypeError:
                 logging.warning('Type error while inserting one document.')
 
-    def add_many_profiles(self, documents, file_name, coll):
+    def add_many_profiles(self, documents, coll):
         try:
             coll.insert_many(documents, ordered=False)
         except pymongo.errors.BulkWriteError as bwe:
@@ -292,27 +290,14 @@ class argoDatabase(object):
             for we in writeErrors:
                 problem_idx.append(we['index'])
             trouble_list = [documents[i] for i in problem_idx]
-            logging.warning('bulk write failed for: {0}. adding failed documents on at a time'.format(file_name))
+            logging.warning('bulk write failed for. adding failed documents on at a time')
             for doc in trouble_list:
-                self.add_single_profile(doc, file_name, coll)
+                self.add_single_profile(doc, coll)
         except bson.errors.InvalidDocument:
             logging.warning('bson error')
             for doc in documents:
-                self.add_single_profile(doc, file_name, coll)
+                self.add_single_profile(doc, coll)
         except TypeError:
             nonDictDocs = [doc for doc in documents if not isinstance(doc, dict)]
             logging.warning('Type error during insert_many method. Check documents.')
             logging.warning('number of non dictionary items in documents: {}'.format(len(nonDictDocs)))
-            
-def getOutput():
-    mySystem = os.uname().nodename
-    if mySystem == 'carby':
-        OUTPUT_DIR = os.path.join('/storage', 'ifremer')
-    elif mySystem == 'kadavu.ucsd.edu':
-        OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
-    elif mySystem == 'ciLab':
-        OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
-    else:
-        print('pc not found. assuming default')
-        OUTPUT_DIR = os.path.join('/data/argovis/storage', 'ifremer')
-    return OUTPUT_DIR

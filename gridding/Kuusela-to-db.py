@@ -8,7 +8,7 @@ import os
 import glob
 import logging
 
-def create_collection(dbName='argo2', collectionName='kuusela'):
+def create_collection(dbName='argo', collectionName='kuusela'):
     dbUrl = 'mongodb://localhost:27017/'
     client = pymongo.MongoClient(dbUrl)
     db = client[dbName]

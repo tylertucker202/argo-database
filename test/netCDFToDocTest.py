@@ -134,10 +134,7 @@ class netCDFToDocTest(argoDBClass):
         self.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
-        coll = self.ad.create_collection()
-        for _id in profiles:
-            doc = coll.find_one({'_id': _id})
-            self.assertTrue(True) # just checks if these dont crash routine
+        self.assertTrue(True) # just checks if these dont crash routine
 
     def test_check_masked_adjusted_profiles(self):
         '''
@@ -159,6 +156,7 @@ class netCDFToDocTest(argoDBClass):
         for _id in profiles:
             doc = coll.find_one({'_id': _id})
             keys = doc['measurements'][0].keys()
+            
             self.assertFalse('psal' in keys, 'psal should have been removed from _id {}'.format(_id))
 if __name__ == '__main__':
     unittest.main()

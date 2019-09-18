@@ -70,35 +70,34 @@ def main_add(localDir, coll, forcastDays, dLat=2, dLong=2, forTest=False, revers
     for filesSubset in fileArrays:
         docs = create_covar_docs(filesSubset, forcastDays, dLat, dLong, forTest, reverseCoords)
 
-        if not forTest:
-            add_docs_to_database(docs, coll)
-        else:
-            print('not adding docs for test')
+        add_docs_to_database(docs, coll)
 
 if __name__ == '__main__':
 
-    dbName = 'argo2'
-    covarBase = '/usr/src/covarMatricies'
+    dbName = 'argo'
+    #covarBase = '/usr/src/covarMatricies'
+    covarBase = '/media/tyler/My Passport/covarMatricies'
+    if not os.path.exists(covarBase):
+        print('warning covarBase dir not found')
     sLocalDir = os.path.join(covarBase,'60_day')
-    collName = 'covars'
-    pdb.set_trace()
     lLocalDir = os.path.join(covarBase,'140_day')
-    coll = create_collection(collName, dbName)
-    coll.drop()
-    main_add(sLocalDir, coll, 60, 2, 2, forTest=False, reverseCoords=True)
-    main_add(lLocalDir, coll, 140, 2, 2, forTest=False, reverseCoords=True)
+    collName = 'covars'
 
-    for idx in range(0, 16):
-        forcastDays = (idx+1)*120
-        print('on folder: {0} forcastDays: {1}'.format(idx, forcastDays))
-        covarPath = os.path.join(covarBase,str(idx))
-        main_add(covarPath, coll, forcastDays, 2, 3, forTest=False, reverseCoords=False)
+    # coll = create_collection(collName, dbName)
+    # coll.drop()
+    # main_add(sLocalDir, coll, 60, 2, 2, forTest=False, reverseCoords=True)
+    # main_add(lLocalDir, coll, 140, 2, 2, forTest=False, reverseCoords=True)
+
+    # for idx in range(0, 16):
+    #     forcastDays = (idx+1)*120
+    #     print('on folder: {0} forcastDays: {1}'.format(idx, forcastDays))
+    #     covarPath = os.path.join(covarBase,str(idx))
+    #     main_add(covarPath, coll, forcastDays, 2, 3, forTest=False, reverseCoords=False)
 
     # add for testing purposes
-    # testDbName = 'argo-express-test'
-    # testColl = create_collection(collName, testDbName)
-    # testColl.drop()
-    # main_add(sLocalDir, testColl, 60, forTest=True)
-    # main_add(lLocalDir, testColl, 140, forTest=True)
+    testDbName = 'argo-express-test'
+    testColl = create_collection(collName, testDbName)
+    testColl.drop()
+    main_add(lLocalDir, testColl, 140, forTest=True)
 
         

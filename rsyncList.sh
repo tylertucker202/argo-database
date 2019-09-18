@@ -10,7 +10,7 @@ echo $HOSTNAME
 case $HOSTNAME in
   (carby) 
 		echo "this is carby"
-                FTPDIR='/storage/ifremer/'
+        FTPDIR='/storage/ifremer/'
 		ARGODIR='/home/tyler/Desktop/argo-database/add-profiles'
 		;;
   (kadavu.ucsd.edu) 

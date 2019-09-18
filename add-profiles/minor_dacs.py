@@ -2,19 +2,19 @@
 import logging
 import sys
 sys.path.append('..')
-from argoDatabase import argoDatabase, getOutput
+from argoDatabase import argoDatabase
 from multiprocessing import cpu_count
 import warnings
 from numpy import warnings as npwarnings
-from addFunctions import format_logger, run_parallel_process
+from addFunctions import format_logger, run_parallel_process, getMirrorDir
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore') 
 
-dbName = 'argo2'
+dbName = 'argo'
 npes = cpu_count()
 if __name__ == '__main__':
-    ncFileDir = getOutput()
+    ncFileDir = getMirrorDir()
     format_logger('minor.log', level=logging.WARNING)
     logging.warning('Start of log file')
     dacs = ['nmdis', 'kordi', 'meds', 'kma', 'bodc', 'csio', 'incois', 'jma', 'csiro']
