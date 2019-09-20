@@ -21,7 +21,7 @@ processQueue --logName processQueue.log --npes 4 --subset
 if __name__ == '__main__':
     af.format_logger('processQueue.log', level=logging.WARNING)
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    ncFileDir = af.getMirrorDir()
+    ncFileDir = af.getMirrorDir(args)
     argoBaseDir = os.path.join(os.getcwd(), os.pardir)
     queueDir = os.path.join(argoBaseDir, 'queued-files')
     complDir =  os.path.join(argoBaseDir, 'completed-queues')
