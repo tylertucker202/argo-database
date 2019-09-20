@@ -97,7 +97,7 @@ class argoDatabase(object):
         df = pd.DataFrame()
         df['file'] = files
         df['filename'] = df['file'].apply(lambda x: x.split('/')[-1])
-        df['profile'] = df['filename'].apply(lambda x: re.sub('[MDAR(.nc)]', '', x))
+        df['profile'] = df['filename'].apply(lambda x: re.sub('[MDARS(.nc)]', '', x))
         df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
         df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
         df['dac'] = df['file'].apply(lambda x: x.split('/')[-4])
@@ -111,19 +111,40 @@ class argoDatabase(object):
             except Exception as err:
                 logging.warning('error when removing files: {}'.format(err))
                 pass
+
+    @staticmethod
+    def core_data_mode(data_modes):
+        '''Extracts core data mode from array of data_modes from a synthetic profile'''
+        core_data_modes = np.unique(data_modes[0:3])
+        if not len(core_data_modes) == 1:
+            logging.warning('core data mode has multiple warnings ')
+        data_mode = core_data_modes[0]
+        return data_mode
     
-    def remove_duplicate_if_mixed(self, files):
-        '''remove platforms from core that exist in mixed df'''
+    def remove_duplicate_if_mixed_or_synthetic(self, files):
+        '''remove platforms from core that exist in mixed or synthetic df'''
         df = self.create_df_of_files(files)
-        dfMixed = df[ df['prefix'].str.contains('M')]
-        dfCore = df[ ~df['prefix'].str.contains('M')]
-        rmPlat = dfMixed['platform'].unique().tolist()
-        dfTruncCore = dfCore[ ~dfCore['platform'].isin(rmPlat)]
-        outDf = pd.concat([dfMixed, dfTruncCore], axis=0, sort=False)
-        outFiles = outDf.file.tolist()
+        def cat_prefix(x):
+            if 'S' in x:
+                P  = 'S'
+            elif 'M' in x:
+                P = 'M'
+            else:
+                P= 'C'
+            return P
+        df['cat'] = df.prefix.apply(cat_prefix).astype('category')
+        df['cat'] = df['cat'].cat.set_categories(['S', 'M', 'C'], ordered=True)
+        df = df.sort_values(['profile', 'cat'])
+        df = df.drop_duplicates(subset=['profile'], keep='first')
+        outFiles = df.file.tolist()
         return outFiles
 
     def get_file_names_to_add(self, localDir, dacs=[]):
+        '''
+        gathers a list of files that will be added to mongodb. 
+        Removes core if there is a mixed file
+        Removes mixed and core if there is a synthetic file.
+        '''
         files = []
         reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
         if len(dacs) != 0:
@@ -135,8 +156,8 @@ class argoDatabase(object):
             files = files+glob.glob(os.path.join(localDir, '**', '**', 'profiles', '*.nc'))
 
         files = list(filter(reBR.search, files))
-        files = self.remove_duplicate_if_mixed(files)
-        return files        
+        files = self.remove_duplicate_if_mixed_or_synthetic(files)
+        return files     
 
     def add_locally(self, localDir, files, threadN=1):
         nFiles = len(files)
@@ -164,7 +185,14 @@ class argoDatabase(object):
                 continue
             remotePath = self.url + os.path.relpath(fileName, localDir)
             variables = root_grp.variables
-            data_mode = variables['DATA_MODE'][0].astype(str).item()
+            if 'DATA_MODE' in variables.keys():
+                data_mode = variables['DATA_MODE'][0].astype(str).item()
+            elif 'PARAMETER_DATA_MODE' in variables.keys():
+                data_modes = variables['PARAMETER_DATA_MODE'][0].data.astype(str).tolist()
+                data_mode = self.core_data_mode(data_modes)
+            else:
+                pdb.set_trace()
+                logging.warning('filename {0} could not retrieve data_mode. not going to add. notify dacs. {1}'.format(fileName, err))
             if self.adjustedOnly & (data_mode == 'A'):
                 continue
             
@@ -215,21 +243,19 @@ class argoDatabase(object):
             try:
                 formatted_param = ''.join([(x.astype(str)) for x in param.data])
             except Exception as err:
-                logging.debug('exception: param is not expected type')
-            except:
-                logging.debug('type: {}'.format(type(param)))
+                logging.debug('exception: param is not expected type {}'.format(err))
         else:
             logging.error(' check type: {}'.format(type(param)))
             pass
         return formatted_param.strip(' ')
     
-    def getStationParameters(self, statParam):
-        stationParameters = []
-        for idx in range(0, statParam.shape[0]):
-            params = list(map(lambda param: self.format_param(param), statParam[idx]))
+    def format_list(self, paramList):
+        outList = []
+        for idx in range(0, paramList.shape[0]):
+            params = list(map(lambda param: self.format_param(param), paramList[idx]))
             dimStatParam = [x for x in params if x]
-            stationParameters.append(dimStatParam)
-        return stationParameters
+            outList.append(dimStatParam)
+        return outList
         
     def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf, data_mode):
         """
@@ -246,9 +272,9 @@ class argoDatabase(object):
 
         platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
         
-        stationParameters = self.getStationParameters(variables['STATION_PARAMETERS'])
+        stationParameters = self.format_list(variables['STATION_PARAMETERS'])
         try:
-            p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, nProf)
+            p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, nProf, data_mode)
             doc = p2D.get_profile_doc()
             return doc
         except Exception as err:

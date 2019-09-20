@@ -10,7 +10,8 @@ import argparse
 
 class PchipOceanSlices(object):
 
-    def __init__(self, pLevelRange, basin=None, exceptBasin={None}, starttdx=None):
+    def __init__(self, pLevelRange, basin=None, exceptBasin={None}, starttdx=None, appLocal=False):
+        self.appLocal = appLocal
         self.tempCol = 'temp'
         self.psalCol = 'psal'
         self.presCol = 'pres'
@@ -51,23 +52,25 @@ class PchipOceanSlices(object):
         return datesSet
 
     @staticmethod
-    def get_ocean_slice(startDate, endDate, presRange='[5,15]', basin=None):
+    def get_ocean_slice(startDate, endDate, presRange, intPres, basin=None, appLocal=None):
         '''
         query horizontal slice of ocean for a specified time range
         startDate and endDate should be a string formated like so: 'YYYY-MM-DD'
         presRange should comprise of a string formatted to be: '[lowPres,highPres]'
         Try to make the query small enough so as to not pass the 15 MB limit set by the database.
         '''
-        baseURL = 'https://argovis.colorado.edu/gridding/presSlice/'
+        if appLocal:
+            baseURL = 'http://localhost:3000/gridding/presSliceForInterpolation/'
+        else:
+            baseURL = 'https://argovis.colorado.edu/gridding/presSliceForInterpolation/'
         startDateQuery = '?startDate=' + startDate
         endDateQuery = '&endDate=' + endDate
-        url = baseURL + startDateQuery + endDateQuery
+        presRangeQuery = '&presRange=' + presRange
+        intPresQuery = '&intPres=' + str(intPres)
+        url = baseURL + startDateQuery + endDateQuery + presRangeQuery + intPresQuery
         if basin:
             basinQuery = '&basin=' + basin
             url += basinQuery
-        if presRange:
-            presRangeQuery = '&presRange=' + presRange
-            url += presRangeQuery
         resp = requests.get(url)
         # Consider any status other than 2xx an error
         if not resp.status_code // 100 == 2:
@@ -169,7 +172,8 @@ class PchipOceanSlices(object):
         yLab: the column to be interpolated
         xintp: the values to be interpolated
         '''
-        outDf = pd.DataFrame(columns=df.columns)
+        #outDf = pd.DataFrame(columns=df.columns)
+        outArray = []
         for _id, profDf in df.groupby(['profile_id']):
             if profDf.empty:
                 continue
@@ -183,8 +187,10 @@ class PchipOceanSlices(object):
             rowDict = profDf.iloc[0].to_dict()
             rowDict[xLab] = xintp
             rowDict[yLab] = f(xintp)
-            outDf = outDf.append(rowDict, ignore_index=True)
-
+            outArray.append(rowDict)
+            #outDf = outDf.append(rowDict, ignore_index=True)
+        pdb.set_trace()
+        outDf = pd.DataFrame()
         outDf = outDf.dropna(subset=[xLab, yLab], how='any', axis=0)
         logging.debug('number of rows in df: {}'.format(outDf.shape[0]))
         logging.debug('number of profiles interpolated: {}'.format(len(outDf['profile_id'].unique())))
@@ -208,14 +214,19 @@ class PchipOceanSlices(object):
             logging.debug('starting interpolation at time index: {}'.format(tdx))
             startDate, endDate = dates
             try:
-                sliceProfiles = self.get_ocean_slice(startDate, endDate, presRange, self.basin)
+                sliceProfiles = self.get_ocean_slice(startDate, endDate, presRange, xintp, self.basin, self.appLocal)
             except Exception as err:
                 logging.warning('profiles not recieved: {}'.format(err))
                 continue
             logging.debug('xintp: {0} on tdx: {1}'.format(xintp, tdx))
             logging.debug('number of profiles found in interval: {}'.format(len(sliceProfiles)))
             sliceDf = self.parse_into_df(sliceProfiles)
-            sliceDf = sliceDf[self.keepCols]
+            
+            try:
+                sliceDf = sliceDf[self.keepCols]
+            except Exception as err:
+                pdb.set_trace()
+
             try:
                 iTempDf = self.make_interpolated_df(sliceDf, xintp, 'pres', 'temp')
             except Exception as err:
@@ -241,7 +252,6 @@ class PchipOceanSlices(object):
     def main(self):
         logging.debug('inside main loop')
         logging.debug('running pressure level ranges: {}'.format(self.pLevelRange))
-
         startIdx = self.presLevels.index(self.pLevelRange[0])
         endIdx = self.presLevels.index(self.pLevelRange[1])
         presLevels = self.presLevels[ startIdx:endIdx ]
@@ -253,8 +263,8 @@ class PchipOceanSlices(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--maxl", help="start on pressure level", type=int, nargs='?', default=70)
-    parser.add_argument("--minl", help="end on pressure level", type=int, nargs='?', default=60)
+    parser.add_argument("--maxl", help="start on pressure level", type=float, nargs='?', default=20)
+    parser.add_argument("--minl", help="end on pressure level", type=float, nargs='?', default=10)
     parser.add_argument("--basin", help="filter this basin", type=str, nargs='?', default=None)
     parser.add_argument("--starttdx", help="start time index", type=int, nargs='?', default=0)
 
@@ -272,6 +282,6 @@ if __name__ == '__main__':
                         level=logging.DEBUG)
 
     logging.debug('Start of log file')
-    pos = PchipOceanSlices(pLevelRange, basin=basin, exceptBasin={}, starttdx=starttdx)
+    pos = PchipOceanSlices(pLevelRange, basin=basin, exceptBasin={}, starttdx=starttdx, appLocal=True)
     pos.main()
     logging.debug('end of log file for pressure level ranges: {}'.format(pLevelRange))

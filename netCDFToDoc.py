@@ -14,17 +14,19 @@ np.warnings.filterwarnings('ignore')
 
 class netCDFToDoc(measToDf):
 
-    def __init__(self, variables,
+    def __init__(self,
+                 variables,
                  dacName,
                  remotePath,
                  stationParameters,
                  platformNumber,
-                 nProf):
+                 nProf,
+                 data_mode):
         logging.debug('initializing netCDFToDoc')
         self.platformNumber = platformNumber
         self.cycleNumber = int(variables['CYCLE_NUMBER'][0].astype(str))
         profileID = self.platformNumber + '_' + str(self.cycleNumber)
-        measToDf.__init__(self, variables, stationParameters, nProf, profileID)
+        measToDf.__init__(self, variables, stationParameters, nProf, profileID, data_mode)
         self.profileDoc = dict()
         self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
         # populate profileDoc
@@ -144,7 +146,7 @@ class netCDFToDoc(measToDf):
 
     def check_if_deep_profile(self):
         try:
-            df = self.format_measurments('PRES', 0)
+            df = self.format_measurements('PRES', 0)
             df = self.do_qc_on_deep_meas(df, 'pres')
             maxPres = df.pres.max()
             if maxPres >= 2500:
@@ -159,7 +161,7 @@ class netCDFToDoc(measToDf):
         try:
             self.profileDoc['bgcMeas'] = self.create_BGC()
         except Exception as err:
-            raise Exception('Profile {0} bgc not created:{1}'.format(self.profileID, err))
+            logging.warning('Profile {0} bgc not created:{1}'.format(self.profileID, err))
         bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
         #  Strip numbers
         bgcMeasKeys = [''.join(i for i in s if not i.isdigit()) for s in bgcMeasKeys]
@@ -188,18 +190,18 @@ class netCDFToDoc(measToDf):
         """
         Takes a profile measurement and formats it into a dictionary object.
         """
-        stringValues = ['POSITIONING_SYSTEM', 'DATA_MODE', 'DATA_CENTRE', 'PI_NAME', 'WMO_INST_TYPE', 'VERTICAL_SAMPLING_SCHEME']
+        stringValues = ['POSITIONING_SYSTEM', 'DATA_CENTRE', 'PI_NAME', 'WMO_INST_TYPE', 'VERTICAL_SAMPLING_SCHEME']
         for string in stringValues:
             self.add_string_values(string)
+        self.profileDoc['DATA_MODE'] = self.data_mode
         # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
-
         try:
             self.add_string_values('PLATFORM_TYPE')
         except KeyError:
             self.add_string_values('INST_REFERENCE')
 
         self.deepFloat = self.check_if_deep_profile()
-        self.data_mode = self.profileDoc['DATA_MODE'] # need to set data mode before creating profileDf
+
         profileDf = self.create_measurements_df()
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         self.profileDoc['station_parameters'] = profileDf.columns.tolist()
@@ -227,6 +229,11 @@ class netCDFToDoc(measToDf):
         self.profileDoc['station_parameters_in_nc'] = stationParametersInNc
         url = remotePath
         self.profileDoc['nc_url'] = url
+
+        if 'PARAMETER_DATA_MODE' in self.variables.keys():
+            data_modes = self.variables['PARAMETER_DATA_MODE'][0].data.astype(str).tolist()
+            self.profileDoc['PARAMETER_DATA_MODE'] = data_modes
+
         if any (k in self.bgcList for k in stationParametersInNc):
             self.add_BGC()
 

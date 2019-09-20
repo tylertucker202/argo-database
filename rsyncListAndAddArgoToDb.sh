@@ -10,7 +10,7 @@ echo $HOSTNAME
 case $HOSTNAME in
   (carby) 
 		echo "this is carby"
-                FTPDIR='/storage/ifremer/'
+        FTPDIR='/storage/ifremer/'
 		ARGODIR='/home/tyler/Desktop/argo-database/add-profiles'
 		;;
   (kadavu.ucsd.edu) 
@@ -37,7 +37,7 @@ OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 echo 'Starting rsync: writing to '$FTPDIR
 #Sync only /profiles/[RDM]*
 
-rsync -arvzhim --delete --include='**/' --include='**/profiles/[RDM]*.nc' --exclude='*' --exclude='**/profiles/B*' vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME
+rsync -arvzhim --delete --include='**/' --include='**/profiles/[RDMS]*.nc' --exclude='*' --exclude='**/profiles/B*' vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME
 ENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'End of rsync and List'
 echo $ENDDATE
@@ -48,13 +48,13 @@ cd $ARGODIR
 
 case $HOSTNAME in
   (carby) 
-                /home/tyler/anaconda3/envs/argo/bin/python processQueue.py
+                /home/tyler/anaconda3/envs/argo/bin/python processQueue.py --logName processQueue --npes 2
 		;;
   (kadavu.ucsd.edu) 
-		python3.6 processQueue.py
+		python3.6 processQueue.py --logName processQueue --npes 2
 		;;
   (*)
-		/home/gstudent4/anaconda2/envs/argo/bin/python processQueue.py
+		python processQueue.py --logName processQueue --npes 2
 		;;
 esac
 

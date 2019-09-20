@@ -28,7 +28,7 @@ class netCDFToDocTest(argoDBClass):
         self.ad.addToDb = False
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
 
-        self.ad.add_locally(self.OUTPUTDIR, [files[0]])
+        self.ad.add_locally(self.OUTPUTDIR, [files[2]])
         self.assertIsInstance(self.ad.documents, list, 'should be list')
 
         self.assertIsInstance(self.ad.documents[0], dict, 'should be dict')
@@ -138,7 +138,7 @@ class netCDFToDocTest(argoDBClass):
 
     def test_check_masked_adjusted_profiles(self):
         '''
-        profiles that have been adjusteded can have masked values. in this case, masked values are filled with NaN.
+        profiles that have been adjusted can have masked values. in this case, masked values are filled with NaN.
         '''
         profiles = ['6901676_30']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)

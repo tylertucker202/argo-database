@@ -82,22 +82,7 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(len(dacs), len(includeDacs))
         for dac in dacs:
             self.assertIn(dac, includeDacs)
-        
-    def test_remove_duplicate_if_mixed(self):
-        dupFiles = []
-        dupFiles += glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*.nc'))
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        
-        self.assertNotEqual(len(files), len(dupFiles))
-    
-        #  check if Core files have been removed
-        dfDup = self.ad.create_df_of_files(dupFiles)
-        duplicatePlatforms = dfDup[ dfDup.prefix.isin(['MR', 'MD']) ].platform.unique().tolist()
-        df = self.ad.create_df_of_files(files)
-        ndPlatform = df[ df.prefix.isin(['R', 'D'])].platform.unique().tolist()
-        for platform in duplicatePlatforms:
-            self.assertNotIn(platform, ndPlatform)
-            
+
     def test_remove_profiles(self):
         profiles = ['6901762_46', '6901762_8']
         files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
@@ -160,17 +145,43 @@ class argoDatabaseTest(argoDBClass):
         for file in files:
             self.assertFalse(os.path.exists(file), 'path should have been deleted')
 
-    def test_format_param(self):
-        return
+        
+    def test_remove_duplicate_if_mixed_or_synthetic(self):
+
+        # Synthetic: check if core and mixed have been removed
+        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*1900722*.nc'))
+        files = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
+        df = self.ad.create_df_of_files(files)
+
+        for row in df.itertuples(index=False):
+            self.assertTrue('S' in row.prefix, 'mixed and core need to be removed')
+
+        # Mixed: check if core has been removed (no synthetic)
+        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*5903593*.nc'))
+        files = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
+        df = self.ad.create_df_of_files(files)
+
+        for row in df.itertuples(index=False):
+            self.assertTrue('M' in row.prefix, 'core need to be removed')
+
+        # Core: check if core has not been removed(no synthetic or mixed)
+        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*4902325*.nc'))
+        uniqueFiles = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
+        df = self.ad.create_df_of_files(files)
+
+        self.assertTrue(len(files) == len(uniqueFiles), 'core profiles should not have been removed.')
+
+    # def test_format_param(self):
+    #     return
     
-    def test_make_profile_doc(self):
-        return
+    # def test_make_profile_doc(self):
+    #     return
     
-    def test_add_single_profile(self):
-        return
+    # def test_add_single_profile(self):
+    #     return
     
-    def test_add_many_profiles(self):
-        return
+    # def test_add_many_profiles(self):
+    #     return
 
 if __name__ == '__main__':
     unittest.main()

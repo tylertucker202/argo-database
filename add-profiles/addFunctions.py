@@ -3,8 +3,13 @@ import logging
 import os
 from numpy import array_split
 import multiprocessing as mp
+import pandas as pd
 from numpy import array_split
+import csv
+
+import re
 import argparse
+import pdb
 
 def format_logger(filename, level=logging.INFO):
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -14,7 +19,7 @@ def format_logger(filename, level=logging.INFO):
                         filename=filename,
                         level=level)    
 
-def getMirrorDir():
+def getMirrorDir(args):
     mySystem = os.uname().nodename
     if mySystem == 'carby':
         OUTPUT_DIR = os.path.join('/storage', 'ifremer')
@@ -25,6 +30,9 @@ def getMirrorDir():
     else:
         print('pc not found. assuming default')
         OUTPUT_DIR = os.path.join('/data/argovis/storage', 'ifremer')
+
+    if args.subset == 'trouble':
+        OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
     return OUTPUT_DIR
 
 def run_parallel_process(ad, files, ncFileDir, npes=1):
@@ -69,12 +77,28 @@ def single_out_threads(ad, files, kArrays, nArrays):
         outFiles += truncFiles
     return outFiles
 
+def get_nc_files_from_rsync_output(file, ncFileDir):
+    '''
+    parses through rsync output to collect a list of nc files.
+    '''
+    logging.warning('processing: {}:'.format(file))
+    content = []
+    with open(file, 'r') as f:
+        content = f.readlines()
+    content = [x.strip() for x in content]
+    content = [x for x in content if x.startswith('>')]  # New files start with '>'
+    content = [x for x in content if x.endswith('.nc' )]
+    content = [x.split(' ')[1] for x in content]
+    content = [x for x in content if re.search(r'\d+.nc', x)]
+    content = [os.path.join(ncFileDir, profile) for profile in content]
+    return content
+
 def format_sysparams():
     defaultNpes = mp.cpu_count()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("--logName", help="log file name", type=str, nargs='?', default='default.log')
-    parser.add_argument("--subset", help="which dacs to use (minor, coriolis, aoml, trouble, deep, bgc, delayed, adjusted)", type=str, nargs='?', default='trouble')
+    parser.add_argument("--subset", help="which dacs to use (minor, coriolis, aoml, trouble, deep, bgc, delayed, adjusted, adjAndDelay)", type=str, nargs='?', default='trouble')
     parser.add_argument("--npes", help="number of processors", type=int, nargs='?', default=defaultNpes)
 
     parser.add_argument("--dbName", help='name of database', type=str, nargs='?', default='argo')
@@ -84,7 +108,7 @@ def format_sysparams():
     parser.add_argument("--basinFilename", help="number of processors", type=str, nargs='?', default='../basinmask_01.nc')
     parser.add_argument("--addToDb", help="number of processors", type=bool, nargs='?', default=True)
     parser.add_argument("--removeExisting", help="", type=bool, nargs='?', default=False)
-    parser.add_argument("--removeAddedFileNames", help="number of processors", type=bool, nargs='?', default=False)
+    parser.add_argument("--removeAddedFileNames", help="delete files after adding. Used for testing only!", type=bool, nargs='?', default=False)
     parser.add_argument("--adjustedOnly", help="add adjusted profiles only", type=bool, nargs='?', default=False)
     args = parser.parse_args()
     return args
@@ -104,9 +128,9 @@ def get_dacs(dacStr, customDacList=None):
 
 def reduce_files(args, files, ad):
 
-    if args.adjustedOnly:
+    if args.subset == 'adjAndDelay':
         df = ad.create_df_of_files(files)
-        df = df[df.prefix.isin({'MR', 'MDD', 'D', 'RD', 'DD', 'MRD'})]
+        df = df[df.prefix.isin({'SD', 'SDD', 'MD', 'MDD', 'D', 'DD' })]
         files = df.file.tolist()
 
     if args.subset == 'bgc':
@@ -116,6 +140,23 @@ def reduce_files(args, files, ad):
             if fileName.startswith('M') or fileName.startswith('S'):
                 bgcFiles.append(file)
         files = bgcFiles
+
+    if args.subset == 'synthetic':
+        sFiles = []
+        for file in files:
+            fileName = file.split('/')[-1]
+            if fileName.startswith('S'):
+                sFiles.append(file)
+        files = sFiles    
+
+    if args.subset == 'adjusted':
+        '''python add_profiles.py --logName adjusted.log --adjustedOnly 1 --subset adjusted'''
+        adf = pd.read_csv('AdjustedProfs.txt')
+        adf['platform'] = adf['_id'].apply(lambda x: x.split('_')[0])
+        platforms = adf.platform.unique().tolist()
+        df = ad.create_df_of_files(files)
+        df = df[df['platform'].isin(platforms)]
+        files = df.file.tolist()
 
     if args.subset == 'deep':
         with open('deepPlatforms.csv', 'r') as f:

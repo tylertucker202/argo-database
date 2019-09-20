@@ -10,7 +10,7 @@ OUTPUTNAME=$QUEUEDIR'ALL-DACS-list-of-files-synced-'$DATE'.txt'
 echo 'Starting rsync: writing to '$FTPDIR
 #Sync only /profiles/[RDM]*
 rsync -arvzhim --delete --include='**/'\
- --include='**/profiles/[RDM]*.nc'\
+ --include='**/profiles/[RDMS]*.nc'\
  --exclude='*'\
  --exclude='**/profiles/B*'\
  vdmzrs.ifremer.fr::argo $FTPDIR > $OUTPUTNAME$

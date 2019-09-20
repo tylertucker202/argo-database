@@ -118,5 +118,19 @@ class bgcTest(argoDBClass):
             self.assertFalse('bgcMeas' in doc.keys(), 'should not contain bgcMeas')
             self.assertFalse('containsBGC' in doc.keys(), 'should not contain bgcMeas')
     
+    def test_synthetic_meas(self):
+        '''1900722 has adjusted values with masked qc. These should not be added.'''
+        profiles = ['1900722_1', '1900722_2', '1900722_3', '1900722_4', '1900722_5']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            self.assertFalse('bgcMeas' in doc.keys(), 'should not contain bgcMeas')
+            self.assertFalse('containsBGC' in doc.keys(), 'should not contain bgcMeas')
+
 if __name__ == '__main__':
     unittest.main()
