@@ -171,6 +171,27 @@ class argoDatabaseTest(argoDBClass):
 
         self.assertTrue(len(files) == len(uniqueFiles), 'core profiles should not have been removed.')
 
+    def test_data_mode(self):
+        '''
+        data mode should be added to documents.
+        '''
+        profiles = ['2902476_145', '2902476_146', '2902476_147', '2902476_20', '1900722_4']
+        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.ad.create_df_of_files(files)
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.replaceProfile=True
+        self.ad.addToDb=False
+        self.ad.dbDumpThreshold = 2
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        docLength = len(self.ad.documents)
+        for doc in self.ad.documents:
+
+            self.assertTrue('DATA_MODE' in doc.keys(), 'data_mode should have been added')
+
     # def test_format_param(self):
     #     return
     
