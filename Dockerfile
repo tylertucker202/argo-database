@@ -8,5 +8,4 @@ RUN apt-get update && \
     apt-get --assume-yes install libhdf5-serial-dev netcdf-bin libnetcdf-dev nano && \
     pip install -r requirements.txt
 CMD cd /usr/src/argo-database/add-profiles && \
-       python from_tmp.py
-
+       python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
