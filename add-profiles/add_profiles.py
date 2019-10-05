@@ -4,7 +4,7 @@ import sys
 sys.path.append('..')
 from argoDatabase import argoDatabase
 from multiprocessing import cpu_count
-import addFunctions as af #import format_logger, run_parallel_process, getMirrorDir, format_sysparams, get_dacs, cut_perc, single_out_threads
+import addFunctions as af
 import warnings
 import pdb
 import os
@@ -22,18 +22,18 @@ python add_profiles.py --dbName argo --subset synthetic --logName synthetic.log 
 python add_profiles.py --dbName argo --subset aoml --logName aoml.log
 python add_profiles.py --dbName argo --subset coriolis --logName coriolis.log
 python add_profiles.py --dbName argo --subset minor --logName minor.log
+python add_profiles.py --dbName argo-express-test --subset trouble --logName trouble.log
+python add_profiles.py --dbName argo --subset missingDataMode --logName missingDataMode.log --npes 2 --dbDumpThreshold 300
+python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
+python add_profiles.py --dbName argo --subset daterange --logName tmp.log --npes 1 --minDate 2019-01-01 --maxDate 2019-01-31
 """
 
 if __name__ == '__main__':
-    pdb.set_trace()
     args = af.format_sysparams()
     logFileName = args.logName
     af.format_logger(logFileName, level=logging.WARNING)
     logging.warning('Start of log file')
-    
-    ncFileDir = af.getMirrorDir(args)
     ad = argoDatabase(args.dbName, 'profiles',
-                      replaceProfile=args.replaceProfile,
                       qcThreshold=args.qcThreshold, 
                       dbDumpThreshold=args.dbDumpThreshold,
                       removeExisting=args.removeExisting,
@@ -41,8 +41,17 @@ if __name__ == '__main__':
                       addToDb=args.addToDb,
                       removeAddedFileNames=args.removeAddedFileNames, 
                       adjustedOnly=args.adjustedOnly)
+
+    ncFileDir = af.get_mirror_dir(args)
     dacs = af.get_dacs(args.subset)
-    files = ad.get_file_names_to_add(ncFileDir, dacs=dacs)
-    files = af.reduce_files(args, files, ad)
-    af.run_parallel_process(ad, files, ncFileDir, args.npes)
+    #pdb.set_trace()
+    df = af.get_df_to_add(ncFileDir, dacs=dacs)
+    df = af.reduce_files(args, df)
+    #df = af.cut_perc(df, 38, 2) # cut top 38 perc
+    #df = af.cut_perc(df, 40, 2) # cut top 40 percent of that
+    af.run_parallel_process(ad, df.file.tolist(), ncFileDir, args.npes)
+
+    if (args.subset == 'tmp') or (args.subset == 'dateRange'):
+        af.tmp_clean_up()
+
     logging.warning('End of log file')

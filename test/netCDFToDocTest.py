@@ -11,7 +11,9 @@ import pdb
 import re
 import numpy as np
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 from datetime import datetime
 import random
@@ -26,7 +28,8 @@ class netCDFToDocTest(argoDBClass):
     
     def test_document_creation(self):
         self.ad.addToDb = False
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.df
+        files = df.file.tolist()
 
         self.ad.add_locally(self.OUTPUTDIR, [files[2]])
         self.assertIsInstance(self.ad.documents, list, 'should be list')
@@ -35,7 +38,8 @@ class netCDFToDocTest(argoDBClass):
         
     def test_required_keys(self):
         self.ad.addToDb = False
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
+        df = self.df
+        files = df.file.tolist()
 
         self.ad.add_locally(self.OUTPUTDIR, random.sample(files, 20))
         self.assertIsInstance(self.ad.documents, list, 'should be list')
@@ -49,8 +53,7 @@ class netCDFToDocTest(argoDBClass):
     def test_optional_keys(self):
         #Used to find out why some fields are missing
         profiles = [ '5905059_1', '5905059_100', '5905059_99', '5905059_98', '5904663_97', '2900784_297' '2901182_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False
@@ -61,7 +64,6 @@ class netCDFToDocTest(argoDBClass):
                           '2900784_297', ['VERTICAL_SAMPLING_SCHEME'] #should be mandatory
                          ]
         
-        #files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
         self.ad.add_locally(self.OUTPUTDIR, files)
 
         for doc in self.ad.documents:
@@ -79,14 +81,12 @@ class netCDFToDocTest(argoDBClass):
     def test_ascending_profiles(self):
         #profile should be acending
         profiles = [ '2902534_142']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
@@ -99,14 +99,12 @@ class netCDFToDocTest(argoDBClass):
     def test_decending_profiles(self):
         profile should be decending
         profiles = [ '6901762_46']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
@@ -123,14 +121,12 @@ class netCDFToDocTest(argoDBClass):
         #2903207_72 was reported to be missing pos sys, but it has it here.
         #5903593, 5904663 are reported to be missing bgc data.
         profiles = [ '5904663_68', '2903207_72', '5904663_97', '2900784_297', '2901182_8', '6901676_30']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
@@ -141,14 +137,12 @@ class netCDFToDocTest(argoDBClass):
         profiles that have been adjusted can have masked values. in this case, masked values are filled with NaN.
         '''
         profiles = ['6901676_30']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 

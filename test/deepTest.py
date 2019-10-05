@@ -10,7 +10,9 @@ import sys
 import pdb
 import re
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 from datetime import datetime
 import pandas as pd
@@ -28,8 +30,7 @@ class deepTest(argoDBClass):
         #  Check that deep profiles are added
         profiles = ['6901762_46', '6901762_8', '5905235_5', '4902325_16']
         #profiles = ['4902325_16']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False
@@ -50,8 +51,7 @@ class deepTest(argoDBClass):
 
     def test_deep(self):
         platform = ['5905164', '5905234']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)]
         self.ad.addToDb = False
@@ -61,8 +61,7 @@ class deepTest(argoDBClass):
 
     def test_non_deep(self):
         platform = ['5904398']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)]
         self.ad.addToDb = False
@@ -74,8 +73,7 @@ class deepTest(argoDBClass):
     def test_deep_qc(self):
         #  Check that deep profiles are added
         profiles = ['6901762_46', '6901762_8', '5905235_5']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False

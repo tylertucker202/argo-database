@@ -17,7 +17,6 @@ class argoDatabase(object):
     def __init__(self,
                  dbName,
                  collectionName='profiles', 
-                 replaceProfile=False,
                  qcThreshold='1', 
                  dbDumpThreshold=1000,
                  removeExisting=True,
@@ -29,7 +28,6 @@ class argoDatabase(object):
         self.collectionName = collectionName
         self.dbName = dbName
         self.home_dir = os.getcwd()
-        self.replaceProfile = replaceProfile
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
         self.qcThreshold = qcThreshold
         self.dbDumpThreshold = dbDumpThreshold
@@ -91,17 +89,6 @@ class argoDatabase(object):
         except:
             logging.warning('not able to get collections or set indexes')
         return coll
-    
-    @staticmethod
-    def create_df_of_files(files):
-        df = pd.DataFrame()
-        df['file'] = files
-        df['filename'] = df['file'].apply(lambda x: x.split('/')[-1])
-        df['profile'] = df['filename'].apply(lambda x: re.sub('[MDARS(.nc)]', '', x))
-        df['prefix'] = df['filename'].apply(lambda x: re.sub(r'[0-9_(.nc)]', '', x))
-        df['platform'] = df['profile'].apply(lambda x: re.sub(r'(_\d{3})', '', x))
-        df['dac'] = df['file'].apply(lambda x: x.split('/')[-4])
-        return df   
 
     @staticmethod
     def delete_list_of_files(files):
@@ -120,44 +107,6 @@ class argoDatabase(object):
             logging.warning('core data mode has multiple warnings ')
         data_mode = core_data_modes[0]
         return data_mode
-    
-    def remove_duplicate_if_mixed_or_synthetic(self, files):
-        '''remove platforms from core that exist in mixed or synthetic df'''
-        df = self.create_df_of_files(files)
-        def cat_prefix(x):
-            if 'S' in x:
-                P  = 'S'
-            elif 'M' in x:
-                P = 'M'
-            else:
-                P= 'C'
-            return P
-        df['cat'] = df.prefix.apply(cat_prefix).astype('category')
-        df['cat'] = df['cat'].cat.set_categories(['S', 'M', 'C'], ordered=True)
-        df = df.sort_values(['profile', 'cat'])
-        df = df.drop_duplicates(subset=['profile'], keep='first')
-        outFiles = df.file.tolist()
-        return outFiles
-
-    def get_file_names_to_add(self, localDir, dacs=[]):
-        '''
-        gathers a list of files that will be added to mongodb. 
-        Removes core if there is a mixed file
-        Removes mixed and core if there is a synthetic file.
-        '''
-        files = []
-        reBR = re.compile(r'^(?!.*BR\d{1,})') # ignore characters starting with BR followed by a digit
-        if len(dacs) != 0:
-            for dac in dacs:
-                logging.debug('On dac: {0}'.format(dac))
-                files = files+glob.glob(os.path.join(localDir, dac, '**', 'profiles', '*.nc'))
-        else:
-            logging.debug('adding profiles individually')
-            files = files+glob.glob(os.path.join(localDir, '**', '**', 'profiles', '*.nc'))
-
-        files = list(filter(reBR.search, files))
-        files = self.remove_duplicate_if_mixed_or_synthetic(files)
-        return files     
 
     def add_locally(self, localDir, files, threadN=1):
         nFiles = len(files)
@@ -284,28 +233,15 @@ class argoDatabase(object):
                 logging.warning('Profile: {0} encountered error: {1}'.format(fileName.split('/')[-1], err.args))
 
     def add_single_profile(self, doc, coll, attempt=0):
-        if self.replaceProfile:
-            try:
-                coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
-            except pymongo.errors.WriteError:
-                logging.warning('check the following id '
-                                'for _id : {0}'.format(doc['_id']))
-            except bson.errors.InvalidDocument as err:
-                logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
-            except TypeError:
-                logging.warning('Type error while inserting one document.')
-        else:
-            try:
-                coll.insert_one(doc)
-            except pymongo.errors.DuplicateKeyError:
-                logging.error('duplicate key: {0}'.format(doc['_id']))
-            except pymongo.errors.WriteError:
-                logging.warning('check the following id '
-                                'for _id : {0}'.format(doc['_id']))
-            except bson.errors.InvalidDocument as err:
-                logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
-            except TypeError:
-                logging.warning('Type error while inserting one document.')
+        try:
+            coll.replace_one({'_id': doc['_id']}, doc, upsert=True)
+        except pymongo.errors.WriteError:
+            logging.warning('check the following id '
+                            'for _id : {0}'.format(doc['_id']))
+        except bson.errors.InvalidDocument as err:
+            logging.warning('bson error {1} for: {0}'.format(doc['_id'], err))
+        except TypeError:
+            logging.warning('Type error while inserting one document.')
 
     def add_many_profiles(self, documents, coll):
         try:

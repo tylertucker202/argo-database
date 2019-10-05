@@ -10,7 +10,9 @@ import sys
 import pdb
 import re
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 import warnings
 import pandas as pd
@@ -25,8 +27,7 @@ class measToDfTest(argoDBClass):
     def test_noisy_platform(self):
         #  check platform with noisy bgc meas
         platform = ['3901498']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
         self.ad.addToDb = False
@@ -39,8 +40,7 @@ class measToDfTest(argoDBClass):
     def test_all_bad_temp(self):
         #  nc with bad qc on temp should not be created
         profiles = ['6900287_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False

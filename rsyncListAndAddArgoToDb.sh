@@ -23,10 +23,10 @@ case $HOSTNAME in
 		FTPDIR='/data/argovis/ifremer/'
 		ARGODIR='/data/argovis/argo-database/add-profiles'
 		;;
-		(*) 
-        	echo "this lab 416"
-		FTPDIR='/home/gstudent4/Desktop/ifremer/'
-		ARGODIR='/home/gstudent4/Desktop/argo-database/add-profiles'
+  (*) 
+  		echo "default is atoc"
+		FTPDIR='/data/argovis/ifremer/'
+		ARGODIR='/data/argovis/argo-database/add-profiles'
 		;;
 
 esac

@@ -2,7 +2,9 @@ import os
 import sys
 import pdb
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 from datetime import datetime
 from numpy import float64
@@ -17,15 +19,14 @@ class argoDBClass(unittest.TestCase):
         self.collectionName = 'profiles'
         self.verificationErrors = []
         self.basinFilename = os.path.join(os.getcwd(), os.pardir, 'basinmask_01.nc')
-        self.replaceProfile=False
         self.qcThreshold='1'
         self.dbDumpThreshold=1000
         self.removeExisting=False
         self.addToDb=True
         self.removeAddedFileNames = False
+        self.df = af.get_df_to_add(self.OUTPUTDIR)
         self.ad = argoDatabase(self.dbName,
                           self.collectionName,
-                          self.replaceProfile,
                           self.qcThreshold,
                           self.dbDumpThreshold,
                           self.removeExisting,

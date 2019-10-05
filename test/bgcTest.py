@@ -11,7 +11,9 @@ import pdb
 import re
 import numpy as np
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 from datetime import datetime
 import pandas as pd
@@ -25,13 +27,11 @@ npwarnings.filterwarnings('ignore')
 class bgcTest(argoDBClass):
 
     def test_bgc(self):
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         profiles = ['5904663_1', '5904663_67', '5903260_219', '5903260_1']
         df = df[ df['_id'].isin(profiles)]
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
 
@@ -47,8 +47,7 @@ class bgcTest(argoDBClass):
     def test_big_bgc(self):
         #  check platform with large bgc measurements. Merge should be less than 5000 rows.
         platform = ['3902124']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
         self.ad.addToDb = False
@@ -67,8 +66,7 @@ class bgcTest(argoDBClass):
     def test_missing_bgc(self):
         #  check platform with adjusted bgc parameter that has been masked.
         platform = ['1901499']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['platform'].isin(platform)].head()
         self.ad.addToDb = False
@@ -80,8 +78,7 @@ class bgcTest(argoDBClass):
     def test_missing_pres_in_bgc(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
         profiles = ['6901659_1', '6901473_500', '6902547_1', '6901657_1']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False
@@ -94,8 +91,7 @@ class bgcTest(argoDBClass):
     def test_float_conversion_in_bgc(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
         profiles = ['4901167_122']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False
@@ -107,8 +103,7 @@ class bgcTest(argoDBClass):
     def test_all_bad_bgc_meas(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
         profiles = ['5903956_236']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False
@@ -121,8 +116,7 @@ class bgcTest(argoDBClass):
     def test_synthetic_meas(self):
         '''1900722 has adjusted values with masked qc. These should not be added.'''
         profiles = ['1900722_1', '1900722_2', '1900722_3', '1900722_4', '1900722_5']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         self.ad.addToDb = False

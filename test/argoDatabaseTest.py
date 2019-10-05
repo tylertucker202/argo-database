@@ -12,7 +12,9 @@ import sys
 import numpy as np
 import re
 sys.path.append('..')
+sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
+import addFunctions as af
 import unittest
 from argoDBClass import argoDBClass
 
@@ -21,7 +23,6 @@ class argoDatabaseTest(argoDBClass):
     def test_init(self):
         self.ad = argoDatabase(self.dbName,
                           self.collectionName,
-                          self.replaceProfile,
                           self.qcThreshold,
                           self.dbDumpThreshold,
                           self.removeExisting,
@@ -31,7 +32,6 @@ class argoDatabaseTest(argoDBClass):
         self.assertTrue(os.path.exists(self.OUTPUTDIR), 'check output directory {}'.format(self.OUTPUTDIR))
         self.assertEqual(self.ad.dbName, self.dbName)
         self.assertEqual(self.ad.home_dir, os.getcwd())
-        self.assertEqual(self.ad.replaceProfile, self.replaceProfile)
         self.assertEqual(self.ad.url, 'ftp://ftp.ifremer.fr/ifremer/argo/dac/')
         self.assertEqual(self.ad.qcThreshold, self.qcThreshold)
         self.assertEqual(self.ad.dbDumpThreshold, self.dbDumpThreshold)
@@ -63,36 +63,14 @@ class argoDatabaseTest(argoDBClass):
         for key in collIndexes:
             self.assertIn(key, sorted(list(coll.index_information())))
 
-    def test_get_file_names_to_add(self):
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        self.assertIsInstance(files, list)
-        self.assertGreater(len(files), 0)
-        
-        dfFiles = self.ad.create_df_of_files(files)
-        columns = ['file', 'filename', 'profile', 'prefix', 'platform', 'dac']
-        self.assertEqual(len(columns), dfFiles.shape[1])
-        for col in dfFiles.columns.tolist():
-            self.assertIn(col, columns)
-
-        includeDacs = ['csio', 'kordi']
-        files2 = self.ad.get_file_names_to_add(self.OUTPUTDIR, includeDacs)
-        dfFiles2 = self.ad.create_df_of_files(files2)
-        dfFiles2['dac'] = dfFiles2['file'].apply(lambda x: x.split('/')[-4])
-        dacs = dfFiles2.dac.unique().tolist()
-        self.assertEqual(len(dacs), len(includeDacs))
-        for dac in dacs:
-            self.assertIn(dac, includeDacs)
-
     def test_remove_profiles(self):
         profiles = ['6901762_46', '6901762_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.ad.addToDb=True
         self.ad.add_locally(self.OUTPUTDIR, files)
 
@@ -113,14 +91,12 @@ class argoDatabaseTest(argoDBClass):
     
     def test_dump_threshold(self):
         profiles = ['6901762_46', '6901762_8']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.ad.addToDb=True
         self.ad.dbDumpThreshold = 2
         self.ad.add_locally(self.OUTPUTDIR, files)
@@ -145,51 +121,23 @@ class argoDatabaseTest(argoDBClass):
         for file in files:
             self.assertFalse(os.path.exists(file), 'path should have been deleted')
 
-        
-    def test_remove_duplicate_if_mixed_or_synthetic(self):
 
-        # Synthetic: check if core and mixed have been removed
-        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*1900722*.nc'))
-        files = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
-        df = self.ad.create_df_of_files(files)
-
-        for row in df.itertuples(index=False):
-            self.assertTrue('S' in row.prefix, 'mixed and core need to be removed')
-
-        # Mixed: check if core has been removed (no synthetic)
-        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*5903593*.nc'))
-        files = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
-        df = self.ad.create_df_of_files(files)
-
-        for row in df.itertuples(index=False):
-            self.assertTrue('M' in row.prefix, 'core need to be removed')
-
-        # Core: check if core has not been removed(no synthetic or mixed)
-        files = glob.glob(os.path.join(self.OUTPUTDIR, '**', '**', 'profiles', '*4902325*.nc'))
-        uniqueFiles = self.ad.remove_duplicate_if_mixed_or_synthetic(files)
-        df = self.ad.create_df_of_files(files)
-
-        self.assertTrue(len(files) == len(uniqueFiles), 'core profiles should not have been removed.')
 
     def test_data_mode(self):
         '''
         data mode should be added to documents.
         '''
         profiles = ['2902476_145', '2902476_146', '2902476_147', '2902476_20', '1900722_4']
-        files = self.ad.get_file_names_to_add(self.OUTPUTDIR)
-        df = self.ad.create_df_of_files(files)
+        df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         df = df[ df['_id'].isin(profiles)]
         files = df.file.tolist()
         
         self.ad.removeExisting = True
-        self.ad.replaceProfile=True
         self.ad.addToDb=False
         self.ad.dbDumpThreshold = 2
         self.ad.add_locally(self.OUTPUTDIR, files)
-        docLength = len(self.ad.documents)
         for doc in self.ad.documents:
-
             self.assertTrue('DATA_MODE' in doc.keys(), 'data_mode should have been added')
 
     # def test_format_param(self):

@@ -19,19 +19,17 @@ processQueue --logName processQueue.log --npes 4 --subset
 '''
 
 if __name__ == '__main__':
-    af.format_logger('processQueue.log', level=logging.WARNING)
     basinPath = os.path.join(os.path.pardir, 'basinmask_01.nc')
-    ncFileDir = af.getMirrorDir(args)
+    args = af.format_sysparams()
+    af.format_logger('processQueue.log', level=logging.WARNING)
+    ncFileDir = af.get_mirror_dir(args)
     argoBaseDir = os.path.join(os.getcwd(), os.pardir)
     queueDir = os.path.join(argoBaseDir, 'queued-files')
     complDir =  os.path.join(argoBaseDir, 'completed-queues')
 
-    args = af.format_sysparams()
     logging.warning('Start of log file')
     
-    ncFileDir = af.getMirrorDir()
     ad = argoDatabase(args.dbName, 'profiles',
-                      replaceProfile=args.replaceProfile,
                       qcThreshold=args.qcThreshold, 
                       dbDumpThreshold=args.dbDumpThreshold,
                       removeExisting=args.removeExisting,
@@ -43,8 +41,9 @@ if __name__ == '__main__':
     for file in glob.glob(os.path.join(queueDir, '*.txt')):
         if file.split('/')[-1] == 'testQueue.txt':
             continue
+        pdb.set_trace()
         content = af.get_nc_files_from_rsync_output(file, ncFileDir)
-        content = ad.remove_duplicate_if_mixed_or_synthetic(content)
+        content = af.remove_duplicate_if_mixed_or_synthetic(content)
         new_file_location = os.path.join(complDir,file.split('/')[-1])
         if len(content) == 0:
             logging.warning('moving file to {}'.format(new_file_location))

@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Nov 17 07:15:00 2018
-
-@author: tyler
-"""
 
 import os
 import sys
