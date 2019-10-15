@@ -140,7 +140,6 @@ class argoDatabase(object):
                 data_modes = variables['PARAMETER_DATA_MODE'][0].data.astype(str).tolist()
                 data_mode = self.core_data_mode(data_modes)
             else:
-                pdb.set_trace()
                 logging.warning('filename {0} could not retrieve data_mode. not going to add. notify dacs. {1}'.format(fileName, err))
             if self.adjustedOnly & (data_mode == 'A'):
                 continue

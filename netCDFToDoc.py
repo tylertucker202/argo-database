@@ -172,7 +172,7 @@ class netCDFToDoc(measToDf):
             del self.profileDoc['bgcMeas']
             logging.warning('Profile: {} contains poor quality bgc data. not going to include table'.format(self.profileID))
 
-    def create_measurements_df(self):
+    def create_measurements_df(self, roundDec=True):
         try:
             if self.deepFloat:
                 #  self.profile_id = self.profile_id.strip('D') # D postfix should be used for direction only.
@@ -184,6 +184,8 @@ class netCDFToDoc(measToDf):
             raise Exception('Profile {0} measurements not created: {1}'.format(self.profileID, err))
         if df.empty:
             raise ValueError('Profile {0} not created: No good measurements'.format(self.profileID))
+        if roundDec:
+            df = df.applymap(lambda x: round(x, 3))
         return df
 
     def make_profile_dict(self, dacName, remotePath):
@@ -202,7 +204,8 @@ class netCDFToDoc(measToDf):
 
         self.deepFloat = self.check_if_deep_profile()
 
-        profileDf = self.create_measurements_df()
+        profileDf = self.create_measurements_df(roundDec=False)
+
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         self.profileDoc['station_parameters'] = profileDf.columns.tolist()
 
