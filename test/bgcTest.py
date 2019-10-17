@@ -74,19 +74,6 @@ class bgcTest(argoDBClass):
         self.ad.add_locally(self.OUTPUTDIR, files)
         for doc in self.ad.documents:
             self.assertFalse('bgcMeas' in doc.keys(), 'there should not be any bgcMeas')
-
-    def test_missing_pres_in_bgc(self):
-        #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
-        profiles = ['6901659_1', '6901473_500', '6902547_1', '6901657_1']
-        df = self.df
-        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['_id'].isin(profiles)]
-        self.ad.addToDb = False
-        files = df.file.tolist()
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        for doc in self.ad.documents:
-            df = pd.DataFrame( doc['bgcMeas'])
-            self.assertGreater(df.shape[0], 0, 'should contain bgcMeas')
     
     def test_float_conversion_in_bgc(self):
         #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
@@ -125,6 +112,19 @@ class bgcTest(argoDBClass):
         for doc in self.ad.documents:
             self.assertFalse('bgcMeas' in doc.keys(), 'should not contain bgcMeas')
             self.assertFalse('containsBGC' in doc.keys(), 'should not contain bgcMeas')
+
+    def test_missing_pres_in_bgc(self):
+        #  Case when mergeDfs returns an empty dataframe (all nan in rows and columns)
+        profiles = ['6901659_1', '6901473_500', '6902547_1', '6901657_1']
+        df = self.df
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.addToDb = False
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        for doc in self.ad.documents:
+            df = pd.DataFrame( doc['bgcMeas'])
+            self.assertGreater(df.shape[0], 0, 'should contain bgcMeas')
 
 if __name__ == '__main__':
     unittest.main()

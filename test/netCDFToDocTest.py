@@ -45,10 +45,10 @@ class netCDFToDocTest(argoDBClass):
         self.assertIsInstance(self.ad.documents, list, 'should be list')
         for doc in self.ad.documents:
             docKeys = doc.keys()
-            
             for key, itemType in self.requiredKeys:
                 self.assertIn(key, docKeys, 'missing key: {}'.format(key))
-                self.assertIsInstance(doc[key], itemType)
+                item = doc[key]
+                self.assertIsInstance(item, itemType, 'profile {2} key {0} is not of type {1}'.format(key, itemType, doc['_id']))
 
     def test_optional_keys(self):
         #Used to find out why some fields are missing

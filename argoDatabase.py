@@ -8,6 +8,7 @@ import numpy as np
 from scipy.interpolate import griddata
 from datetime import datetime
 from netCDF4 import Dataset
+import xarray as xr
 import bson.errors
 import pdb
 from netCDFToDoc import netCDFToDoc
@@ -26,6 +27,7 @@ class argoDatabase(object):
                  adjustedOnly=False):
         logging.debug('initializing ArgoDatabase')
         self.collectionName = collectionName
+        self.decodeFormat = 'utf-8'
         self.dbName = dbName
         self.home_dir = os.getcwd()
         self.url = 'ftp://ftp.ifremer.fr/ifremer/argo/dac/'
@@ -36,26 +38,12 @@ class argoDatabase(object):
         self.documents = []
         self.removeAddedFileNames=removeAddedFileNames
         self.adjustedOnly = adjustedOnly
-        
-        self.init_basin(basinFilename)
-        
-    def init_basin(self, basinFilename):
-        nc = Dataset(basinFilename, 'r')
-    
-        assert nc.variables['LONGITUDE'].mask == True
-        assert nc.variables['LATITUDE'].mask == True
-    
-        idx = np.nonzero(~nc.variables['BASIN_TAG'][:].mask)
-        self.basin = nc.variables['BASIN_TAG'][:][idx].astype('i')
-        self.coords = np.stack([nc.variables['LATITUDE'][idx[0]],
-                           nc.variables['LONGITUDE'][idx[1]]]).T
+        self.basin = xr.open_dataset(basinFilename)
 
     def get_basin(self, lat, lon):
-        """Returns the basin code for a given lat lon coordinates
-           Ex.:
-           basin = get_basin(15, -38, '/path/to/basinmask_01.nc')
-        """   
-        return int(griddata(self.coords, self.basin, (lat, lon), method='nearest'))
+        """ Returns the basin code for a given lat lon coordinates"""
+        basinFlag = int(self.basin.sel({"LONGITUDE": lon, "LATITUDE": lat}, method='nearest')['BASIN_TAG'].data.item())
+        return basinFlag
     
     def add_basin(self, doc, fileName):
         try:
@@ -127,17 +115,16 @@ class argoDatabase(object):
                 percDone = 100 * idx / nFiles
                 logging.warning('{0} percent through files for thread: {1}'.format(percDone, threadN ))
             try:
-                root_grp = Dataset(fileName, "r", format="NETCDF4")
-                
-            except OSError as err:
+                profDict = xr.open_dataset(fileName).to_dict()
+            except Exception as err:
                 logging.warning('File not read: {}'.format(err))
                 continue
             remotePath = self.url + os.path.relpath(fileName, localDir)
-            variables = root_grp.variables
+            variables = profDict['data_vars']
             if 'DATA_MODE' in variables.keys():
-                data_mode = variables['DATA_MODE'][0].astype(str).item()
+                data_mode = self.format_param(variables['DATA_MODE']['data'][0])
             elif 'PARAMETER_DATA_MODE' in variables.keys():
-                data_modes = variables['PARAMETER_DATA_MODE'][0].data.astype(str).tolist()
+                data_modes = self.format_list(variables['PARAMETER_DATA_MODE']['data'][0])
                 data_mode = self.core_data_mode(data_modes)
             else:
                 logging.warning('filename {0} could not retrieve data_mode. not going to add. notify dacs. {1}'.format(fileName, err))
@@ -145,7 +132,7 @@ class argoDatabase(object):
                 continue
             
             #current method of creating dac
-            nProf = root_grp.dimensions['N_PROF'].size
+            nProf = profDict['dims']['N_PROF']
             doc = self.make_profile_doc(variables, dacName, remotePath, fileName, nProf, data_mode)
             if isinstance(doc, dict):
                 doc = self.add_basin(doc, fileName)
@@ -180,7 +167,7 @@ class argoDatabase(object):
         coll.delete_many({'_id': {'$in': idList}})
 
     @staticmethod
-    def format_param(param):
+    def format_param_bak(param):
         """
         Param is an fixed array of characters. format_param attempts to convert this array to
         a string.
@@ -196,14 +183,34 @@ class argoDatabase(object):
             logging.error(' check type: {}'.format(type(param)))
             pass
         return formatted_param.strip(' ')
+
+    def format_param(self, param):
+        """
+        Attempts to convert a binary array to
+        a string without trailing spaces.
+        """
+        try:
+            out = param.decode(self.decodeFormat).strip(' ')
+        except:
+            pdb.set_trace()
+            print(param)
+        return out
     
     def format_list(self, paramList):
-        outList = []
-        for idx in range(0, paramList.shape[0]):
-            params = list(map(lambda param: self.format_param(param), paramList[idx]))
-            dimStatParam = [x for x in params if x]
-            outList.append(dimStatParam)
+        outList = [ param.decode(self.decodeFormat).strip(' ') for param in paramList ]
         return outList
+
+    def make_station_parameters(self, nProf, statParamsData):
+        '''generates a list of unique measurements found over all nProf axes'''
+        stationParameters = []
+        for idx in range(nProf):
+            statParamList = statParamsData[idx]
+            
+            statParamList = self.format_list(statParamList)
+            stationParameters += statParamList
+        stationParameters = [*{*stationParameters},] # convert to set and back to list of unique values
+        stationParameters = [ x for x in stationParameters if x!=''] # drop empty string
+        return stationParameters
         
     def make_profile_doc(self, variables, dacName, remotePath, fileName, nProf, data_mode):
         """
@@ -211,18 +218,11 @@ class argoDatabase(object):
         Sometimes a profile will contain more than one measurement in variables field.
         Only the first is added.
         """
-
-        cycles = variables['CYCLE_NUMBER'][:][:]
-        list_of_dup_inds = [np.where(a == cycles)[0] for a in np.unique(cycles)]
-        for array in list_of_dup_inds:
-            if len(array) > 2:
-                logging.info('duplicate cycle numbers found...')
-
-        platformNumber = self.format_param(variables['PLATFORM_NUMBER'][0])
-        
-        stationParameters = self.format_list(variables['STATION_PARAMETERS'])
+        cycle = int(variables['CYCLE_NUMBER']['data'][0])
+        platformNumber = int(self.format_param(variables['PLATFORM_NUMBER']['data'][0]))
+        stationParameters = self.make_station_parameters(nProf, variables['STATION_PARAMETERS']['data'])
         try:
-            p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, nProf, data_mode)
+            p2D = netCDFToDoc(variables, dacName, remotePath, stationParameters, platformNumber, cycle, nProf, data_mode)
             doc = p2D.get_profile_doc()
             return doc
         except Exception as err:

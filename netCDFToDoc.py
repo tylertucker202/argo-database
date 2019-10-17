@@ -1,12 +1,9 @@
-"""
-Created on Sun Feb  4 15:46:14 2018
-@author: tyler
-"""
 import logging
 import numpy as np
 from datetime import datetime, timedelta
 from measToDf import measToDf
 import warnings
+from math import isnan
 import pdb
 
 warnings.simplefilter('error', RuntimeWarning)
@@ -20,53 +17,54 @@ class netCDFToDoc(measToDf):
                  remotePath,
                  stationParameters,
                  platformNumber,
+                 cycle,
                  nProf,
-                 data_mode):
+                 dataMode):
         logging.debug('initializing netCDFToDoc')
         self.platformNumber = platformNumber
-        self.cycleNumber = int(variables['CYCLE_NUMBER'][0].astype(str))
-        profileID = self.platformNumber + '_' + str(self.cycleNumber)
-        measToDf.__init__(self, variables, stationParameters, nProf, profileID, data_mode)
+        self.cycleNumber = cycle
+        profileID = str(self.platformNumber) + '_' + str(self.cycleNumber)
+        self.dataMode = dataMode
+        self.decodeFormat = 'utf-8'
+        measToDf.__init__(self, variables, stationParameters, nProf, profileID, dataMode)
         self.profileDoc = dict()
-        self.deepFloatWMO = ['838' ,'849','862','874','864']  # Deep floats don't have QC
-        # populate profileDoc
+        self.deepFloatWMO = ['838' ,'849','862','874','864']
+        self.stringValues = ['POSITIONING_SYSTEM', 'DATA_CENTRE', 'PI_NAME', 'WMO_INST_TYPE', 'VERTICAL_SAMPLING_SCHEME']
         self.make_profile_dict(dacName, remotePath)
     
     def get_profile_doc(self):
         return self.profileDoc
 
     def add_string_values(self, valueName):
-        """
-        Used to add POSITIONING_SYSTEM PLATFORM_TYPE DATA_MODE and PI_NAME fields.
-        if missing or is masked, values will not be added to the document.
-        """
         try:
-            if isinstance(self.variables[valueName][self.idx], np.ma.core.MaskedConstant):
-                value = self.variables[valueName][self.idx].astype(str).item()
-                logging.debug('Profile:{0} has unknown {1}.'
-                          ' Not going to add item to document'.format(self.profileID, valueName))
-            else:
-                if valueName == 'DATA_MODE':
-                    value = self.variables[valueName][self.idx].astype(str).item()
-                else:
-                    value = ''.join([(x.astype(str).item()) for x in self.variables[valueName][self.idx].data])
-                    value = value.strip(' ')
-
-            if valueName == 'INST_REFERENCE': # renames 'INST_REFERENCE' to 'PLATFORM_TYPE'
-                self.profileDoc['PLATFORM_TYPE'] = value
-            else:
-                self.profileDoc[valueName] = value
-        except KeyError:
-            if valueName == 'PLATFORM_TYPE':
-                instRefExists = 'INST_REFERENCE' in self.variables.keys()
-                logging.debug('PLATFORM_TYPE not found.'
-                              'INST_REFERENCE exists? {}'.format(instRefExists))
-                raise KeyError  
-            logging.debug('unknown key {0}.'
-                          ' Not going to add item to document'.format(valueName))
+            param = self.decode_param(valueName)
+            self.profileDoc[valueName] = param
         except:
-            logging.debug('error when adding {0} to document.'
-                          ' Not going to add item to document'.format(valueName))
+            logging.warning('error when adding {0} to document.'
+                          ' Not going to add string'.format(valueName))
+    def decode_param(self, valueName):
+        param = self.variables[valueName]['data'][self.idx]
+        return param.decode(self.decodeFormat).strip(' ')
+
+    def add_param_data_mode(self):
+        pdms = self.variables['PARAMETER_DATA_MODE']['data']
+        dataModes = []
+        for pdm in pdms:
+            dataMode = []
+            for dm in pdm:
+                try:
+                    dm = dm.decode(self.decodeFormat)
+                except:
+                        dm = '-999'
+                dataMode.append(dm)
+            dataModes.append(dataMode)
+        self.profileDoc['PARAMETER_DATA_MODE'] = dataModes
+
+    def add_platform_type(self):
+        if 'PLATFORM_TYPE' in self.variables.keys():
+            self.add_string_values('PLATFORM_TYPE')
+        else:
+            self.add_string_values('INST_REFERENCE')
 
     def add_max_min_pres(self, df, param, maxBoolean):
         if not param in df.columns:
@@ -90,53 +88,33 @@ class netCDFToDoc(measToDf):
             logging.warning('Profile {}: unable to get presmax/min, unknown exception.'.format(self.profileID))
 
     def add_date(self):
-        refDateArray = self.variables['REFERENCE_DATE_TIME'][:]
-        refStr = ''.join([x.astype(str) for x in refDateArray])
-        refDate = datetime.strptime(refStr, '%Y%m%d%H%M%S')
-        if isinstance(self.variables['JULD'][self.idx], np.ma.core.MaskedConstant):
-            logging.warning('Profile:{0} has unknown date. filling with refDate {1}'.format(self.profileID, refDate))
-            self.profileDoc['date'] = refDate
-        else:
-            date = refDate + timedelta(self.variables['JULD'][self.idx].item())
-            self.profileDoc['date'] = date
+        try:
+            date = self.variables['JULD']['data'][self.idx]
+        except Exception as err:
+            raise ValueError('Profile:{0} has unknown date. not going to add {1}'.format(self.profileID, err))
+        self.profileDoc['date'] = date
         self.profileDoc['date_added'] = datetime.today()
 
     def add_date_qc(self):
-        try:
-            dateQC = self.variables['JULD_QC'][self.idx].astype(np.float64).item()
-        except AttributeError:
-            if isinstance(self.variables['JULD_QC'][self.idx], np.ma.core.MaskedConstant):
-                dateQC = np.float64(self.variables['JULD_QC'][self.idx].item())
-                self.profileDoc['date_qc'] = dateQC
-            else:
-                logging.warning('error with date_qc. filling with -999.')
-                self.profileDoc['date_qc'] = -999
-        if dateQC in [3, 4]:
+        dateQC = int(self.decode_param('JULD_QC'))
+        if dateQC in {3, 4}:
             raise ValueError('date_qc is a 3 or 4. Not going to add.')
         else:
             self.profileDoc['date_qc'] = dateQC
 
     def add_position_qc(self):
-        try:
-            positionQC = self.variables['POSITION_QC'][self.idx].astype(np.float64).item()
-        except AttributeError as err:
-            if type(self.variables['POSITION_QC'][self.idx] == np.ma.core.MaskedConstant):
-                positionQC = self.variables['POSITION_QC'][self.idx].data.astype(np.float64).item()
-            else:
-                positionQC = -999
-                logging.warning('Profile:{0} positionQc attribute error {1}. Filling with -999'.format(self.profileID, err))
-        except Exception as err:
-            positionQC = -999
-            logging.warning('Profile:{0} positionQc exception {1}. Filling with -999'.format(self.profileID, err))
-        if positionQC in [3, 4]:
-            raise ValueError('position_qc is a 3 or 4. Not going to add.')
-        else:
-            self.profileDoc['position_qc'] = positionQC
+        position_qc = int(self.decode_param('POSITION_QC'))
+        if not position_qc:
+            logging.warning('setting POSITION_QC = -999')
+            position_qc = '-999'
+        if position_qc in {'3', '4'}:
+            raise ValueError('POSITION_QC is a 3 or 4. Not going to add profile.')
+        self.profileDoc['position_qc'] = position_qc
 
     def add_lat_lon(self):
-        lat = self.variables['LATITUDE'][self.idx].item()
-        lon = self.variables['LONGITUDE'][self.idx].item()
-        if isinstance(lat, np.ma.core.MaskedConstant) or isinstance(lon, np.ma.core.MaskedConstant):
+        lat = self.variables['LATITUDE']['data'][self.idx]
+        lon = self.variables['LONGITUDE']['data'][self.idx]
+        if isnan(lat) or isnan(lon):
             lat, lon = -89.0, 0.0
             logging.warning('Profile:{0} has unknown lat-lon.'
                           ' Filling with 0, 0'.format(self.profileID))
@@ -145,15 +123,12 @@ class netCDFToDoc(measToDf):
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lon, lat]}
 
     def check_if_deep_profile(self):
-        try:
-            df = self.format_measurements('PRES', 0)
-            df = self.do_qc_on_deep_meas(df, 'pres')
-            maxPres = df.pres.max()
-            if maxPres >= 2500:
-                deepFloat = True
-            else:
-                deepFloat = False
-        except Exception:
+        df = self.format_measurements('PRES', 0)
+        df = self.do_qc_on_deep_meas(df, 'pres')
+        maxPres = df['pres'].max()
+        if maxPres >= 2500:
+            deepFloat = True
+        else:
             deepFloat = False
         return deepFloat
 
@@ -185,26 +160,25 @@ class netCDFToDoc(measToDf):
         if df.empty:
             raise ValueError('Profile {0} not created: No good measurements'.format(self.profileID))
         if roundDec:
-            df = df.applymap(lambda x: round(x, 3))
+            for meas in self.measList:
+                if meas in df.columns:
+                    df[meas] = df[meas].applymap(lambda x: round(x, 3))
         return df
 
     def make_profile_dict(self, dacName, remotePath):
         """
         Takes a profile measurement and formats it into a dictionary object.
         """
-        stringValues = ['POSITIONING_SYSTEM', 'DATA_CENTRE', 'PI_NAME', 'WMO_INST_TYPE', 'VERTICAL_SAMPLING_SCHEME']
-        for string in stringValues:
-            self.add_string_values(string)
-        self.profileDoc['DATA_MODE'] = self.data_mode
+        for string in self.stringValues:
+            if string in self.variables.keys():
+                self.add_string_values(string)
+            else:
+                logging.debug('{} not in keys.'.format(string))
+        self.profileDoc['DATA_MODE'] = self.dataMode
         # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
-        try:
-            self.add_string_values('PLATFORM_TYPE')
-        except KeyError:
-            self.add_string_values('INST_REFERENCE')
-
+        self.add_platform_type()
         self.deepFloat = self.check_if_deep_profile()
-
-        profileDf = self.create_measurements_df(roundDec=False)
+        profileDf = self.create_measurements_df(roundDec=True)
 
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
         self.profileDoc['station_parameters'] = profileDf.columns.tolist()
@@ -221,21 +195,17 @@ class netCDFToDoc(measToDf):
         self.add_lat_lon()
         self.add_position_qc()
 
-        #todo: check if date_qc and position_qc are missing. Raise error if so.
-        
-
         self.profileDoc['cycle_number'] = self.cycleNumber
         self.profileDoc['dac'] = dacName
         self.profileDoc['platform_number'] = self.platformNumber
         
-        stationParametersInNc = [item for sublist in self.stationParameters for item in sublist]
+        stationParametersInNc = self.stationParameters
         self.profileDoc['station_parameters_in_nc'] = stationParametersInNc
         url = remotePath
         self.profileDoc['nc_url'] = url
 
         if 'PARAMETER_DATA_MODE' in self.variables.keys():
-            data_modes = self.variables['PARAMETER_DATA_MODE'][0].data.astype(str).tolist()
-            self.profileDoc['PARAMETER_DATA_MODE'] = data_modes
+           self.add_param_data_mode()
 
         if any (k in self.bgcList for k in stationParametersInNc):
             self.add_BGC()
@@ -246,10 +216,10 @@ class netCDFToDoc(measToDf):
         cycle number doesn't change. So, to have a unique identifer, this 
         the _id field has a 'D' appended
         """
-        if isinstance(self.variables['DIRECTION'][self.idx], np.ma.core.MaskedConstant):
+        direction = self.decode_param('DIRECTION')
+        if not isinstance(direction, str):
             logging.debug('direction unknown')
         else:
-            direction = self.variables['DIRECTION'][self.idx].astype(str).item()
             if direction == 'D':
                 self.profileID += 'D'
             self.profileDoc['DIRECTION'] = direction
