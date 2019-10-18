@@ -8,6 +8,7 @@ import addFunctions as af
 import warnings
 import pdb
 import os
+from datetime import datetime, timedelta
 
 from numpy import warnings as npwarnings
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     logFileName = args.logName
     af.format_logger(logFileName, level=logging.WARNING)
     logging.warning('Start of log file')
+    startTime = datetime.today()
     ad = argoDatabase(args.dbName, 'profiles',
                       qcThreshold=args.qcThreshold, 
                       dbDumpThreshold=args.dbDumpThreshold,
@@ -53,5 +55,12 @@ if __name__ == '__main__':
 
     if (args.subset == 'tmp') or (args.subset == 'dateRange'):
         af.tmp_clean_up()
+
+    finishTime = datetime.today()
+    deltaTime = finishTime - startTime
+
+    minutes = round(deltaTime.seconds / 60, 3)
+
+    logging.warning('Time to complete: {} minutes'.format(minutes))
 
     logging.warning('End of log file')
