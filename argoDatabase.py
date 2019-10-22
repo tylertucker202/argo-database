@@ -115,7 +115,8 @@ class argoDatabase(object):
                 percDone = 100 * idx / nFiles
                 logging.warning('{0} percent through files for thread: {1}'.format(percDone, threadN ))
             try:
-                profDict = xr.open_dataset(fileName).to_dict()
+                xa = xr.open_dataset(fileName)
+                profDict = xa.to_dict()
             except Exception as err:
                 logging.warning('File not read: {}'.format(err))
                 continue
