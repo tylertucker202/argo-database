@@ -5,6 +5,7 @@ from measToDf import measToDf
 import warnings
 from math import isnan
 import pdb
+import pandas as pd
 
 warnings.simplefilter('error', RuntimeWarning)
 np.warnings.filterwarnings('ignore')
@@ -123,14 +124,15 @@ class netCDFToDoc(measToDf):
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lon, lat]}
 
     def check_if_deep_profile(self):
-        df = self.format_measurements('PRES', 0)
+        measAndQC = self.format_measurements('PRES', 0)
+        df = pd.DataFrame(measAndQC)
         df = self.do_qc_on_deep_meas(df, 'pres')
         maxPres = df['pres'].max()
         if maxPres >= 2500:
-            deepFloat = True
+            isDeep = True
         else:
-            deepFloat = False
-        return deepFloat
+            isDeep = False
+        return isDeep
 
     def add_BGC(self):
         try:
@@ -149,9 +151,9 @@ class netCDFToDoc(measToDf):
 
     def create_measurements_df(self, roundDec=True):
         try:
-            if self.deepFloat:
+            if self.isDeep:
                 #  self.profile_id = self.profile_id.strip('D') # D postfix should be used for direction only.
-                self.profileDoc['isDeep'] = self.deepFloat
+                self.profileDoc['isDeep'] = self.isDeep
                 df = self.make_deep_profile_df(self.idx, self.coreList, includeQC=True)
             else:
                 df = self.make_profile_df(self.idx, self.coreList, includeQC=True)
@@ -177,7 +179,7 @@ class netCDFToDoc(measToDf):
         self.profileDoc['DATA_MODE'] = self.dataMode
         # sometimes INST_REFERENCE is used instead of PLATFORM_TYPE
         self.add_platform_type()
-        self.deepFloat = self.check_if_deep_profile()
+        self.isDeep = self.check_if_deep_profile()
         profileDf = self.create_measurements_df(roundDec=True)
 
         self.profileDoc['measurements'] = profileDf.astype(np.float64).to_dict(orient='records')
