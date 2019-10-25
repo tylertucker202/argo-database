@@ -149,8 +149,6 @@ class measToDf(object):
             measAndQC[key][notQcKeep] = np.NaN
         except KeyError:
             raise KeyError('measurement: {0} has no qc.'.format(key))
-        # if measAndQC[key].size == 0:
-        #     raise ValueError('measurement: {0} has no good meas.'.format(key)) 
         return measAndQC
 
     def drop_nan_from_df(self, df):
@@ -181,8 +179,6 @@ class measToDf(object):
     @staticmethod
     def merge_dfs(df1, df2):
         '''combins BGC dfs. df1 into df2 for nan in df2'''
-        df1 = df1.astype(float).replace(-999, np.NaN)
-        df2 = df2.astype(float).replace(-999, np.NaN)
         try:
             df1 = df1.set_index('pres')
             df2 = df2.set_index('pres')
@@ -194,25 +190,8 @@ class measToDf(object):
         checkNanColumns = [x for x in df.columns if not x.endswith('_qc') and x != 'pres']
         df.dropna(axis=0, how='all', subset=checkNanColumns, inplace=True)
         df.dropna(axis=1, how='all', inplace=True)
-        df.fillna(-999, inplace=True)
-        qcCol = [x for x in df.columns if x.endswith('_qc')]
-
-        df[qcCol] = df[qcCol].astype(int).astype(str)
         return df
 
-    @staticmethod
-    def format_bgc_df(df):
-        try:
-            df = df.astype(float).replace(-999, np.NaN)
-        except ValueError as err:
-            raise ValueError('invalid values in bgc measurements {}'.format(err))
-        df.dropna(axis=0, how='all', inplace=True)
-        df.dropna(axis=1, how='all', inplace=True)
-        df.fillna(-999, inplace=True)
-        qcCol = [x for x in df.columns if x.endswith('_qc')]
-        df[qcCol] = df[qcCol].astype(int).astype(str)
-        return df
-    
     def create_BGC(self):
         '''
         BGC measurements are found in several indexes. Here we loop through
@@ -220,7 +199,7 @@ class measToDf(object):
         '''
         df = self.make_profile_df(self.idx, self.measList, includeQC=False) # note we add pres temp and psal
         if self.nProf == 1:
-            df = self.format_bgc_df(df)
+            df = df.dropna(axis=1, how='all')
             return df.astype(np.float64).to_dict(orient='records')
         else:
             for idx in range(1, self.nProf):
@@ -233,7 +212,7 @@ class measToDf(object):
                     df = profDf
                 else:
                     df = self.merge_dfs(df, profDf)
-            df = self.format_bgc_df(df)
+            df = df.dropna(axis=1, how='all')
             return df.astype(np.float64).to_dict(orient='records')
 
     def do_qc_on_deep_meas(self, df, key):
@@ -295,5 +274,5 @@ class measToDf(object):
         if includeQC:
             df = self.drop_nan_from_df(df)
             df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
-        df = df.fillna(-999) # API needs all measurements to be a number
+        #df = df.fillna(-999)
         return df

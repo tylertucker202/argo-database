@@ -162,9 +162,15 @@ class netCDFToDoc(measToDf):
         if df.empty:
             raise ValueError('Profile {0} not created: No good measurements'.format(self.profileID))
         if roundDec:
-            for meas in self.measList:
-                if meas in df.columns:
-                    df[meas] = df[meas].applymap(lambda x: round(x, 3))
+            columns = df.columns
+            colNames = [x.lower() for x in self.measList if x.lower() in columns]
+            df[colNames] = df[colNames].apply(lambda x: round(x, 3))
+
+        # if df.temp.isnull().values.any():
+        #     logging.warning('{} has nan in temp'.format(self.profileID))
+
+        # if df.psal.isnull().values.any():
+        #     logging.warning('{} has nan in psal'.format(self.profileID))
         return df
 
     def make_profile_dict(self, dacName, remotePath):
