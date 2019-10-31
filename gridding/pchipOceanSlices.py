@@ -3,10 +3,11 @@ import pdb
 import requests
 import numpy as np
 import os, sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from scipy.interpolate import PchipInterpolator
 import argparse
+from collections import OrderedDict, defaultdict
 
 class PchipOceanSlices(object):
 
@@ -92,16 +93,13 @@ class PchipOceanSlices(object):
         return reject
 
     @staticmethod
-    def make_profile_interpolation_function(df, xLab='pres', yLab='temp'):
+    def make_profile_interpolation_function(x,y, xLab='pres', yLab='temp'):
         '''
         creates interpolation function
         df is a dataframe containing columns xLab and yLab
         xLab: the column name for the interpolation input x
         yLab: the column to be interpolated
         '''
-        df = df.sort_values([xLab], ascending=True)
-        x = df.pres.astype(float).values
-        y = df[yLab].astype(float).values
         try:
             f = PchipInterpolator(x, y, axis=1, extrapolate=False)
         except Exception as err:
@@ -141,56 +139,78 @@ class PchipOceanSlices(object):
                 else:
                     iDf.to_csv(f, header=False)
 
-    def parse_into_df(self, profiles):
-        '''
-        transforms list of profile dictionaries into one dataframe
-        '''
-        meas_keys = profiles[0]['measurements'][0].keys()
-        df = pd.DataFrame(columns=meas_keys)
-        profDicts = []
-        for profile in profiles:
-            if self.reject_profile(profile):
-                continue
-            profileDf = pd.DataFrame(profile['measurements'])
-            profileDf['cycle_number'] = profile['cycle_number']
-            profileDf['profile_id'] = profile['_id']
-            profileDf['lat'] = profile['lat']
-            profileDf['lon'] = profile['lon']
-            profileDf['date'] = profile['date']
-            profileDf['position_qc'] = profile['position_qc']
-            profileDf['date_qc'] = profile['date_qc']
-            profileDf['BASIN'] = profile['BASIN']
-            profDict = profileDf.to_dict(orient='records')
-            profDicts += profDict
-        df = pd.DataFrame(profDicts)
-        return df
+    @staticmethod
+    def record_to_array(measurements, xLab, yLab):
+        x = []
+        y = []
+        for meas in measurements:
+            x.append(meas[xLab])
+            y.append(meas[yLab])
+        return x, y
 
-    def make_interpolated_df(self, df, xintp, xLab='pres', yLab='temp'):
+    @staticmethod
+    def sort_list(x, y):
+        '''sort list 1 based off of list 2'''
+        xy = zip(x, y) 
+        ys = [y for _, y in sorted(xy)] 
+        xs = sorted(x)
+        return xs, ys
+
+    @staticmethod
+    def unique_idxs(seq):
+        '''gets unique, non nan and non -999 indexes'''
+        tally = defaultdict(list)
+        for idx,item in enumerate(seq):
+            tally[item].append(idx)
+        dups = [ (key,locs) for key,locs in tally.items() ]
+        dups = [ (key, locs) for key, locs in dups if not np.isnan(key) or key not in {-999, None, np.NaN} ]
+        idxs = []
+        for dup in sorted(dups):
+            idxs.append(dup[1][0])
+        return idxs
+
+    def format_xy(self, x, y):
+        '''prep for interpolation'''
+        x2, y2 = self.sort_list(x, y)
+        try:
+            x_dup_idx = self.unique_idxs(x2)
+            xu = [x2[idx] for idx in x_dup_idx]
+            yu = [y2[idx] for idx in x_dup_idx]
+            # remove none -999 and none
+            y_nan_idx =[idx for idx,key in enumerate(yu) if not key in {-999, None, np.NaN} ]
+        except:
+            pdb.set_trace()
+        xu = [x2[idx] for idx in y_nan_idx]
+        yu = [y2[idx] for idx in y_nan_idx]
+        return xu, yu
+
+    def make_interpolated_df(self, profiles, xintp, xLab='pres', yLab='temp'):
         '''
         make a dataframe of interpolated values set at xintp for each profile
         xLab: the column name for the interpolation input x
         yLab: the column to be interpolated
         xintp: the values to be interpolated
         '''
-        #outDf = pd.DataFrame(columns=df.columns)
         outArray = []
-        for _id, profDf in df.groupby(['profile_id']):
-            if profDf.empty:
+        for profile in profiles:
+            if len(profile['measurements']) == 0:
                 continue
-            profDf = profDf.drop_duplicates(subset=[xLab])
-            profDf = profDf[profDf[yLab] != -999]
-            if profDf.shape[0] <= 1:
+            if not yLab in profile['measurements'][0].keys():
+                continue
+            x, y = self.record_to_array(profile['measurements'], xLab, yLab)
+            x, y = self.format_xy(x, y)
+            if len(x) <= 1:
                 continue
 
-            f = self.make_profile_interpolation_function(profDf, xLab, yLab)
+            f = self.make_profile_interpolation_function(x, y, yLab)
 
-            rowDict = profDf.iloc[0].to_dict()
+            rowDict = profile.copy()
+            del rowDict['measurements']
             rowDict[xLab] = xintp
             rowDict[yLab] = f(xintp)
             outArray.append(rowDict)
-            #outDf = outDf.append(rowDict, ignore_index=True)
-        pdb.set_trace()
-        outDf = pd.DataFrame()
+        outDf = pd.DataFrame(outArray)
+        outDf = outDf.rename({'_id': 'profile_id'}, axis=1)
         outDf = outDf.dropna(subset=[xLab, yLab], how='any', axis=0)
         logging.debug('number of rows in df: {}'.format(outDf.shape[0]))
         logging.debug('number of profiles interpolated: {}'.format(len(outDf['profile_id'].unique())))
@@ -220,23 +240,17 @@ class PchipOceanSlices(object):
                 continue
             logging.debug('xintp: {0} on tdx: {1}'.format(xintp, tdx))
             logging.debug('number of profiles found in interval: {}'.format(len(sliceProfiles)))
-            sliceDf = self.parse_into_df(sliceProfiles)
-            
             try:
-                sliceDf = sliceDf[self.keepCols]
-            except Exception as err:
-                pdb.set_trace()
-
-            try:
-                iTempDf = self.make_interpolated_df(sliceDf, xintp, 'pres', 'temp')
+                iTempDf = self.make_interpolated_df(sliceProfiles, xintp, 'pres', 'temp')
             except Exception as err:
                 logging.warning('error when interpolating temp')
                 logging.warning(err)
                 continue
 
             try:
-                iPsalDf = self.make_interpolated_df(sliceDf, xintp, 'pres', 'psal')
+                iPsalDf = self.make_interpolated_df(sliceProfiles, xintp, 'pres', 'psal')
             except Exception as err:
+                pdb.set_trace()
                 logging.warning('error when interpolating psal')
                 logging.warning(err)
                 continue
@@ -267,6 +281,7 @@ if __name__ == '__main__':
     parser.add_argument("--minl", help="end on pressure level", type=float, nargs='?', default=10)
     parser.add_argument("--basin", help="filter this basin", type=str, nargs='?', default=None)
     parser.add_argument("--starttdx", help="start time index", type=int, nargs='?', default=0)
+    parser.add_argument("--logFileName", help="name of log file", type=str, nargs='?', default='pchipOceanSlices.log')
 
     myArgs = parser.parse_args()
 
@@ -278,10 +293,16 @@ if __name__ == '__main__':
 
     FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=FORMAT,
-                        filename='pchipOceanSlices.log',
+                        filename=myArgs.logFileName,
                         level=logging.DEBUG)
 
     logging.debug('Start of log file')
+    startTime = datetime.now()
     pos = PchipOceanSlices(pLevelRange, basin=basin, exceptBasin={}, starttdx=starttdx, appLocal=True)
     pos.main()
+    endTime = datetime.now()
+    dt = endTime - startTime
     logging.debug('end of log file for pressure level ranges: {}'.format(pLevelRange))
+    dtStr = 'time to complete: {} seconds'.format(dt.seconds)
+    print(dtStr)
+    logging.debug(dtStr)
