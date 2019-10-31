@@ -17,6 +17,7 @@ from argoDatabase import argoDatabase
 import addFunctions as af
 import unittest
 from argoDBClass import argoDBClass
+from math import isnan
 
 class argoDatabaseTest(argoDBClass):
 
@@ -38,23 +39,14 @@ class argoDatabaseTest(argoDBClass):
         self.assertEqual(self.ad.removeExisting, self.removeExisting)
         self.assertEqual(self.ad.documents, [])
         self.assertEqual(self.ad.removeAddedFileNames, self.removeAddedFileNames)
-        self.assertIsInstance(self.ad.basin, np.ma.core.MaskedArray)
-        self.assertIsInstance(self.ad.basin[0], np.int32)
-        self.assertEqual(self.ad.basin.shape, (41088,))
-        self.assertIsInstance(self.ad.coords, np.ma.core.MaskedArray)
-        self.assertEqual(self.ad.coords.shape, (41088, 2))
-        self.assertIsInstance(self.ad.coords[0,0], np.float64)
+        self.assertEqual(self.ad.basin['BASIN_TAG'].shape, (168, 360))
 
     def test_basin(self):
         lat = -77.5
         lon = -178.5
         self.assertEqual(self.ad.get_basin(lat, lon), 10)
         self.assertEqual(self.ad.get_basin(0, 0), 1)
-        self.assertEqual(self.ad.get_basin(30, 0), 4)
         self.assertEqual(self.ad.get_basin(-30, 90), 3)
-        doc = {'lat':lat, 'lon':lon}
-        self.assertEqual(self.ad.add_basin(doc, '')['BASIN'], 10)
-        self.assertEqual(self.ad.add_basin({'lat':np.NaN, 'lon':0}, '')['BASIN'], -999)
 
     def test_create_collection(self):
         coll = self.ad.create_collection()
@@ -63,31 +55,22 @@ class argoDatabaseTest(argoDBClass):
         for key in collIndexes:
             self.assertIn(key, sorted(list(coll.index_information())))
 
-    def test_remove_profiles(self):
-        profiles = ['6901762_46', '6901762_8']
+    def test_missing_lat_lon(self):
+        '''should assign missing lat-lon values'''
+        profiles = ['2902167_56', '5904663_68']
         df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
-        df = df[ df['_id'].isin(profiles)]
+        df = df[ df['_id'].isin(profiles) ]
         files = df.file.tolist()
-        
-        self.ad.removeExisting = True
-        self.ad.addToDb=True
+        self.ad.addToDb = False
         self.ad.add_locally(self.OUTPUTDIR, files)
 
-        #create collection and create custom key.
-        coll = self.ad.create_collection()
-        myKey = 'notUpdated'
-        for _id in profiles:
-            coll.find_one_and_update({"_id": _id}, {'$set': {myKey: True}})
-        self.ad.documents = []
-        # new doc should replace old one, removing myKey from document
-        self.ad.add_locally(self.OUTPUTDIR, files)
-        
-        for _id in profiles:
-            doc = coll.find_one({'_id': _id})
-            self.assertTrue(isinstance(doc, dict), 'doc was not found')
-            self.assertTrue(myKey not in doc.keys(), 'document was not replaced with new one')
-            doc = None
+        docs = self.ad.documents
+        self.assertIsNotNone(docs, 'docs should have been created')
+        for doc in docs:
+            self.assertTrue(doc['lat'] == -89.0, 'lat should be set to -89')
+            self.assertTrue(doc['lon'] == 0, 'lon should be set to 0')
+
     
     def test_dump_threshold(self):
         profiles = ['6901762_46', '6901762_8']
@@ -151,6 +134,32 @@ class argoDatabaseTest(argoDBClass):
     
     # def test_add_many_profiles(self):
     #     return
+
+    def test_remove_profiles(self):
+        profiles = ['6901762_46', '6901762_8']
+        df = self.df
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        files = df.file.tolist()
+        
+        self.ad.removeExisting = True
+        self.ad.addToDb = True
+        self.ad.add_locally(self.OUTPUTDIR, files)
+
+        #create collection and create custom key.
+        coll = self.ad.create_collection()
+        myKey = 'notUpdated'
+        for _id in profiles:
+            coll.find_one_and_update({"_id": _id}, {'$set': {myKey: True}})
+        self.ad.documents = []
+        # new doc should replace old one, removing myKey from document
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        
+        for _id in profiles:
+            doc = coll.find_one({'_id': _id})
+            self.assertTrue(isinstance(doc, dict), 'doc was not found')
+            self.assertTrue(myKey not in doc.keys(), 'document was not replaced with new one')
+            doc = None
 
 if __name__ == '__main__':
     unittest.main()

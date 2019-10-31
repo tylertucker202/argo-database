@@ -128,7 +128,7 @@ def write_last_updated(date, filename='lastUpdated.txt'):
     with open(filename, 'w') as f:
         f.write(date)    
 
-def clean_up_space(profileIndex='ar_index_*_prof.txt', mixedProfileIndex='argo_merge-profile*.txt', tmpDir='tmp/'):
+def clean_up_space(profileIndex='ar_index_*_prof-*.txt', mixedProfileIndex='argo_merge-profile*.txt', tmpDir='tmp/'):
     #remove indexList
     files = [ globalProfileIndex, mixedProfileIndex ]
     files = [ os.path.join(os.getcwd(), f) for f in files ]

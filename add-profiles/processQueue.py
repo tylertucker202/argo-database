@@ -41,7 +41,6 @@ if __name__ == '__main__':
     for file in glob.glob(os.path.join(queueDir, '*.txt')):
         if file.split('/')[-1] == 'testQueue.txt':
             continue
-        pdb.set_trace()
         content = af.get_nc_files_from_rsync_output(file, ncFileDir)
         content = af.remove_duplicate_if_mixed_or_synthetic(content)
         new_file_location = os.path.join(complDir,file.split('/')[-1])
@@ -52,7 +51,7 @@ if __name__ == '__main__':
 
         try:
             logging.warning('adding {} files'.format(len(content)))
-            af.run_parallel_process(ad, content, ncFileDir, args.npes)
+            af.run_parallel_process(ad, content.file.tolist(), ncFileDir, args.npes)
             #  move qued file to competed directory upon sucessfull completion
             logging.warning('moving file to {}'.format(new_file_location))
             os.rename(file, new_file_location)

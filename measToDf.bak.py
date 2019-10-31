@@ -75,41 +75,41 @@ class measToDf(object):
             raise Exception('Error while formatting qc: {}'.format(err))
         return data
 
-    def format_adjusted(self, measStr, key, idx):
+    def format_adjusted(self, measStr, doc_key, idx):
+        df = pd.DataFrame()
         adjMeasStr = measStr + '_ADJUSTED'
-        measAndQC = {}
         try:
             meas = self.variables[adjMeasStr]['data'][idx]
             if not adjMeasStr in self.variables.keys():
                 logging.warning('{} key not found. are you sure it is adjusted?'.format(adjMeasStr))
-                meas = [np.NaN]
+                df[doc_key] = np.nan
             elif isinstance(meas, list):
-                measAndQC[key] = meas
+                df[doc_key] = meas
             else:
-                meas = np.nan
+                df[doc_key] = np.nan
             measQC = self.variables[adjMeasStr + '_QC']['data'][idx]
-            measAndQC[key+'_qc'] = self.format_qc_array(measQC)
+            df[doc_key+'_qc'] = self.format_qc_array(measQC)
         except Exception as err:
             logging.debug('adjusted value for {0} was not added. {1}'.format(measStr, err))
-            measAndQC[key] = np.nan
-            measAndQC[key+'_qc'] = np.nan
-        return measAndQC
+            df[doc_key] = np.nan
+            df[doc_key+'_qc'] = np.nan
+        return df
 
-    def format_non_adjusted(self, measStr, key, idx):
-        measAndQC = {}
+    def format_non_adjusted(self, measStr, doc_key, idx):
+        df = pd.DataFrame()
         # get unadjusted value.
         try:
             meas = self.variables[measStr]['data'][idx]
-            measAndQC[key] = meas
+            df[doc_key] = meas
         except ValueError:
             ValueError('Check data type for measurement {}'.format(measStr))
 	        # Sometimes non-adjusted value is invalid.
         try:
             measQC = self.variables[measStr + '_QC']['data'][idx]
-            measAndQC[key+'_qc'] = self.format_qc_array(measQC)
+            df[doc_key+'_qc'] = self.format_qc_array(measQC)
         except KeyError:
             raise KeyError('qc not found for {}'.format(measStr))
-        return measAndQC
+        return df
 
     def format_measurements(self, measStr, idx):
         """
@@ -119,37 +119,50 @@ class measToDf(object):
 
         Delayed mode and Adjusted use adjusted measurements and QC
         """
-        key = measStr.lower()
+        doc_key = measStr.lower()
         if (self.data_mode == 'D') or (self.data_mode == 'A'): # both A and D mode use adjusted data only
             #use adjusted data
-            measAndQC = self.format_adjusted(measStr, key, idx)
+            df = self.format_adjusted(measStr, doc_key, idx)
             #  Handles the case when adjusted field is masked. uses adjusted QC and keeps unadjusted data.
-            uniqueMeas = np.unique(measAndQC[key])
-            if len(uniqueMeas) == 1 and uniqueMeas in self.invalidSet:
+            if len(df[doc_key].unique()) == 1 and df[doc_key].unique() in self.invalidSet:
                 logging.debug('adjusted param is masked for meas: {}. setting to NaN'.format(measStr))
-                measAndQC[key] = np.NaN
-                missingQC = any( measAndQC[key + '_qc'].astype(str).isin({'1', '2'}) )
+                df[doc_key] = np.NaN
+                missingQC = any( df[doc_key + '_qc'].astype(str).isin({'1', '2'}) )
                 if missingQC:
                     raise ValueError('adjusted param qc is not 3, 4, or masked for masked meas {}. notify dac.'.format(measStr))
         else:
-            measAndQC = self.format_non_adjusted(measStr, key, idx)
-        measAndQC[key] = [ np.NaN if x > 9999 else x for x in measAndQC[key] ]
+            df = self.format_non_adjusted(measStr, doc_key, idx)
+        df.loc[df[doc_key] > 9999, doc_key] = np.NaN
+        return df
 
-        measAndQC[key] = np.array(measAndQC[key])
-        measAndQC[key + '_qc'] = np.array(measAndQC[key + '_qc'])
-        return measAndQC
-
-    def do_qc_on_meas(self, measAndQC, key):
+    def do_qc_on_meas(self, df, measStr):
         """
-        QC procedure replaces any row whos qc value does not equal '1' with nan
+        QC procedure drops any row whos qc value does not equal '1'
         """
         try:
-            notQcKeep = measAndQC[key + '_qc'] != self.qcThreshold
-            measAndQC[key + '_qc'][notQcKeep] = np.NaN
-            measAndQC[key][notQcKeep] = np.NaN
+            df = df[df[measStr+'_qc'] == self.qcThreshold]
         except KeyError:
-            raise KeyError('measurement: {0} has no qc.'.format(key))
-        return measAndQC
+            raise KeyError('measurement: {0} has no qc.'.format(measStr))
+        if df.empty:
+            return pd.DataFrame()
+        return df
+
+    def do_qc_on_deep_meas(self, df, measStr):
+        """
+        QC procedure drops any row whos qc value does not equal '1'
+        """
+        try:
+            dfShallow = df[ df['pres'] <= 2000]
+            dfShallow = dfShallow[dfShallow[measStr+'_qc'] == self.qcThreshold]
+            dfDeep = df[ df['pres'] > 2000]
+            if measStr == 'pres' or measStr == 'temp':
+                dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepPresThreshold) ]
+            else:
+                dfDeep = dfDeep[ dfDeep[measStr+'_qc'].isin(self.qcDeepThreshold) ]
+            df = pd.concat([dfShallow, dfDeep], axis=0 )
+        except KeyError:
+            raise KeyError('measurement: {0} has no qc.'.format(measStr))
+        return df
 
     def drop_nan_from_df(self, df):
         #pressure is the critical feature. If it has a bad qc value, drop the whole row
@@ -179,6 +192,8 @@ class measToDf(object):
     @staticmethod
     def merge_dfs(df1, df2):
         '''combins BGC dfs. df1 into df2 for nan in df2'''
+        df1 = df1.astype(float).replace(-999, np.NaN)
+        df2 = df2.astype(float).replace(-999, np.NaN)
         try:
             df1 = df1.set_index('pres')
             df2 = df2.set_index('pres')
@@ -190,8 +205,25 @@ class measToDf(object):
         checkNanColumns = [x for x in df.columns if not x.endswith('_qc') and x != 'pres']
         df.dropna(axis=0, how='all', subset=checkNanColumns, inplace=True)
         df.dropna(axis=1, how='all', inplace=True)
+        df.fillna(-999, inplace=True)
+        qcCol = [x for x in df.columns if x.endswith('_qc')]
+
+        df[qcCol] = df[qcCol].astype(int).astype(str)
         return df
 
+    @staticmethod
+    def format_bgc_df(df):
+        try:
+            df = df.astype(float).replace(-999, np.NaN)
+        except ValueError as err:
+            raise ValueError('invalid values in bgc measurements {}'.format(err))
+        df.dropna(axis=0, how='all', inplace=True)
+        df.dropna(axis=1, how='all', inplace=True)
+        df.fillna(-999, inplace=True)
+        qcCol = [x for x in df.columns if x.endswith('_qc')]
+        df[qcCol] = df[qcCol].astype(int).astype(str)
+        return df
+    
     def create_BGC(self):
         '''
         BGC measurements are found in several indexes. Here we loop through
@@ -199,7 +231,7 @@ class measToDf(object):
         '''
         df = self.make_profile_df(self.idx, self.measList, includeQC=False) # note we add pres temp and psal
         if self.nProf == 1:
-            df = df.dropna(axis=1, how='all')
+            df = self.format_bgc_df(df)
             return df.astype(np.float64).to_dict(orient='records')
         else:
             for idx in range(1, self.nProf):
@@ -212,67 +244,52 @@ class measToDf(object):
                     df = profDf
                 else:
                     df = self.merge_dfs(df, profDf)
-            df = df.dropna(axis=1, how='all')
+            df = self.format_bgc_df(df)
             return df.astype(np.float64).to_dict(orient='records')
-
-    def do_qc_on_deep_meas(self, df, key):
-        """
-        QC procedure drops any row whos qc value does not equal '1'
-        """
-        try:
-            dfShallow = df[ df['pres'] <= 2000]
-            dfShallow = dfShallow[dfShallow[key+'_qc'] == self.qcThreshold]
-            dfDeep = df[ df['pres'] > 2000]
-            if key == 'pres' or key == 'temp':
-                dfDeep = dfDeep[ dfDeep[key+'_qc'].isin(self.qcDeepPresThreshold) ]
-            else:
-                dfDeep = dfDeep[ dfDeep[key+'_qc'].isin(self.qcDeepThreshold) ]
-            df = pd.concat([dfShallow, dfDeep], axis=0 )
-        except KeyError:
-            raise KeyError('measurement: {0} has no qc.'.format(key))
-        return df
-
+            
     def make_deep_profile_df(self, idx, measList, includeQC=True):
         ''' Deep profiles use pressure in their qc process'''
-        df = self.make_profile_df(idx, measList, False)
-        cols = [col for col in df.columns.tolist() if not '_qc' in col]  
-        for key in cols:
-            df = self.do_qc_on_deep_meas(df, key)
-
+        df = pd.DataFrame()
+        keys = self.stationParameters
+        pres = self.format_measurements('PRES', idx)
+        for key in keys:
+            if re.sub(r'\d+', '', key) in measList: # sometimes meas has digits
+                meas_df = self.format_measurements(key, idx)
+            else:
+                continue
+            if includeQC and key != 'PRES':
+                meas_df['pres'] = pres['pres']
+                meas_df['pres_qc'] = pres['pres_qc']
+                meas_df = self.do_qc_on_deep_meas(meas_df, key.lower())
+                meas_df.drop(['pres', 'pres_qc'], axis=1, inplace=True)
+                df = pd.concat([df, meas_df], axis=1)
+        pres = self.do_qc_on_deep_meas(pres, 'pres')
+        df = pd.concat([pres, df], axis=1)  # join pressure axis
         qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
         if includeQC:
             df = self.drop_nan_from_df(df)
         else:
             df = self.drop_nan_from_df(df)
-            df = df.drop(qcColNames, axis=1) # qc values are no longer needed.
+            df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
+        df.fillna(-999, inplace=True) # API needs all measurements to be a number
         return df
 
     def make_profile_df(self, idx, measList, includeQC=True):
         '''Profile measurements are gathered in a dataframe'''
-        measStrings = self.stationParameters
-        profileDict = {}
-
-        arrayLen = len(self.variables['PRES']['data'][self.idx])
-        for measStr in measStrings:
-            key = measStr.lower()
-            keyBase =  re.sub(r'\d+', '', measStr)
+        df = pd.DataFrame()
+        keys = self.stationParameters
+        for key in keys:
+            keyBase =  re.sub(r'\d+', '', key)
             if not keyBase in measList: # sometimes meas has digits
                 continue
-            measAndQC = self.format_measurements(measStr, idx)
+            meas_df = self.format_measurements(key, idx)
             if includeQC:
-                measAndQC = self.do_qc_on_meas(measAndQC, key)
-            if np.isnan(measAndQC[key]).all(): # don't include a column of nan
-                continue
+                meas_df = self.do_qc_on_meas(meas_df, key.lower())
             # append with index conserved
-            if measAndQC[key].size == arrayLen:
-                profileDict[key] = measAndQC[key]
-                profileDict[key + '_qc'] = measAndQC[key + '_qc']
-            else:
-                raise ValueError('array dim mismatch')
-        qcColNames = [k for k in profileDict.keys() if '_qc' in k]
-        df = pd.DataFrame(profileDict)
+            df = pd.concat([df, meas_df], axis=1)
+        qcColNames = [k for k in df.columns.tolist() if '_qc' in k]  
         if includeQC:
             df = self.drop_nan_from_df(df)
             df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
-        #df = df.fillna(-999)
+        df = df.fillna(-999) # API needs all measurements to be a number
         return df

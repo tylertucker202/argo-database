@@ -48,13 +48,13 @@ cd $ARGODIR
 
 case $HOSTNAME in
   (carby) 
-                /home/tyler/anaconda3/envs/argo/bin/python processQueue.py --logName processQueue --npes 2
+                /home/tyler/anaconda3/envs/argo/bin/python processQueue.py --logName processQueue --npes 1
 		;;
   (kadavu.ucsd.edu) 
-		python3.6 processQueue.py --logName processQueue --npes 2
+		python3.6 processQueue.py --logName processQueue --npes 1
 		;;
   (*)
-		python processQueue.py --logName processQueue --npes 2
+		python processQueue.py --logName processQueue --npes 1
 		;;
 esac
 

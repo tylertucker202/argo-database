@@ -60,7 +60,6 @@ def add_docs_to_database(docs, coll):
         coll.insert_many(docs)
     except Exception as err:
         print(err)
-        pdb.set_trace()
     coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
 
 def main_add(localDir, coll, forcastDays, dLat=2, dLong=2, forTest=False, reverseCoords=None):

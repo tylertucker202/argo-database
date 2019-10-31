@@ -45,13 +45,13 @@ class netCDFToDocTest(argoDBClass):
         self.assertIsInstance(self.ad.documents, list, 'should be list')
         for doc in self.ad.documents:
             docKeys = doc.keys()
-            
             for key, itemType in self.requiredKeys:
                 self.assertIn(key, docKeys, 'missing key: {}'.format(key))
-                self.assertIsInstance(doc[key], itemType)
+                item = doc[key]
+                self.assertIsInstance(item, itemType, 'profile {2} key {0} is not of type {1}'.format(key, itemType, doc['_id']))
 
     def test_optional_keys(self):
-        #Used to find out why some fields are missing
+        '''Used to find out why some fields are missing'''
         profiles = [ '5905059_1', '5905059_100', '5905059_99', '5905059_98', '5904663_97', '2900784_297' '2901182_8']
         df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
@@ -70,16 +70,17 @@ class netCDFToDocTest(argoDBClass):
             docKeys = doc.keys()
             for key, itemType in self.optionalKeys:
                 if key in docKeys:
+                    item = doc[key]
                     self.assertEqual(type(doc[key]), itemType, 'item type should match for key: {}'.format(key))
+                    self.assertIsInstance(item, itemType)
                 else:
                     if key not in [ 'containsBGC', 'bgcMeas', 'isDeep' ]:
                         print('profile: {0} missing key: {1}'.format(key, doc['_id']))
 
                 #self.assertIn(key, doc.keys(), 'profile: {0} missing key: {1}'.format(key, doc['_id']))
-                #self.assertIsInstance(item, itemType)
 
     def test_ascending_profiles(self):
-        #profile should be acending
+        '''profile should be acending'''
         profiles = [ '2902534_142']
         df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
@@ -117,9 +118,9 @@ class netCDFToDocTest(argoDBClass):
 
     def test_check_profiles(self):
         
-        #5904663_68 is missing position. Position qc should be a 9.
-        #2903207_72 was reported to be missing pos sys, but it has it here.
-        #5903593, 5904663 are reported to be missing bgc data.
+        '''5904663_68 is missing position. Position qc should be a 9.
+        2903207_72 was reported to be missing pos sys, but it has it here.
+        5903593, 5904663 are reported to be missing bgc data.'''
         profiles = [ '5904663_68', '2903207_72', '5904663_97', '2900784_297', '2901182_8', '6901676_30']
         df = self.df
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
