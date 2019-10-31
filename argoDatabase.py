@@ -7,7 +7,6 @@ import logging
 import numpy as np
 from scipy.interpolate import griddata
 from datetime import datetime
-from netCDF4 import Dataset
 import xarray as xr
 import bson.errors
 import pdb
