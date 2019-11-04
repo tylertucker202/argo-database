@@ -178,11 +178,37 @@ class PchipOceanSlices(object):
             yu = [y2[idx] for idx in x_dup_idx]
             # remove none -999 and none
             y_nan_idx =[idx for idx,key in enumerate(yu) if not key in {-999, None, np.NaN} ]
-        except:
+        except Exception as err:
             pdb.set_trace()
-        xu = [x2[idx] for idx in y_nan_idx]
-        yu = [y2[idx] for idx in y_nan_idx]
+            print(err)
+        xu = [xu[idx] for idx in y_nan_idx]
+        yu = [yu[idx] for idx in y_nan_idx]
         return xu, yu
+
+    def make_interpolated_profile(self, profile, xintp, xLab, yLab):
+
+        meas = profile['measurements']
+        if len(meas) == 0:
+            return None
+        if not yLab in meas[0].keys():
+            return None
+        x, y = self.record_to_array(meas, xLab, yLab)
+        x, y = self.format_xy(x, y)
+        if len(x) <= 1:
+            return None
+
+        f = self.make_profile_interpolation_function(x, y, yLab)
+
+        rowDict = profile.copy()
+        del rowDict['measurements']
+        rowDict[xLab] = xintp
+
+        if len(meas) == 1 and meas[xLab][0] == xintp:
+            yintp = meas[yLab][0]
+        else:
+            yintp = f(xintp)
+        rowDict[yLab] = yintp
+        return rowDict
 
     def make_interpolated_df(self, profiles, xintp, xLab='pres', yLab='temp'):
         '''
@@ -193,22 +219,9 @@ class PchipOceanSlices(object):
         '''
         outArray = []
         for profile in profiles:
-            if len(profile['measurements']) == 0:
-                continue
-            if not yLab in profile['measurements'][0].keys():
-                continue
-            x, y = self.record_to_array(profile['measurements'], xLab, yLab)
-            x, y = self.format_xy(x, y)
-            if len(x) <= 1:
-                continue
-
-            f = self.make_profile_interpolation_function(x, y, yLab)
-
-            rowDict = profile.copy()
-            del rowDict['measurements']
-            rowDict[xLab] = xintp
-            rowDict[yLab] = f(xintp)
-            outArray.append(rowDict)
+            rowDict = self.make_interpolated_profile(profile, xintp, xLab, yLab)
+            if rowDict:
+                outArray.append(rowDict)
         outDf = pd.DataFrame(outArray)
         outDf = outDf.rename({'_id': 'profile_id'}, axis=1)
         outDf = outDf.dropna(subset=[xLab, yLab], how='any', axis=0)
