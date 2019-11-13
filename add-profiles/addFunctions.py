@@ -74,7 +74,13 @@ def get_df_to_add(localDir, dacs=[]):
 
     files = list(filter(reBR.search, files))
     df = remove_duplicate_if_mixed_or_synthetic(files)
-    return df   
+    return df
+
+def dir_path(dirString):
+    if os.path.isdir(dirString):
+        return dirString
+    else:
+        raise NotADirectoryError(dirString)
 
 def get_mirror_dir(args):
     mySystem = os.uname().nodename
@@ -103,6 +109,10 @@ def get_mirror_dir(args):
         tf.create_dir_of_files(df, tf.GDAC, tf.FTP, tf.tmpDir)
         logging.warning('Download complete. Now going to add to db: {}'.format(args.dbName))
         OUTPUT_DIR = './tmp'
+    
+    if (args.mirrorDir):
+        pdb.set_trace()
+        OUTPUT_DIR = dir_path(args.mirrorDir)
 
     return OUTPUT_DIR
 
@@ -182,6 +192,7 @@ def format_sysparams():
     parser.add_argument("--adjustedOnly", help="add adjusted profiles only", type=bool, nargs='?', default=False)
     parser.add_argument("--minDate", help="min date used for tmp subset", type=str, nargs='?')
     parser.add_argument("--maxDate", help="max date used for tmp subset only", type=str, nargs='?')
+    parser.add_argument("--mirrorDir", help="dir used for data", type=str, nargs='?')
     args = parser.parse_args()
     return args
 

@@ -32,9 +32,9 @@ class PchipOceanSlices(object):
 
         self.pLevelRange = pLevelRange
 
-        self.presRanges = self.makePresRanges(self.presLevels)
-        #self.colNames = ['obsProf', 'profFloatIDAggrSel', 'profJulDayAggrSel', 'profLatAggrSel', 'profLongAggrSel']
-        #self.rnCols = {'i' + iCol:colNames[0], 'profile_id': colNames[1], 'date': colNames[2], 'lat': colNames[3], 'lon': colNames[4] }
+        self.presRanges = self.make_pres_ranges(self.presLevels)
+
+        self.reduce_presLevels_and_presRanges()
         pass
 
     @staticmethod
@@ -53,7 +53,7 @@ class PchipOceanSlices(object):
         return datesSet
 
     @staticmethod
-    def get_ocean_slice(startDate, endDate, presRange, intPres, basin=None, appLocal=None):
+    def get_ocean_slice(startDate, endDate, presRange, intPres, basin=None, appLocal=None, reduceMeas=False):
         '''
         query horizontal slice of ocean for a specified time range
         startDate and endDate should be a string formated like so: 'YYYY-MM-DD'
@@ -61,9 +61,10 @@ class PchipOceanSlices(object):
         Try to make the query small enough so as to not pass the 15 MB limit set by the database.
         '''
         if appLocal:
-            baseURL = 'http://localhost:3000/gridding/presSliceForInterpolation/'
+            baseURL = 'http://localhost:3000'
         else:
-            baseURL = 'https://argovis.colorado.edu/gridding/presSliceForInterpolation/'
+            baseURL = 'https://argovis.colorado.edu'
+        baseURL += '/gridding/presSliceForInterpolation/'
         startDateQuery = '?startDate=' + startDate
         endDateQuery = '&endDate=' + endDate
         presRangeQuery = '&presRange=' + presRange
@@ -72,6 +73,9 @@ class PchipOceanSlices(object):
         if basin:
             basinQuery = '&basin=' + basin
             url += basinQuery
+
+        if reduceMeas:
+            url += '&reduceMeas=' + str(reduceMeas).lower()
         resp = requests.get(url)
         # Consider any status other than 2xx an error
         if not resp.status_code // 100 == 2:
@@ -93,12 +97,10 @@ class PchipOceanSlices(object):
         return reject
 
     @staticmethod
-    def make_profile_interpolation_function(x,y, xLab='pres', yLab='temp'):
+    def make_profile_interpolation_function(x,y):
         '''
         creates interpolation function
         df is a dataframe containing columns xLab and yLab
-        xLab: the column name for the interpolation input x
-        yLab: the column to be interpolated
         '''
         try:
             f = PchipInterpolator(x, y, axis=1, extrapolate=False)
@@ -109,7 +111,7 @@ class PchipOceanSlices(object):
         return f  
     
     @staticmethod
-    def makePresRanges(presLevels):
+    def make_pres_ranges(presLevels):
         """
         Pressure ranges are based off of depths catagory
         surface: at 2.5 dbar +- 2.5
@@ -129,7 +131,7 @@ class PchipOceanSlices(object):
         return presRanges
 
     @staticmethod
-    def saveIDF(iDf, filename, tdx):
+    def save_iDF(iDf, filename, tdx):
         iDf.date = pd.to_datetime(iDf.date)
         iDf.date = iDf.date.apply(lambda d: d.strftime("%d-%b-%Y %H:%M:%S"))
         if not iDf.empty:
@@ -150,7 +152,7 @@ class PchipOceanSlices(object):
 
     @staticmethod
     def sort_list(x, y):
-        '''sort list 1 based off of list 2'''
+        '''sort x based off of y'''
         xy = zip(x, y) 
         ys = [y for _, y in sorted(xy)] 
         xs = sorted(x)
@@ -186,7 +188,6 @@ class PchipOceanSlices(object):
         return xu, yu
 
     def make_interpolated_profile(self, profile, xintp, xLab, yLab):
-
         meas = profile['measurements']
         if len(meas) == 0:
             return None
@@ -194,10 +195,11 @@ class PchipOceanSlices(object):
             return None
         x, y = self.record_to_array(meas, xLab, yLab)
         x, y = self.format_xy(x, y)
-        if len(x) <= 1:
+
+        if len(x) < 2: # pchip needs at least two points
             return None
 
-        f = self.make_profile_interpolation_function(x, y, yLab)
+        f = self.make_profile_interpolation_function(x, y)
 
         rowDict = profile.copy()
         del rowDict['measurements']
@@ -268,24 +270,29 @@ class PchipOceanSlices(object):
                 logging.warning(err)
                 continue
             
-            self.saveIDF(iTempDf, iTempFileName, tdx)
-            self.saveIDF(iPsalDf, iPsalFileName, tdx)
+            self.save_iDF(iTempDf, iTempFileName, tdx)
+            self.save_iDF(iPsalDf, iPsalFileName, tdx)
             logging.debug('interpolation complete at time index: {}'.format(tdx))
         timeTick = datetime.now()
         logging.debug(timeTick.strftime(format='%Y-%m-%d %H:%M'))
         dt = timeTick-start
         logging.debug('completed run for psal {0} running for: {1}'.format(xintp, dt))
+    
+    def reduce_presLevels_and_presRanges(self):
+        '''
+        reduces presLevels and pres ranges to those specified in pLevelRange
+        '''
+        self.startIdx = self.presLevels.index(self.pLevelRange[0])
+        self.endIdx = self.presLevels.index(self.pLevelRange[1])
+        self.presLevels = self.presLevels[ self.startIdx:self.endIdx ]
+        self.presRanges = self.presRanges[ self.startIdx:self.endIdx ]
 
     def main(self):
         logging.debug('inside main loop')
         logging.debug('running pressure level ranges: {}'.format(self.pLevelRange))
-        startIdx = self.presLevels.index(self.pLevelRange[0])
-        endIdx = self.presLevels.index(self.pLevelRange[1])
-        presLevels = self.presLevels[ startIdx:endIdx ]
-        presRanges = self.presRanges[ startIdx:endIdx ]
-        for idx, presLevel in enumerate(presLevels):
+        for idx, presLevel in enumerate(self.presLevels):
             xintp = presLevel
-            presRange = presRanges[idx]
+            presRange = self.presRanges[idx]
             self.intp_pres(xintp, presRange)
 
 if __name__ == '__main__':
