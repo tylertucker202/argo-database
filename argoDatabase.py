@@ -99,7 +99,6 @@ class argoDatabase(object):
         nFiles = len(files)
         if self.addToDb:
             coll = self.create_collection()
-
         if self.removeExisting and self.addToDb: # Removes profiles on list before adding list
             logging.warning('removing existing profiles before adding files')
             self.remove_profiles(files, coll)
@@ -121,12 +120,15 @@ class argoDatabase(object):
                 continue
             remotePath = self.url + os.path.relpath(fileName, localDir)
             variables = profDict['data_vars']
-            if 'DATA_MODE' in variables.keys():
-                data_mode = self.format_param(variables['DATA_MODE']['data'][0])
-            elif 'PARAMETER_DATA_MODE' in variables.keys():
-                data_modes = self.format_list(variables['PARAMETER_DATA_MODE']['data'][0])
-                data_mode = self.core_data_mode(data_modes)
-            else:
+            try:
+                if 'DATA_MODE' in variables.keys():
+                    data_mode = self.format_param(variables['DATA_MODE']['data'][0])
+                elif 'PARAMETER_DATA_MODE' in variables.keys():
+                    data_modes = self.format_list(variables['PARAMETER_DATA_MODE']['data'][0])
+                    data_mode = self.core_data_mode(data_modes)
+                else:
+                    logging.warning('filename {0} could not retrieve data_mode. not going to add. notify dacs. {1}'.format(fileName, err))
+            except Exception as err:
                 logging.warning('filename {0} could not retrieve data_mode. not going to add. notify dacs. {1}'.format(fileName, err))
             if self.adjustedOnly & (data_mode == 'A'):
                 continue

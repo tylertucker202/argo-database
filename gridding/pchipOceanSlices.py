@@ -3,6 +3,7 @@ import pdb
 import requests
 import numpy as np
 import os, sys
+import xarray as xr
 from datetime import datetime, timedelta
 import logging
 from scipy.interpolate import PchipInterpolator
@@ -20,6 +21,7 @@ class PchipOceanSlices(object):
         self.datesSet = self.get_dates_set()
         self.exceptBasin = exceptBasin
         self.starttdx = starttdx
+        self.reduceMeas = False #removes excess points from db query
         self.qcKeep = set([1,2]) # used to filter bad positions and dates
         self.basin = basin # indian ocean only Set to None otherwise
         self.presLevels = [   2.5,   10. ,   20. ,   30. ,   40. ,   50. ,   60. ,   70. ,   80. ,
@@ -28,14 +30,12 @@ class PchipOceanSlices(object):
                         360. ,  380. ,  400. ,  420. ,  440. ,  462.5,  500. ,  550. ,  600. ,
                         650. ,  700. ,  750. ,  800. ,  850. ,  900. ,  950. , 1000. , 1050. ,
                         1100. , 1150. , 1200. , 1250. , 1300. , 1350. , 1412.5, 1500. , 1600. ,
-                        1700. , 1800. , 1900. , 1975. ]
+                        1700. , 1800. , 1900. , 1975., 2000.]
 
         self.pLevelRange = pLevelRange
-
-        self.presRanges = self.make_pres_ranges(self.presLevels)
+        self.presRanges = self.make_rg_pres_ranges()
 
         self.reduce_presLevels_and_presRanges()
-        pass
 
     @staticmethod
     def get_dates_set(period=30):
@@ -74,8 +74,7 @@ class PchipOceanSlices(object):
             basinQuery = '&basin=' + basin
             url += basinQuery
 
-        if reduceMeas:
-            url += '&reduceMeas=' + str(reduceMeas).lower()
+        url += '&reduceMeas=' + str(reduceMeas).lower()
         resp = requests.get(url)
         # Consider any status other than 2xx an error
         if not resp.status_code // 100 == 2:
@@ -130,6 +129,18 @@ class PchipOceanSlices(object):
         presRanges = [stringifyArray(x) for x in presRanges]
         return presRanges
 
+    @staticmethod
+    def make_rg_pres_ranges():
+        '''
+        uses pressure ranges defined in RG climatology
+        '''
+        rgFilename = '/home/tyler/Desktop/RG_ArgoClim_Temp.nc'
+        rg = xr.open_dataset(rgFilename, decode_times=False)
+        bnds = rg['PRESSURE_bnds']
+        presRanges = bnds.values.tolist()
+        stringifyArray = lambda x: str(x).replace(' ', '')
+        presRanges = [stringifyArray(x) for x in presRanges]
+        return presRanges
     @staticmethod
     def save_iDF(iDf, filename, tdx):
         iDf.date = pd.to_datetime(iDf.date)
@@ -249,7 +260,7 @@ class PchipOceanSlices(object):
             logging.debug('starting interpolation at time index: {}'.format(tdx))
             startDate, endDate = dates
             try:
-                sliceProfiles = self.get_ocean_slice(startDate, endDate, presRange, xintp, self.basin, self.appLocal)
+                sliceProfiles = self.get_ocean_slice(startDate, endDate, presRange, xintp, self.basin, self.appLocal, self.reduceMeas)
             except Exception as err:
                 logging.warning('profiles not recieved: {}'.format(err))
                 continue
@@ -297,8 +308,8 @@ class PchipOceanSlices(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--maxl", help="start on pressure level", type=float, nargs='?', default=20)
-    parser.add_argument("--minl", help="end on pressure level", type=float, nargs='?', default=10)
+    parser.add_argument("--maxl", help="start on pressure level", type=float, nargs='?', default=2000)
+    parser.add_argument("--minl", help="end on pressure level", type=float, nargs='?', default=1975)
     parser.add_argument("--basin", help="filter this basin", type=str, nargs='?', default=None)
     parser.add_argument("--starttdx", help="start time index", type=int, nargs='?', default=0)
     parser.add_argument("--logFileName", help="name of log file", type=str, nargs='?', default='pchipOceanSlices.log')

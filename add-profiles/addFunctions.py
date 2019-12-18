@@ -50,9 +50,9 @@ def remove_duplicate_if_mixed_or_synthetic(files):
         else:
             P= 'C'
         return P
-    df['cat'] = df.prefix.apply(cat_prefix).astype('category')
-    df['cat'] = df['cat'].cat.set_categories(['S', 'M', 'C'], ordered=True)
-    df = df.sort_values(['profile', 'cat'])
+    df['catagory'] = df.prefix.apply(cat_prefix).astype('category')
+    df['catagory'] = df['catagory'].cat.set_categories(['S', 'M', 'C'], ordered=True)
+    df = df.sort_values(['profile', 'catagory'])
     df = df.drop_duplicates(subset=['profile'], keep='first')
     return df
 
@@ -111,7 +111,6 @@ def get_mirror_dir(args):
         OUTPUT_DIR = './tmp'
     
     if (args.mirrorDir):
-        pdb.set_trace()
         OUTPUT_DIR = dir_path(args.mirrorDir)
 
     return OUTPUT_DIR
@@ -174,6 +173,16 @@ def get_nc_files_from_rsync_output(file, ncFileDir):
     content = [os.path.join(ncFileDir, profile) for profile in content]
     return content
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def format_sysparams():
     defaultNpes = mp.cpu_count()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -186,10 +195,10 @@ def format_sysparams():
     parser.add_argument("--dbDumpThreshold", help="number of profiles to add at a time", type=int, nargs='?', default=1000)
     parser.add_argument("--qcThreshold", help="qc tolerance for", type=str, nargs='?', default='1')
     parser.add_argument("--basinFilename", help="number of processors", type=str, nargs='?', default='../basinmask_01.nc')
-    parser.add_argument("--addToDb", help="number of processors", type=bool, nargs='?', default=True)
-    parser.add_argument("--removeExisting", help="", type=bool, nargs='?', default=True)
+    parser.add_argument("--addToDb", help="add profiles to database. false for testing", type=str2bool, nargs='?', default=True)
+    parser.add_argument("--removeExisting", help="", type=str2bool, nargs='?', default=True)
     parser.add_argument("--removeAddedFileNames", help="delete files after adding. Used for testing only!", type=bool, nargs='?', default=False)
-    parser.add_argument("--adjustedOnly", help="add adjusted profiles only", type=bool, nargs='?', default=False)
+    parser.add_argument("--adjustedOnly", help="add adjusted profiles only", type=str2bool, nargs='?', default=False)
     parser.add_argument("--minDate", help="min date used for tmp subset", type=str, nargs='?')
     parser.add_argument("--maxDate", help="max date used for tmp subset only", type=str, nargs='?')
     parser.add_argument("--mirrorDir", help="dir used for data", type=str, nargs='?')

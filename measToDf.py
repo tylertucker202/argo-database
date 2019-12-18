@@ -192,7 +192,7 @@ class measToDf(object):
         df.dropna(axis=1, how='all', inplace=True)
         return df
 
-    def create_BGC(self):
+    def create_BGC_DF(self):
         '''
         BGC measurements are found in several indexes. Here we loop through
         each N_PROF and merge using the merge_dfs method.
@@ -200,7 +200,6 @@ class measToDf(object):
         df = self.make_profile_df(self.idx, self.measList, includeQC=False) # note we add pres temp and psal
         if self.nProf == 1:
             df = df.dropna(axis=1, how='all')
-            return df.astype(np.float64).to_dict(orient='records')
         else:
             for idx in range(1, self.nProf):
                 profDf = self.make_profile_df(idx, self.measList, includeQC=False)
@@ -213,8 +212,7 @@ class measToDf(object):
                 else:
                     df = self.merge_dfs(df, profDf)
             df = df.dropna(axis=1, how='all')
-            return df.astype(np.float64).to_dict(orient='records')
-
+        return df
     def do_qc_on_deep_meas(self, df, key):
         """
         QC procedure drops any row whos qc value does not equal '1'
@@ -251,7 +249,6 @@ class measToDf(object):
         '''Profile measurements are gathered in a dataframe'''
         measStrings = self.stationParameters
         profileDict = {}
-
         arrayLen = len(self.variables['PRES']['data'][self.idx])
         for measStr in measStrings:
             key = measStr.lower()
@@ -274,5 +271,4 @@ class measToDf(object):
         if includeQC:
             df = self.drop_nan_from_df(df)
             df.drop(qcColNames, axis = 1, inplace = True) # qc values are no longer needed.
-        #df = df.fillna(-999)
         return df

@@ -9,6 +9,7 @@ import os
 import sys
 import pdb
 import re
+from numpy import isnan
 sys.path.append('..')
 sys.path.append('../add-profiles/')
 from argoDatabase import argoDatabase
@@ -18,6 +19,7 @@ import warnings
 import pandas as pd
 from numpy import warnings as npwarnings
 from argoDBClass import argoDBClass
+
 #  Sometimes netcdf contain nan. This will suppress runtime warnings.
 warnings.simplefilter('error', RuntimeWarning)
 npwarnings.filterwarnings('ignore')
@@ -47,6 +49,21 @@ class measToDfTest(argoDBClass):
         files = df.file.tolist()
         self.ad.add_locally(self.OUTPUTDIR, files)
         self.assertEqual(len(self.ad.documents), 0, "profile 6900287_8 should not be added")
+
+    def test_missing_rows(self):
+        #  profile with missing psal at the end
+        _id = '4900421_16'
+        profiles = [_id]
+        df = self.df
+        df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
+        df = df[ df['_id'].isin(profiles)]
+        self.ad.addToDb = True
+        files = df.file.tolist()
+        self.ad.add_locally(self.OUTPUTDIR, files)
+        coll = self.ad.create_collection()
+        doc = coll.find_one({'_id': _id})
+        lastPsal = doc['measurements'][-1]['psal']
+        self.assertTrue(isnan(lastPsal), 'last psal should be nan')   
 
 if __name__ == '__main__':
     unittest.main()

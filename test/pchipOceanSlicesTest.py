@@ -169,10 +169,11 @@ class PchipOceanSlicesTest(unittest.TestCase):
         return x, y, rowDict
 
     def test_make_interpolated_profile(self):
-        #interpolate with narrow pressure range
+        #  interpolate with narrow pressure range
         profiles, _ = self.get_profiles()
         longProfiles, _ = self.get_profiles(True)
 
+        #  there are more long profiles. 
         del longProfiles[19]
         longProfiles = longProfiles[0:-2]
         longPresRange = [5, 15]
@@ -184,7 +185,7 @@ class PchipOceanSlicesTest(unittest.TestCase):
         for idx, profile in enumerate(profiles):
             longProfile = longProfiles[idx]
             row = self.pos.make_interpolated_profile(profile, xintp, xLab, yLab)
-            if not row: 
+            if not row:
                 continue
             xl, yl, longRow = self.long_profile_int(longProfile, xintp, longPresRange, xLab, yLab)
             if np.isnan(row['temp']):

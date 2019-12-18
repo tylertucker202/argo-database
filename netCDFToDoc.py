@@ -136,7 +136,10 @@ class netCDFToDoc(measToDf):
 
     def add_BGC(self):
         try:
-            self.profileDoc['bgcMeas'] = self.create_BGC()
+            bgcDf = self.create_BGC_DF()
+            cols = bgcDf.columns.tolist()
+            self.profileDoc['bgcMeas'] =  bgcDf.astype(np.float64).to_dict(orient='records')
+            self.profileDoc['bgcMeasKeys'] = [col for col in cols if not '_qc' in col]
         except Exception as err:
             logging.warning('Profile {0} bgc not created:{1}'.format(self.profileID, err))
         bgcMeasKeys = self.profileDoc['bgcMeas'][0].keys()
@@ -165,12 +168,6 @@ class netCDFToDoc(measToDf):
             columns = df.columns
             colNames = [x.lower() for x in self.measList if x.lower() in columns]
             df[colNames] = df[colNames].apply(lambda x: round(x, 3))
-
-        # if df.temp.isnull().values.any():
-        #     logging.warning('{} has nan in temp'.format(self.profileID))
-
-        # if df.psal.isnull().values.any():
-        #     logging.warning('{} has nan in psal'.format(self.profileID))
         return df
 
     def make_profile_dict(self, dacName, remotePath):

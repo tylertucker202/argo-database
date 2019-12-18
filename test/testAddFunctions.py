@@ -24,7 +24,7 @@ class testAddFunctions(unittest.TestCase):
         self.assertIsInstance(files, list)
         self.assertGreater(len(files), 0)
         
-        columns = ['file', 'filename', 'profile', 'prefix', 'platform', 'dac', 'cat']
+        columns = ['file', 'filename', 'profile', 'prefix', 'platform', 'dac', 'catagory']
         self.assertEqual(len(columns), df.shape[1])
         for col in df.columns.tolist():
             self.assertIn(col, columns)
