@@ -118,7 +118,7 @@ class netCDFToDoc(measToDf):
         if isnan(lat) or isnan(lon):
             lat, lon = -89.0, 0.0
             logging.warning('Profile:{0} has unknown lat-lon.'
-                          ' Filling with 0, 0'.format(self.profileID))
+                          ' Filling with {1}, {2} lat lon'.format(self.profileID, lat, lon))
         self.profileDoc['lat'] = lat
         self.profileDoc['lon'] = lon
         self.profileDoc['geoLocation'] = {'type': 'Point', 'coordinates': [lon, lat]}

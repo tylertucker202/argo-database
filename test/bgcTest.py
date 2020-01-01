@@ -28,7 +28,6 @@ class bgcTest(argoDBClass):
 
     def test_bgc(self):
         df = self.df
-        pdb.set_trace()
         df['_id'] = df.profile.apply(lambda x: re.sub('_0{1,}', '_', x))
         profiles = ['5904663_1', '5904663_67', '5903260_219', '5903260_1']
         df = df[ df['_id'].isin(profiles)]

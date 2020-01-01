@@ -27,7 +27,7 @@ python add_profiles.py --dbName argo-express-test --subset trouble --logName tro
 python add_profiles.py --dbName argo --subset missingDataMode --logName missingDataMode.log --npes 2 --dbDumpThreshold 300
 python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
 python add_profiles.py --dbName argo --subset bgc --logName bgc.log --removeExisting False
-python add_profiles.py --dbName argo --subset daterange --logName tmp.log --npes 1 --minDate 2019-01-01 --maxDate 2019-01-31
+python add_profiles.py --dbName argo --subset daterange --logName tmp.log --npes 1 --minDate 2019-12-30 --maxDate 2020-01-01
 """
 
 if __name__ == '__main__':
