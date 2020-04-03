@@ -14,10 +14,6 @@ class PchipOceanSlices(object):
 
     def __init__(self, pLevelRange, basin=None, exceptBasin={None}, starttdx=None, appLocal=False):
         self.appLocal = appLocal
-        self.tempCol = 'temp'
-        self.psalCol = 'psal'
-        self.presCol = 'pres'
-        self.keepCols = ['date', 'lat', 'lon', self.presCol, self.tempCol, self.psalCol, 'profile_id', 'position_qc', 'date_qc', 'BASIN']
         self.datesSet = self.get_dates_set()
         self.exceptBasin = exceptBasin
         self.starttdx = starttdx
