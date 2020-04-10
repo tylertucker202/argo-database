@@ -19,11 +19,14 @@ todayDate = datetime.today().strftime('%Y-%m-%d')
 globalProfileName = 'ar_index_global_prof.txt'
 thisWeekProfileName = 'ar_index_this_week_prof.txt'
 mixedProfileName = 'argo_merge-profile_index.txt'
+syntheticProfileName = 'argo_synthetic-profile_index.txt'
 globalProfileIndex = globalProfileName[:-4] \
                    + '-' + todayDate + '.txt'
 thisWeekProfileIndex = thisWeekProfileName[:-4] \
 + '-' + todayDate + '.txt'
 mixedProfileIndex = mixedProfileName[:-4] \
+                   + '-' + todayDate + '.txt'
+syntheticProfileIndex = syntheticProfileName[:-4] \
                    + '-' + todayDate + '.txt'
 ftpPath = os.path.join('ifremer', 'argo')
 GDAC = 'ftp.ifremer.fr'
@@ -31,6 +34,7 @@ tmpDir = os.path.join(os.getcwd(), 'tmp/')
          
 def download_todays_file(GDAC, ftpPath, profileIndex, profileText):
     url = 'ftp:/' + '/' + GDAC + '/' + ftpPath + '/' + profileText
+    print(url)
     wget.download(url, profileIndex)
 
 def get_df_of_files_to_add_from_platform_list(filename, platformList):
@@ -52,34 +56,41 @@ def get_df_of_files_to_add_from_platform_list(filename, platformList):
 def get_df_from_platform_list(platformList):
     logging.warning('Downloading Profile Indexes')
     download_todays_file(GDAC, ftpPath, thisWeekProfileIndex, thisWeekProfileName)
-    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, syntheticProfileIndex, syntheticProfileName)
     logging.warning('Generating dataframes')
     dfGlobal = get_df_of_files_to_add_from_platform_list(thisWeekProfileIndex, platformList)
-    dfMixed = get_df_of_files_to_add_from_platform_list(mixedProfileIndex, platformList)
-    df = merge_dfs(dfGlobal, dfMixed)
+    #dfMixed = get_df_of_files_to_add_from_platform_list(mixedProfileIndex, platformList)
+    dfSynthetic = get_df_of_files_to_add_from_platform_list(syntheticProfileIndex, platformList)
+    df = merge_dfs(dfGlobal, dfSynthetic)
     return df
 
 def get_df_from_dates_updated(minDate, maxDate):
     logging.warning('Downloading Profile Indexes')
     download_todays_file(GDAC, ftpPath, thisWeekProfileIndex, thisWeekProfileName)
-    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, syntheticProfileIndex, syntheticProfileName)
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     dfGlobal = get_df_of_files_to_add(thisWeekProfileIndex, minDate, maxDate, dateCol='date_update')
-    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date_update')
-    df = merge_dfs(dfGlobal, dfMixed)
+    #dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date_update')
+    dfSynthetic = get_df_of_files_to_add(syntheticProfileIndex, minDate, maxDate, dateCol='date_update')
+    df = merge_dfs(dfGlobal, dfSynthetic)
     return df
 
 def get_df_from_dates(minDate, maxDate):
     download_todays_file(GDAC, ftpPath, globalProfileIndex, globalProfileName)
-    download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    #download_todays_file(GDAC, ftpPath, mixedProfileIndex, mixedProfileName)
+    download_todays_file(GDAC, ftpPath, syntheticProfileIndex, syntheticProfileName)
     logging.warning('Generating dataframes')
     logging.warning('minDate: {}'.format(minDate))
     logging.warning('maxDate: {}'.format(maxDate))
     dfGlobal = get_df_of_files_to_add(globalProfileIndex, minDate, maxDate, dateCol='date')
-    dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date')
-    df = merge_dfs(dfGlobal, dfMixed)
+    #dfMixed = get_df_of_files_to_add(mixedProfileIndex, minDate, maxDate, dateCol='date')
+    dfSynthetic = get_df_of_files_to_add(syntheticProfileIndex, minDate, maxDate, dateCol='date')
+    
+    df = merge_dfs(dfGlobal, dfSynthetic)
     return df
 
 def get_df_of_files_to_add(filename, minDate, maxDate, dateCol='date_update'):
@@ -128,9 +139,9 @@ def write_last_updated(date, filename='lastUpdated.txt'):
     with open(filename, 'w') as f:
         f.write(date)    
 
-def clean_up_space(profileIndex='ar_index_*_prof-*.txt', mixedProfileIndex='argo_merge-profile*.txt', tmpDir='tmp/'):
+def clean_up_space(profileIndex='ar_index_*_prof-*.txt', mixedProfileIndex='argo_merge-profile*.txt', syntheticProfileIndex='argo_synthetic-profile_index.txt', tmpDir='tmp/'):
     #remove indexList
-    files = [ globalProfileIndex, mixedProfileIndex ]
+    files = [ globalProfileIndex, mixedProfileIndex, syntheticProfileIndex ]
     files = [ os.path.join(os.getcwd(), f) for f in files ]
     for file in files:
         if len(glob(file)) >= 1:

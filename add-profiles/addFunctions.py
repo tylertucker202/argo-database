@@ -97,19 +97,22 @@ def get_mirror_dir(args):
     if args.subset == 'trouble':
         OUTPUT_DIR = os.path.join('/home', 'tyler', 'Desktop', 'argo-database', 'troublesome-files')
 
-    if (args.subset == 'tmp') or (args.subset == 'dateRange'):
+    if (args.subset == 'tmp') or (args.subset == 'dateRange') or (args.subset=='dateRangeUpdated'):
         if args.minDate and args.maxDate:
             minDate = datetime.strptime(args.minDate, '%Y-%m-%d')
             maxDate = datetime.strptime(args.maxDate, '%Y-%m-%d')
         else:
             minDate = tf.get_last_updated(filename='lastUpdated.txt')
             maxDate = datetime.today()
-        df = tf.get_df_from_dates_updated(minDate, maxDate)
+        if (args.subset=='dateRange'):
+            df = tf.get_df_from_dates(minDate, maxDate)
+        else:
+            df = tf.get_df_from_dates_updated(minDate, maxDate)
         logging.warning('Num of files downloading to tmp: {}'.format(df.shape[0]))
         tf.create_dir_of_files(df, tf.GDAC, tf.FTP, tf.tmpDir)
         logging.warning('Download complete. Now going to add to db: {}'.format(args.dbName))
         OUTPUT_DIR = './tmp'
-    
+
     if (args.mirrorDir):
         OUTPUT_DIR = dir_path(args.mirrorDir)
 
@@ -188,7 +191,7 @@ def format_sysparams():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("--logName", help="log file name", type=str, nargs='?', default='default.log')
-    parser.add_argument("--subset", help="which dacs to use (all minor, coriolis, aoml, trouble, deep, bgc, delayed, adjusted, adjAndDelay, tmp, dateRange)", type=str, nargs='?', default='all')
+    parser.add_argument("--subset", help="which dacs to use (all minor, coriolis, aoml, trouble, deep, bgc, delayed, adjusted, adjAndDelay, tmp, dateRange, dateRangeUpdated)", type=str, nargs='?', default='all')
     parser.add_argument("--npes", help="number of processors", type=int, nargs='?', default=defaultNpes)
 
     parser.add_argument("--dbName", help='name of database', type=str, nargs='?', default='argo')

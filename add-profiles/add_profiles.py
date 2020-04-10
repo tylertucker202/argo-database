@@ -27,7 +27,8 @@ python add_profiles.py --dbName argo-express-test --subset trouble --logName tro
 python add_profiles.py --dbName argo --subset missingDataMode --logName missingDataMode.log --npes 2 --dbDumpThreshold 300
 python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
 python add_profiles.py --dbName argo --subset bgc --logName bgc.log --removeExisting False
-python add_profiles.py --dbName argo --subset daterange --logName tmp.log --npes 1 --minDate 2019-12-30 --maxDate 2020-01-01
+python add_profiles.py --dbName argo --subset dateRangeUpdated --logName tmp.log --npes 1 --minDate 2019-12-30 --maxDate 2020-01-01
+python add_profiles.py --dbName argo --subset dateRange --logName tmp.log --npes 1 --minDate 2020-04-07 --maxDate 2020-04-11
 """
 
 if __name__ == '__main__':
@@ -55,6 +56,7 @@ if __name__ == '__main__':
     af.run_parallel_process(ad, df.file.tolist(), ncFileDir, args.npes)
 
     if (args.subset == 'tmp') or (args.subset == 'dateRange'):
+        logging.warning('cleaning up tmp')
         af.tmp_clean_up()
 
     finishTime = datetime.today()
