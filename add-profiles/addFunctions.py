@@ -90,8 +90,10 @@ def get_mirror_dir(args):
         OUTPUT_DIR = os.path.join('/home', 'tylertucker', 'ifremer')
     elif mySystem == 'ciLab':
         OUTPUT_DIR = os.path.join('/home', 'gstudent4', 'Desktop', 'ifremer')
+    elif mySystem == 'atoc02.colorado.edu':
+        OUTPUT_DIR = os.path.join('/data/argovis/storage', 'ifremer')
     else:
-        print('pc not found. assuming default')
+        print('pc {} not found. assuming default'.format(mySystem))
         OUTPUT_DIR = os.path.join('/data/argovis/storage', 'ifremer')
 
     if args.subset == 'trouble':
