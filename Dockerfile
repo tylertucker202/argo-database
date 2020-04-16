@@ -9,6 +9,5 @@ RUN apt-get update && \
 
 RUN conda install -c conda-forge --yes --file requirements.txt
 RUN pip install wget==3.2
-#RUN pip install -r requirements.txt
 CMD cd /usr/src/argo-database/add-profiles && \
        python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
