@@ -74,8 +74,8 @@ def main_add(localDir, coll, forcastDays, dLat=2, dLong=2, forTest=False, revers
 if __name__ == '__main__':
 
     dbName = 'argo'
-    #covarBase = '/usr/src/covarMatricies'
-    covarBase = '/media/tyler/My Passport/covarMatricies'
+    covarBase = '/storage/covarMatricies'
+    #covarBase = '/media/tyler/My Passport/covarMatricies'
     if not os.path.exists(covarBase):
         print('warning covarBase dir not found')
     sLocalDir = os.path.join(covarBase,'60_day')

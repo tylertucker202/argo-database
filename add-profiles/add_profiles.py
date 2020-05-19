@@ -23,7 +23,6 @@ python add_profiles.py --dbName argo --subset synthetic --logName synthetic.log 
 python add_profiles.py --dbName argo --subset aoml --logName aoml.log
 python add_profiles.py --dbName argo --subset coriolis --logName coriolis.log
 python add_profiles.py --dbName argo --subset minor --logName minor.log
-python add_profiles.py --dbName argo-express-test --subset trouble --logName trouble.log
 python add_profiles.py --dbName argo --subset missingDataMode --logName missingDataMode.log --npes 2 --dbDumpThreshold 300
 python add_profiles.py --dbName argo --subset tmp --logName tmp.log --npes 1
 python add_profiles.py --dbName argo --subset bgc --logName bgc.log --removeExisting False
