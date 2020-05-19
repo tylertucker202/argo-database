@@ -223,6 +223,13 @@ def get_dacs(dacStr, customDacList=None):
         dacs = customDacList
     return dacs
 
+def inner_merge_df_with_file(df, filename):
+    df_filter = pd.read_json(filename, dtype=str)
+    df_filter = df_filter.rename(columns={'_id':'profile'})
+    dfComb = pd.merge(df, df_filter, how='inner', on='profile')
+    df = dfComb
+    return df 
+
 def reduce_files(args, df):
 
     if args.subset == 'adjAndDelay':
@@ -249,8 +256,9 @@ def reduce_files(args, df):
         df = df[ df.platform.isin(deepProfList) ]
 
     if args.subset == 'missingDataMode':
-        df_filter = pd.read_json('missing_data_mode.json', dtype=str)
-        df_filter = df_filter.rename(columns={'_id':'profile'})
-        dfComb = pd.merge(df, df_filter, how='inner', on='profile')
-        df = dfComb
+        df = inner_merge_df_with_file(df, 'missing_data_mode.json' )
+
+    if args.subset == 'argo-express-test':
+        pdb.set_trace()
+        df = inner_merge_df_with_file(df, "express_test_profiles.json" )
     return df

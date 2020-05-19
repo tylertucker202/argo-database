@@ -18,7 +18,8 @@ npwarnings.filterwarnings('ignore')
 """
 example of uses:
 python add_profiles.py --logName adjusted.log --adjustedOnly 1 --subset adjusted
-python add_profiles.py --dbName argo-express-test --subset trouble --logName trouble.log --npes 1
+python add_profiles.py --dbName argo-trouble --subset trouble --logName trouble.log --npes 1
+python add_profiles.py --dbName argo-express-test --subset argo-express-test --logName argo-express-test.log --npes 1
 python add_profiles.py --dbName argo --subset synthetic --logName synthetic.log --npes 1
 python add_profiles.py --dbName argo --subset aoml --logName aoml.log
 python add_profiles.py --dbName argo --subset coriolis --logName coriolis.log
