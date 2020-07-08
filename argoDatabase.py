@@ -65,14 +65,13 @@ class argoDatabase(object):
         try:
             coll.create_index([('date', pymongo.DESCENDING)])
             coll.create_index([('platform_number', pymongo.DESCENDING)])
-            #coll.create_index([('cycle_number', pymongo.DESCENDING)])
             coll.create_index([('dac', pymongo.DESCENDING)])
             coll.create_index([('geoLocation', pymongo.GEOSPHERE)])
 
             # these are needed for db overview
             coll.create_index([('containsBGC', pymongo.DESCENDING)])
             coll.create_index([('isDeep', pymongo.DESCENDING)])
-            #coll.create_index([('BASIN', pymongo.DESCENDING)])
+            coll.create_index([('date', pymongo.DESCENDING), ('platform_number', pymongo.DESCENDING)]) # for BGC query
         except:
             logging.warning('not able to get collections or set indexes')
         return coll
