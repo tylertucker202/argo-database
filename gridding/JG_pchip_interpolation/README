@@ -1,0 +1,7 @@
+John Gilson's curated argo profile dataset used with Kuusela Stein gridded
+project. Converts files provided by Dr John Gilson into mongoDB database
+profiles. 
+
+Also interpolates data
+
+Not currently in production.

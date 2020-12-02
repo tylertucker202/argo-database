@@ -20,7 +20,7 @@ echo $ENDDATE
 
 echo 'Starting to add DB'
 cd $ARGODIR
-python3.6 processQueue.py kadavu
+python3.6 process_queue.py kadavu
 PYENDDATE=`date +%y-%m-%d-%H:%M`
 echo 'Added new files to DB'
 echo $PYENDDATE

@@ -201,7 +201,7 @@ def format_sysparams():
     parser.add_argument("--qcThreshold", help="qc tolerance for", type=str, nargs='?', default='1')
     parser.add_argument("--basinFilename", help="number of processors", type=str, nargs='?', default='../basinmask_01.nc')
     parser.add_argument("--addToDb", help="add profiles to database. false for testing", type=str2bool, nargs='?', default=True)
-    parser.add_argument("--removeExisting", help="", type=str2bool, nargs='?', default=True)
+    parser.add_argument("--removeExisting", help="Remove existing profiles before adding new ones", type=str2bool, nargs='?', default=True)
     parser.add_argument("--removeAddedFileNames", help="delete files after adding. Used for testing only!", type=bool, nargs='?', default=False)
     parser.add_argument("--adjustedOnly", help="add adjusted profiles only", type=str2bool, nargs='?', default=False)
     parser.add_argument("--minDate", help="min date used for tmp subset", type=str, nargs='?')
