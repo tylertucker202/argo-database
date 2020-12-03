@@ -48,7 +48,7 @@ def remove_duplicate_if_mixed_or_synthetic(files):
         elif 'M' in x:
             P = 'M'
         else:
-            P= 'C'
+            P = 'C'
         return P
     df['catagory'] = df.prefix.apply(cat_prefix).astype('category')
     df['catagory'] = df['catagory'].cat.set_categories(['S', 'M', 'C'], ordered=True)
@@ -252,7 +252,7 @@ def reduce_files(args, df):
         with open('deepPlatforms.csv', 'r') as f:
             reader = csv.reader(f)
             deepProfList = list(reader)
-            deepProfList = [x[0] for x in deepProfList]
+            deepProfList = [ x[0] for x in deepProfList ]
         df = df[ df.platform.isin(deepProfList) ]
 
     if args.subset == 'missingDataMode':

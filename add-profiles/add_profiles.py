@@ -48,7 +48,6 @@ if __name__ == '__main__':
 
     ncFileDir = af.get_mirror_dir(args)
     dacs = af.get_dacs(args.subset)
-    #pdb.set_trace()
     df = af.get_df_to_add(ncFileDir, dacs=dacs)
     df = af.reduce_files(args, df)
     #df = af.cut_perc(df, 38, 2) # cut top 38 perc

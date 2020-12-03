@@ -155,35 +155,12 @@ class argoDatabase(object):
         
     def remove_profiles(self, files, coll):
         #get profile ids
-        idList = []
-        for fileName in files:
-            profileName = fileName.split('/')[-1]
-            profileName = profileName[1:-3]
-            profileCycle = profileName.split('_')
-            cycle = profileName.split('_')[1].lstrip('0')
-            profileName = profileCycle[0] + '_' + cycle
-            idList.append(profileName)
-        #remove all profiles at once
+        # idList = []
+        fileNames = [ x.split('/')[-1] for x in files ]
+        profNames =  [ re.sub('[MDARS(.nc)]', '', x) for x in fileNames ]
+        _ids = [ re.sub(r'(_0{1,2})', '_', x) for x in profNames ]
         logging.debug('removing profiles before reintroducing')
-        coll.delete_many({'_id': {'$in': idList}})
-
-    @staticmethod
-    def format_param_bak(param):
-        """
-        Param is an fixed array of characters. format_param attempts to convert this array to
-        a string.
-        """
-        if type(param) == np.ndarray:
-            formatted_param = ''.join([(x.astype(str)) for x in param])
-        elif type(param) == np.ma.core.MaskedArray:
-            try:
-                formatted_param = ''.join([(x.astype(str)) for x in param.data])
-            except Exception as err:
-                logging.debug('exception: param is not expected type {}'.format(err))
-        else:
-            logging.error(' check type: {}'.format(type(param)))
-            pass
-        return formatted_param.strip(' ')
+        coll.delete_many({'_id': {'$in': _ids}})
 
     def format_param(self, param):
         """
