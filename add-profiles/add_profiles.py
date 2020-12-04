@@ -50,8 +50,6 @@ if __name__ == '__main__':
     dacs = af.get_dacs(args.subset)
     df = af.get_df_to_add(ncFileDir, dacs=dacs)
     df = af.reduce_files(args, df)
-    #df = af.cut_perc(df, 38, 2) # cut top 38 perc
-    #df = af.cut_perc(df, 40, 2) # cut top 40 percent of that
     af.run_parallel_process(ad, df.file.tolist(), ncFileDir, args.npes)
 
     if (args.subset == 'tmp') or (args.subset == 'dateRange'):

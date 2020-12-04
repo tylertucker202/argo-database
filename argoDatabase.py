@@ -100,7 +100,11 @@ class argoDatabase(object):
             coll = self.create_collection()
         if self.removeExisting and self.addToDb: # Removes profiles on list before adding list
             logging.warning('removing existing profiles before adding files')
-            self.remove_profiles(files, coll)
+            try:
+                self.remove_profiles(files, coll)
+            except Exception as err:
+                logging.error('exception: {}. Not able to progress'.format(err))
+                raise err
 
         logging.warning('Attempting to add: {}'.format(nFiles))
         completedFileNames = []
@@ -155,7 +159,6 @@ class argoDatabase(object):
         
     def remove_profiles(self, files, coll):
         #get profile ids
-        # idList = []
         fileNames = [ x.split('/')[-1] for x in files ]
         profNames =  [ re.sub('[MDARS(.nc)]', '', x) for x in fileNames ]
         _ids = [ re.sub(r'(_0{1,2})', '_', x) for x in profNames ]
