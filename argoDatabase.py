@@ -104,7 +104,7 @@ class argoDatabase(object):
                 self.remove_profiles(files, coll)
             except Exception as err:
                 logging.error('exception: {}. Not able to progress'.format(err))
-                raise err
+                raise e
 
         logging.warning('Attempting to add: {}'.format(nFiles))
         completedFileNames = []
